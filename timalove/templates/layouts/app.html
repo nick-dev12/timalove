@@ -1,0 +1,43 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block head %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<script src="{% static 'js/fcm.js' %}?v=20260813fcm" defer></script>
+{% endblock %}
+{% block body %}
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <a class="brand brand-mark" href="{% url 'public:home' %}">
+      <span>Tima<span class="brand-accent">Love</span></span>
+      <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
+    </a>
+    <a href="{% url 'app:discussions' %}" class="{% if request.resolver_match.url_name == 'discussions' or request.resolver_match.url_name == 'discussion_detail' %}active{% endif %}">Discussions {% if nav_badges.unread_messages %}<span class="nav-badge">{{ nav_badges.unread_messages }}</span>{% endif %}</a>
+    <a href="{% url 'app:likes' %}" class="{% if request.resolver_match.url_name == 'likes' %}active{% endif %}">Likes {% if nav_badges.likes_count %}<span class="nav-badge">{{ nav_badges.likes_count }}</span>{% endif %}</a>
+    <a href="{% url 'app:decouvrir' %}" class="{% if request.resolver_match.url_name == 'decouvrir' %}active{% endif %}">À découvrir</a>
+    <a href="{% url 'app:rencontres' %}" class="{% if request.resolver_match.url_name == 'rencontres' %}active{% endif %}">Rencontres</a>
+    <a href="{% url 'app:profil' %}" class="{% if request.resolver_match.url_name == 'profil' and request.GET.tab != 'settings' %}active{% endif %}">Profil</a>
+    <a href="{% url 'app:parametres' %}" class="{% if request.GET.tab == 'settings' %}active{% endif %}">Paramètres</a>
+    <div style="margin-top:auto;padding-top:1rem;">
+      <a href="{% url 'auth:deconnexion' %}">Déconnexion</a>
+    </div>
+  </aside>
+  <div class="app-main">
+    <header class="app-header">
+      <strong>{{ title|default:"TimaLove" }}</strong>
+      <a href="{% url 'app:parametres' %}" aria-label="Notifications">🔔 {% if nav_badges.unread_notifications %}<span class="nav-badge">{{ nav_badges.unread_notifications }}</span>{% endif %}</a>
+    </header>
+    <div class="app-content">
+      {% if messages %}{% for message in messages %}<div class="alert alert-{{ message.tags }}">{{ message }}</div>{% endfor %}{% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+<form aria-hidden="true" style="display:none">{% csrf_token %}</form>
+<nav class="bottom-nav">
+  <a href="{% url 'app:discussions' %}" class="{% if 'discussion' in request.resolver_match.url_name %}active{% endif %}"><span>💬</span>Messages</a>
+  <a href="{% url 'app:likes' %}" class="{% if request.resolver_match.url_name == 'likes' %}active{% endif %}"><span>♡</span>Likes</a>
+  <a href="{% url 'app:decouvrir' %}" class="primary-slot {% if request.resolver_match.url_name == 'decouvrir' %}active{% endif %}"><span class="icon-wrap">♥</span>Découvrir</a>
+  <a href="{% url 'app:rencontres' %}" class="{% if request.resolver_match.url_name == 'rencontres' %}active{% endif %}"><span>✨</span>Matchs</a>
+  <a href="{% url 'app:profil' %}" class="{% if request.resolver_match.url_name == 'profil' %}active{% endif %}"><span>👤</span>Profil</a>
+</nav>
+{% endblock %}

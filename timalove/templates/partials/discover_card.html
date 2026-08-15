@@ -1,0 +1,23 @@
+﻿{% if card %}
+<article class="discover-card" id="discover-card">
+  {% if card.primary_photo %}
+  <img class="discover-photo" src="{{ card.primary_photo }}" alt="{{ card.first_name }}" style="{% if blur %}filter:blur(14px);{% endif %}">
+  {% else %}
+  <div class="discover-photo"></div>
+  {% endif %}
+  <div style="padding:1rem 1.25rem;">
+    <h2 style="margin:0;">{{ card.first_name }}{% if not card.hide_age and card.age %}, {{ card.age }}{% endif %}</h2>
+    <p style="margin:.25rem 0;color:var(--text-muted);">{{ card.city }}{% if card.country %} · {{ card.country }}{% endif %}</p>
+    <p>{{ card.bio|default:""|truncatechars:140 }}</p>
+  </div>
+  <form class="discover-actions" method="post" action="{% url 'app:swipe' %}" hx-post="{% url 'app:swipe' %}" hx-target="#discover-card" hx-swap="outerHTML">
+    {% csrf_token %}
+    <input type="hidden" name="swiped_id" value="{{ card.id }}">
+    <button class="action-btn action-pass" name="action" value="pass" type="submit" title="Passer">✕</button>
+    <button class="action-btn action-super" name="action" value="super_like" type="submit" title="Super like">★</button>
+    <button class="action-btn action-like" name="action" value="like" type="submit" title="Like">♥</button>
+  </form>
+</article>
+{% else %}
+<div class="empty-state" id="discover-card"><h2>Plus de profils</h2></div>
+{% endif %}

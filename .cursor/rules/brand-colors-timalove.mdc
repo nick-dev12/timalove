@@ -1,0 +1,44 @@
+---
+description: Palette et identité visuelle TimaLove (couleurs officielles)
+alwaysApply: true
+---
+
+# Identité TimaLove
+
+- **Nom** : TimaLove (un mot, L majuscule)
+- **Tagline** : Mise en relation sérieuse vers le mariage
+- **Ton** : chaleureux, bienveillant, sérieux, premium
+
+## Palette officielle (source : design-system + tailwind.config)
+
+| Token | Hex | Usage |
+|---|---|---|
+| rose-primary | `#E8637A` | CTA, boutons, accents, liens |
+| rose-secondary | `#C4858B` | labels, accents titres |
+| bordeaux | `#3D2024` | sections sombres |
+| bordeaux-medium | `#5C3A3F` | cartes UI sombres |
+| bordeaux-dark | `#2D1F22` | footer, fonds très sombres, text-primary |
+| cream | `#FDF5F0` | fonds clairs |
+| rose-pale | `#FFF0F3` | fonds très légers, hover soft |
+| rose-light | `#F5E6E8` | texte sur fond sombre |
+| text-secondary | `#6B5A5E` | texte secondaire |
+| text-muted | `#9B8A8E` | captions / meta |
+| blanc | `#FFFFFF` | surfaces, cartes |
+| hover primary | `#d4556c` | hover bouton primaire |
+| VIP | `#D4A017` | badge VIP uniquement |
+
+## États
+
+- Succès `#4CAF50` · Erreur `#E53935` · Attention `#FF9800` · Info `#2196F3`
+
+## Typographie
+
+- Titres : **Playfair Display** (serif)
+- Corps : **DM Sans** (sans)
+- Textes UI en **français**
+
+## Règles couleur
+
+- Utiliser uniquement ces tokens (CSS variables / classes nommées)
+- Ne pas inventer de violets, indigos, néons ou thèmes « AI purple »
+- Contraste texte/fond toujours lisible (WCAG AA minimum)

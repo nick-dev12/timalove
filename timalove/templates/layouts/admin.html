@@ -1,0 +1,27 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block body %}
+<div class="admin-shell">
+  <aside class="admin-sidebar">
+    <div class="brand brand-mark" style="color:white;margin-bottom:1.5rem;">
+      <span>Tima<span class="brand-accent">Love</span></span>
+      <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
+    </div>
+    <a href="{% url 'admin_panel:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+    <a href="{% url 'admin_panel:inscriptions' %}">Inscriptions</a>
+    <a href="{% url 'admin_panel:activites' %}">Activités</a>
+    <a href="{% url 'admin_panel:coaching' %}">Coaching</a>
+    <a href="{% url 'admin_panel:paiements' %}">Paiements</a>
+    <a href="{% url 'admin_panel:avis' %}">Avis</a>
+    <a href="{% url 'admin_panel:signalements' %}">Signalements</a>
+    <a href="{% url 'admin_panel:monitoring' %}">Monitoring</a>
+    <a href="{% url 'admin_panel:parametres' %}">Paramètres</a>
+    <a href="{% url 'auth:deconnexion' %}" style="margin-top:2rem;">Déconnexion</a>
+  </aside>
+  <div class="admin-main">
+    <h1>{{ title }}</h1>
+    {% if messages %}{% for message in messages %}<div class="alert alert-{{ message.tags }}">{{ message }}</div>{% endfor %}{% endif %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

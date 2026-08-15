@@ -1,0 +1,17 @@
+﻿{% extends "layouts/app.html" %}
+{% block content %}
+<div class="chat-list">
+{% for c in conversations %}
+  <a class="chat-item" href="{% url 'app:discussion_detail' c.partner.id %}">
+    {% if c.partner.primary_photo %}<img class="avatar" src="{{ c.partner.primary_photo }}" alt="">{% else %}<div class="avatar"></div>{% endif %}
+    <div style="flex:1;min-width:0;">
+      <strong>{{ c.partner.first_name }}</strong>
+      <p style="margin:0;font-size:.85rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.last_message.content|default:"Nouvelle conversation" }}</p>
+    </div>
+    {% if c.unread %}<span class="nav-badge">{{ c.unread }}</span>{% endif %}
+  </a>
+{% empty %}
+  <div class="empty-state"><h2>Aucune discussion</h2><p>Vos matchs apparaîtront ici.</p></div>
+{% endfor %}
+</div>
+{% endblock %}

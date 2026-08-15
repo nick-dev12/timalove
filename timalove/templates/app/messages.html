@@ -1,0 +1,116 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}Messages{% endblock %}
+{% block body_class %}messages-inbox-page{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260815h3" defer></script>
+<script src="{% static 'js/messages-inbox.js' %}?v=20260815m3" defer></script>
+{% endblock %}
+{% block body %}
+{% include "partials/explorer_atmosphere.html" %}
+
+<div class="explorer">
+  <div class="explorer__chrome">
+    <header class="explorer__top">
+      <div class="explorer__menu-anchor">
+      <button type="button" class="explorer__icon-btn" aria-label="Menu" aria-expanded="false" aria-controls="explorer-menu" data-explorer-menu-btn>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 7h16v2H4V7zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/></svg>
+      </button>
+      <nav id="explorer-menu" class="explorer__menu" hidden>
+      <a href="{% url 'public:accueil' %}">En savoir plus</a>
+      <a href="{% url 'public:coaching' %}">Coaching individuel</a>
+      <a href="{% url 'public:temoignages' %}">Témoignages</a>
+      <a href="{% url 'public:contact' %}">Contact</a>
+      <a href="{% url 'auth:deconnexion' %}">Déconnexion</a>
+      </nav>
+      </div>
+      <a class="explorer__logo brand-script brand-mark" href="{% url 'public:explorer' %}">
+        <span>TimaLove</span>
+        <img src="{% static 'images/logo.webp' %}" alt="" width="36" height="36">
+      </a>
+      <div class="explorer__top-actions">
+        <a class="explorer__coach" href="{% url 'public:coaching' %}" aria-label="Coaching individuel">
+          <span class="explorer__coach-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 2.2 13.4 7 18.2 8.2 13.4 9.4 12 14.2 10.6 9.4 5.8 8.2 10.6 7 12 2.2zM19.2 13.2 20 15.8 22.6 16.6 20 17.4 19.2 20 18.4 17.4 15.8 16.6 18.4 15.8 19.2 13.2zM5.4 13.8 6 16 8.2 16.6 6 17.2 5.4 19.4 4.8 17.2 2.6 16.6 4.8 16 5.4 13.8z"/></svg>
+          </span>
+          <span class="explorer__coach-label">Coaching</span>
+        </a>
+        <a class="explorer__icon-btn explorer__bell" href="{% url 'app:parametres' %}" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M6 17h12v-1.2c0-1.4-.7-2.6-1.8-3.4V9.5a4.2 4.2 0 1 0-8.4 0v2.9C6.7 13.2 6 14.4 6 15.8V17zm4.2 1.8a1.8 1.8 0 0 0 3.6 0"/></svg>
+        </a>
+      </div>
+    </header>
+
+    <form class="explorer-search" role="search" data-msg-search onsubmit="return false;">
+      <label class="explorer-search__field">
+        <span class="visually-hidden">Rechercher une discussion</span>
+        <svg class="explorer-search__ico" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="m16.2 16.2 4.2 4.2"/>
+        </svg>
+        <input
+          type="search"
+          name="q"
+          placeholder="Rechercher une discussion…"
+          autocomplete="off"
+          spellcheck="false"
+          enterkeyhint="search"
+        >
+        <button type="button" class="explorer-search__clear" data-search-clear hidden aria-label="Effacer">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
+        </button>
+      </label>
+    </form>
+  </div>
+
+  <main class="msg-list">
+    <header class="msg-list__intro">
+      <h1 class="msg-list__title">Messages</h1>
+      <p class="msg-list__lead">Vos conversations, au plus récent.</p>
+    </header>
+
+    {% if conversations %}
+    <section class="msg-list__feed" aria-label="Conversations" data-msg-feed>
+      {% for c in conversations %}
+      <a
+        class="msg-list__card{% if c.unread %} is-unread{% endif %}"
+        href="{% if is_preview or c.demo %}{% url 'public:messages_preview' c.partner.id %}{% else %}{% url 'app:discussion_detail' c.partner.id %}{% endif %}"
+        data-msg-card
+        data-msg-search="{{ c.partner.first_name }} {{ c.preview }}"
+      >
+        <span class="msg-list__avatar" aria-hidden="true">
+          {% if c.partner.primary_photo %}
+          <img src="{{ c.partner.primary_photo }}" alt="">
+          {% else %}
+          <span>{{ c.partner.first_name|first|upper }}</span>
+          {% endif %}
+          {% if c.partner.is_online %}<i class="msg-list__online"></i>{% endif %}
+        </span>
+        <span class="msg-list__body">
+          <span class="msg-list__row">
+            <strong>{{ c.partner.first_name }}</strong>
+            {% if c.last_time %}<time>{{ c.last_time }}</time>{% endif %}
+          </span>
+          <span class="msg-list__preview">{{ c.preview|default:"Nouvelle conversation" }}</span>
+        </span>
+        {% if c.unread %}<span class="msg-list__unread">{{ c.unread }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </section>
+    <p class="msg-list__empty-search" data-msg-empty-search hidden>Aucune discussion ne correspond à cette recherche.</p>
+    {% else %}
+    <section class="msg-list__empty" aria-live="polite">
+      <span class="msg-list__empty-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="36" height="36"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>
+      </span>
+      <h2>Aucune conversation</h2>
+      <p>Un match ouvre le dialogue. Continuez à découvrir des profils sincères.</p>
+      <a class="msg-list__cta" href="{% url 'public:explorer' %}">Découvrir des profils</a>
+    </section>
+    {% endif %}
+  </main>
+
+  {% include "partials/explorer_dock.html" with dock_active="messages" %}
+</div>
+{% endblock %}

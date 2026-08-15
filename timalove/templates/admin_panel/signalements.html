@@ -1,0 +1,17 @@
+﻿{% extends "layouts/admin.html" %}
+{% block content %}
+{% for r in items %}
+<article class="card" style="margin-bottom:.75rem;">
+  <strong>{{ r.reason }}</strong> — {{ r.status }}<br>
+  <span style="font-size:.85rem;">Par {{ r.reporter }} {% if r.reported_profile %}contre {{ r.reported_profile }}{% endif %}</span>
+  <p>{{ r.message }}</p>
+  <form method="post" class="grid-2">{% csrf_token %}
+    <input type="hidden" name="id" value="{{ r.id }}">
+    <select class="form-select" name="status">{% for v,l in statuses %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+    <select class="form-select" name="resolution"><option value="none">Aucune</option><option value="blocked">Bloqué</option><option value="banned">Banni</option></select>
+    <input class="form-input" name="notes" placeholder="Notes admin">
+    <button class="btn btn-primary" type="submit">Traiter</button>
+  </form>
+</article>
+{% empty %}<div class="empty-state">Aucun signalement</div>{% endfor %}
+{% endblock %}

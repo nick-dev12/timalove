@@ -1,0 +1,98 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}Bienvenue{% endblock %}
+{% block body_class %}commencer-page{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Allura&display=swap" rel="stylesheet">
+<style>
+  body.commencer-page {
+    --commencer-bg-image: url("{% static 'images/Tima-profil.webp' %}");
+  }
+</style>
+{% endblock %}
+{% block body %}
+<div class="commencer__bg" aria-hidden="true"></div>
+<div class="commencer__frost" aria-hidden="true"></div>
+
+<main class="commencer">
+  <div class="commencer__hero-visual">
+    <aside class="commencer__bubble commencer__bubble--couples" aria-label="Couples formés">
+      <p class="commencer__bubble-label">Couples formés</p>
+      <p class="commencer__bubble-stat">
+        <span>+150</span>
+        <svg class="commencer__bubble-heart" viewBox="0 0 32 28" width="28" height="24" aria-hidden="true">
+          <path fill="currentColor" d="M16 26C6 18.4 2 12.6 2 7.7 2 3.8 5 1.2 8.7 1.2c2.8 0 5.2 1.5 7.3 3.9 2.1-2.4 4.5-3.9 7.3-3.9C26.9 1.2 30 3.8 30 7.7 30 12.6 26 18.4 16 26z"/>
+        </svg>
+      </p>
+    </aside>
+
+    <div class="commencer__portrait">
+      <img
+        src="{% static 'images/Tima-profil.webp' %}"
+        alt="Portrait de Tima"
+        width="200"
+        height="200"
+      >
+    </div>
+
+    <aside class="commencer__bubble commencer__bubble--rating" aria-label="Note moyenne 4,9 sur 5">
+      <p class="commencer__bubble-stars" aria-hidden="true">★★★★★</p>
+      <p class="commencer__bubble-label">Note moyenne</p>
+      <p class="commencer__bubble-score">4.9 / 5</p>
+    </aside>
+  </div>
+
+  <header class="commencer__intro">
+    <p class="commencer__eyebrow">Bienvenue sur</p>
+    <h1 class="commencer__brand brand-mark">
+      <span>TimaLove</span>
+      <img src="{% static 'images/logo.webp' %}" alt="" width="48" height="48">
+    </h1>
+    <p class="commencer__lead">Une rencontre sérieuse commence par une intention claire.</p>
+  </header>
+
+  <section class="commencer__glass commencer__about" aria-labelledby="commencer-about-title">
+    <p class="commencer__label">La visionnaire</p>
+    <h2 id="commencer-about-title">Qui suis-je&nbsp;?</h2>
+    <p class="commencer__text">
+      Je m'appelle Tima. J'accompagne celles et ceux qui recherchent une relation sérieuse,
+      orientée vers le mariage, dans un cadre bienveillant et exigeant.
+    </p>
+    <a class="commencer__link" href="{% url 'public:qui_suis_je' %}">Découvrir mon histoire</a>
+  </section>
+
+  <section class="commencer__approach" aria-labelledby="commencer-steps-title">
+    <p class="commencer__label commencer__label--center">Notre approche</p>
+    <h2 id="commencer-steps-title" class="commencer__section-title">Comment ça marche</h2>
+    <ol class="commencer__steps">
+      {% for s in steps %}
+      <li class="commencer__step" style="--step-delay: {{ forloop.counter0 }}">
+        <span class="commencer__step-num">{{ s.number }}</span>
+        <div>
+          <h3>{{ s.title }}</h3>
+          <p>{{ s.description }}</p>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <footer class="commencer__footer">
+    <button
+      type="button"
+      class="btn btn-primary btn-lg commencer__cta"
+      id="commencer-cta"
+      data-href="{% url 'public:explorer' %}"
+    >
+      Continuer
+    </button>
+    <p class="commencer__login">
+      Déjà un compte&nbsp;?
+      <a href="{% url 'auth:connexion' %}">Se connecter</a>
+    </p>
+  </footer>
+</main>
+
+{% include "partials/commencer_transit.html" %}
+<script src="{% static 'js/commencer-transit.js' %}?v=20260815su2" defer></script>
+{% endblock %}

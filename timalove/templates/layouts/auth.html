@@ -1,0 +1,25 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block body_class %}auth-body{% endblock %}
+{% block body %}
+<div class="auth-split">
+  <div class="auth-panel">
+    <div class="auth-card">
+      {% include "partials/btn_back.html" with href="/explorer/" extra_class="auth-card__back" %}
+      <a class="brand brand-mark" href="{% url 'public:home' %}">
+        <span>Tima<span class="brand-accent">Love</span></span>
+        <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
+      </a>
+      <h1 style="margin-top:1rem;font-size:1.75rem;">{{ title }}</h1>
+      {% if messages %}{% for message in messages %}<div class="alert alert-{{ message.tags }}">{{ message }}</div>{% endfor %}{% endif %}
+      {% block auth_content %}{% endblock %}
+    </div>
+  </div>
+  <aside class="auth-aside" style="background-image:url('{% static 'images/hero-couple.jpg' %}'); background-color:var(--bordeaux);">
+    <div>
+      <h2 style="color:white;font-size:clamp(1.75rem,4vw,2.5rem);">Des rencontres authentiques</h2>
+      <p style="color:rgba(255,255,255,.8);">Vers le mariage, avec bienveillance.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+﻿{% extends "layouts/app.html" %}
+{% block content %}
+<div class="chat-thread">
+  <div style="display:flex;align-items:center;gap:.75rem;padding-bottom:.75rem;border-bottom:1px solid rgba(45,31,34,.08);">
+    {% include "partials/btn_back.html" with href="/discussions/" %}
+    {% if partner.primary_photo %}<img class="avatar" src="{{ partner.primary_photo }}" alt="">{% else %}<div class="avatar"></div>{% endif %}
+    <strong>{{ partner.first_name }}</strong>
+  </div>
+  <div class="messages">
+    {% for m in messages_list %}
+      <div class="bubble {% if m.sender_id == request.user.profile.id %}bubble-mine{% else %}bubble-theirs{% endif %}">
+        {% if m.message_type == 'voice' %}<em>Message vocal ({{ m.voice_duration_seconds }}s)</em>{% else %}{{ m.content }}{% endif %}
+      </div>
+    {% empty %}
+      <p class="empty-state">Dites bonjour 👋</p>
+    {% endfor %}
+  </div>
+  {% if not payment_status.has_active_subscription and request.user.profile.gender == 'male' %}
+  <div class="alert alert-info">Messages gratuits limités. <a href="{% url 'app:parametres' %}" style="color:var(--rose-primary);font-weight:600;">Passer Premium</a></div>
+  {% endif %}
+  <form class="composer" method="post">{% csrf_token %}
+    <input class="form-input" name="content" placeholder="Votre message…" required autocomplete="off">
+    <button class="btn btn-primary" type="submit">Envoyer</button>
+  </form>
+</div>
+{% endblock %}

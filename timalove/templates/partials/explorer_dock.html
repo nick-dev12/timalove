@@ -1,0 +1,34 @@
+<nav class="explorer__bottom" aria-label="Navigation principale">
+  <div class="explorer__dock">
+    <a class="explorer__tab{% if dock_active == 'historique' %} is-active{% endif %}" href="{% url 'public:historique' %}"{% if dock_active == 'historique' %} aria-current="page"{% endif %}>
+      <span class="explorer__tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M12 7.5V12l3.2 2"/></svg>
+      </span>
+      <span class="explorer__tab-label">Historique</span>
+    </a>
+    <a class="explorer__tab{% if dock_active == 'likes' %} is-active{% endif %}" href="{% if user.is_authenticated %}{% url 'app:likes' %}{% else %}{% url 'auth:inscription' %}{% endif %}">
+      <span class="explorer__tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+      </span>
+      <span class="explorer__tab-label">Likes</span>
+    </a>
+    <a class="explorer__tab{% if dock_active == 'explorer' or dock_active == 'home' %} is-active{% endif %}" href="{% url 'public:explorer' %}"{% if dock_active == 'explorer' or dock_active == 'home' %} aria-current="page"{% endif %}>
+      <span class="explorer__tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="currentColor" d="M14.9 9.1 13.1 13l-3.9 1.8L11 11.1 14.9 9.1z"/></svg>
+      </span>
+      <span class="explorer__tab-label">Explorer</span>
+    </a>
+    <a class="explorer__tab{% if dock_active == 'messages' %} is-active{% endif %}" href="{% url 'public:messages' %}"{% if dock_active == 'messages' %} aria-current="page"{% endif %}>
+      <span class="explorer__tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>
+      </span>
+      <span class="explorer__tab-label">Messages</span>
+    </a>
+    <a class="explorer__tab{% if dock_active == 'profil' %} is-active{% endif %}" href="{% if user.is_authenticated %}{% url 'app:profil' %}{% else %}{% url 'auth:inscription' %}{% endif %}">
+      <span class="explorer__tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z"/></svg>
+      </span>
+      <span class="explorer__tab-label">Profil</span>
+    </a>
+  </div>
+</nav>

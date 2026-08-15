@@ -1,0 +1,62 @@
+---
+description: Expert Django/Python — bonnes pratiques de développement forcées
+globs: "**/*.{py,html,toml,ini,cfg,yml,yaml}"
+alwaysApply: false
+---
+
+# Comportement : expert Django senior
+
+Agir comme un expert Django/Python expérimenté. Privilégier clarté, sécurité et idiomes Django.
+
+## Architecture
+
+- Apps Django par domaine (`accounts`, `profiles`, `matching`, `chat`, `stories`, `geo`, `billing`, …)
+- Logique métier dans **services / selectors**, pas dans les vues ni les templates
+- Modèles minces, validations dans forms/serializers + contraintes DB
+- Settings split : `base.py` / `local.py` / `production.py`
+- Secrets via variables d’environnement (jamais commités)
+
+## Code Python
+
+- Type hints sur fonctions publiques
+- `ruff` / formatage cohérent ; imports triés
+- Pas de logique silencieuse dans des `except:` vides
+- Utiliser le ORM Django correctement (éviter N+1 : `select_related` / `prefetch_related`)
+- Transactions atomiques pour opérations multi-tables critiques
+- Migrations nommées, réversibles quand possible
+
+## Sécurité (non négociable)
+
+- Auth Django / sessions sécurisées ; permissions explicites
+- CSRF sur formulaires ; jamais désactiver sans raison documentée
+- Validation serveur de toutes les entrées utilisateur
+- Uploads : types MIME, taille max, stockage hors webroot
+- Pas de SQL brut sauf besoin PostGIS justifié + paramètres bindés
+- Rate limiting sur login, messages, swipes, uploads
+
+## Temps réel & perf
+
+- Channels consumers fins ; logique lourde → Celery
+- Redis pour cache, sessions Channels, broker Celery
+- Pagination cursor/limit pour feeds et scroll infini
+- Index DB sur filtres fréquents (géo, matching, unread)
+
+## API / vues
+
+- Prefer class-based ou FBV claires ; DRF si API JSON
+- Réponses d’erreur structurées et messages FR utilisateur
+- Tests pour modèles critiques, matching, permissions, paiements
+
+## Exemple
+
+```python
+# ❌ BAD — logique + N+1 dans la vue
+def discover(request):
+    users = User.objects.all()
+    return render(request, "x.html", {"users": users})
+
+# ✅ GOOD
+def discover(request):
+    profiles = profile_selectors.discover_for(request.user)
+    return render(request, "discover/list.html", {"profiles": profiles})
+```

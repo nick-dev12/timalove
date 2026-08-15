@@ -1,0 +1,124 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}Coaching individuel{% endblock %}
+{% block body_class %}coach-page{% endblock %}
+{% block body %}
+{% include "partials/public_page_top.html" %}
+
+<main class="coach">
+  <p class="coach__badge">Coaching individuel</p>
+
+  <div class="coach__grid">
+    <section class="coach__intro">
+      <h1>Prenez soin de votre <em>vie amoureuse</em></h1>
+      <p class="coach__lead">
+        Un espace d'écoute et de guidance pour avancer avec clarté dans votre parcours amoureux,
+        à votre rythme et en toute confidentialité.
+      </p>
+
+      <ul class="coach__tags">
+        {% for theme in themes %}
+        <li>{{ theme }}</li>
+        {% endfor %}
+      </ul>
+
+      <article class="coach__price">
+        <p><strong>{{ site_config.coachingPriceEur|default:40 }} €</strong> <span>/ la séance</span></p>
+        <ul>
+          <li>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M6.6 10.8c1.1 2.2 2.9 4 5.1 5.1l1.7-1.7c.2-.2.6-.3.9-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9V19c0 .5-.4.9-.9.9C10.6 19.9 4.1 13.4 4.1 5.9c0-.5.4-.9.9-.9H8.7c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .6-.2.9l-1.7 1.7z"/></svg>
+            40 minutes
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M4 5h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm2 3v2h4V8H6zm6 0v2h6V8h-6z"/></svg>
+            En ligne
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2c.7 0 2.3 1.8 2.8 6H9.2C9.7 5.8 11.3 4 12 4zm-3 8c.2 2.1.8 4 1.8 5.3A8 8 0 0 1 6.1 12H9zm3 6c-.7 0-2.3-1.8-2.8-6h5.6C14.3 16.2 12.7 18 12 18zm3-6h2.9A8 8 0 0 1 13.2 17.3C14.2 16 14.8 14.1 15 12z"/></svg>
+            Partout dans le monde
+          </li>
+        </ul>
+      </article>
+
+      <a class="coach__cta" href="#reservation">Réserver ma séance</a>
+
+      <blockquote class="coach__quote">
+        <p class="coach__stars" aria-hidden="true">★★★★★</p>
+        <p>« {{ quote.text }} »</p>
+        <footer>— {{ quote.author }}</footer>
+      </blockquote>
+    </section>
+
+    <aside class="coach__aside">
+      <ul class="coach__features">
+        {% for f in features %}
+        <li>
+          <span class="coach__icon" aria-hidden="true">
+            {% if f.icon == "sparkle" %}
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 2.5 13.4 8 19 9.4 13.4 10.8 12 16.4 10.6 10.8 5 9.4 10.6 8zM18 13.5l.7 2.3 2.3.7-2.3.7L18 19.5l-.7-2.3-2.3-.7 2.3-.7zM6 14.2l.5 1.6 1.6.5-1.6.5L6 18.4l-.5-1.6-1.6-.5 1.6-.5z"/></svg>
+            {% elif f.icon == "shield" %}
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 2 4 5.5v6.2c0 4.4 3.1 8.4 8 9.8 4.9-1.4 8-5.4 8-9.8V5.5L12 2zm0 4.2c1.5 1.3 2.4 3.2 2.4 5.3 0 .9-.1 1.7-.4 2.5L12 11.2l-2 2.8c-.3-.8-.4-1.6-.4-2.5 0-2.1.9-4 2.4-5.3z"/></svg>
+            {% elif f.icon == "heart" %}
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+            {% else %}
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9.2 16.6 4.8 12.2l1.4-1.4 3 3 8.6-8.6 1.4 1.4z"/></svg>
+            {% endif %}
+          </span>
+          <div>
+            <h2>{{ f.title }}</h2>
+            <p>{{ f.description }}</p>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+
+      <section class="coach__how" aria-labelledby="coach-how-title">
+        <h2 id="coach-how-title">Comment ça se passe</h2>
+        <ol>
+          {% for step in steps %}
+          <li>
+            <span>{{ step.number }}</span>
+            <p>{{ step.title }}</p>
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+    </aside>
+  </div>
+
+  <section class="coach__book" id="reservation">
+    <h2>Réserver votre créneau</h2>
+    {% if messages %}
+    <ul class="coach__alerts">
+      {% for message in messages %}
+      <li>{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <form method="post" action="">
+      {% csrf_token %}
+      <div class="coach-form">
+        <label>Prénom<input class="form-input" name="first_name" required></label>
+        <label>Nom<input class="form-input" name="last_name" required></label>
+        <label>Email<input class="form-input" type="email" name="email"></label>
+        <label>Téléphone<input class="form-input" name="phone" required></label>
+        <label>Date souhaitée<input class="form-input" type="date" name="requested_date" required></label>
+        <label>Créneau
+          <select class="form-select" name="time_slot">
+            {% for v,l in slot_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="coach-form__full">Thème
+          <select class="form-select" name="theme">
+            {% for v,l in theme_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="coach-form__full">Message
+          <textarea class="form-textarea" name="message" rows="3"></textarea>
+        </label>
+      </div>
+      <button class="coach__cta" type="submit">Envoyer ma demande</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

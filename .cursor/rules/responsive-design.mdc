@@ -1,0 +1,45 @@
+---
+description: Responsive design — tailles et layouts adaptés à tous les écrans
+globs: "**/*.{html,css,scss,js}"
+alwaysApply: false
+---
+
+# Responsive — expert mobile-first
+
+Toujours concevoir **mobile-first**, puis enrichir aux breakpoints.
+
+## Breakpoints de référence
+
+| Nom | Largeur | Priorité |
+|---|---|---|
+| mobile | ≤ 640px | base (coder d’abord) |
+| sm | ≥ 640px | |
+| md | ≥ 768px | tablette |
+| lg | ≥ 1024px | desktop app |
+| xl | ≥ 1280px | large desktop |
+
+Tester mentalement / implicitement : **375px**, **768px**, **1440px**.
+
+## Règles d’ajustement (obligatoires)
+
+- Tailles fluides : `rem` / `%` / `clamp()` — éviter largeurs fixes en `px` pour les layouts
+- Typo responsive : ex. titres `clamp(1.5rem, 4vw, 3rem)` ou classes équivalentes
+- Espacements qui se réduisent sur mobile (`py`, `gap`, `px`)
+- Grilles : 1 col mobile → 2 tablette → 3+ desktop selon le contenu
+- Touch targets ≥ **44×44px** (boutons, icônes nav, actions swipe)
+- Safe areas iOS : `env(safe-area-inset-*)` pour header / bottom nav
+- Pas de scroll horizontal involontaire (`overflow-x` maîtrisé, images `max-width: 100%`)
+- Nav : bottom bar ou drawer mobile ; sidebar desktop
+- Cartes profil / stories : hauteur max viewport (`dvh`) pour rester utilisables
+
+## Contenu
+
+- Une action principale visible sans zoom sur mobile
+- Masquer le secondaire sur petit écran (`md:` / `lg:`) plutôt que tout compresser
+- Images et médias : ratios stables, lazy-load, pas de débordement
+
+## Interdit
+
+- Layout desktop collé tel quel sur mobile
+- Textes tronqués critiques sans alternative
+- Boutons trop petits ou collés sans marge

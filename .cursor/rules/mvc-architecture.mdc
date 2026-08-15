@@ -1,0 +1,63 @@
+---
+description: Architecture MVC TimaLove — models, controllers, views, middleware
+alwaysApply: true
+---
+
+# Architecture MVC (obligatoire)
+
+Le projet Django respecte un **MVC strict** dans `timalove/core/` :
+
+| Couche | Dossier | Rôle |
+|---|---|---|
+| **Model** | `core/models/` | Modèles ORM, contraintes DB, méthodes de données simples |
+| **Controller** | `core/controllers/` | **Toute la logique métier** (matching, stories, auth métier, etc.) |
+| **View** | `core/views/` | Couche HTTP mince : requête → controller → template/JSON |
+| **Middleware** | `core/middleware/` | Cross-cutting (auth custom, timing, headers, rate-limit) |
+| **Templates** | `core/templates/` + `timalove/templates/` | Présentation HTML uniquement |
+
+## Règles de flux
+
+```
+Request → Middleware → View → Controller → Model → Controller → View → Response
+```
+
+1. **View** : parse/valide l’entrée HTTP, appelle le controller, rend la réponse
+2. **Controller** : logique métier pure (pas de `HttpRequest` / `render` / `JsonResponse`)
+3. **Model** : persistance et règles de données (pas de logique de parcours métier complexe)
+4. **Middleware** : transversal uniquement ; enregistré dans `settings.MIDDLEWARE`
+
+## Exemples
+
+```python
+# ❌ BAD — logique métier dans la vue
+def discover(request):
+    profiles = Profile.objects.filter(...)
+    # scoring, filtres, geo ici...
+    return render(request, "…", {"profiles": profiles})
+
+# ✅ GOOD
+# views/discover_views.py
+def discover(request):
+    profiles = discover_controller.list_for(request.user, request.GET)
+    return render(request, "core/discover.html", {"profiles": profiles})
+
+# controllers/discover_controller.py
+def list_for(user, params):
+    # scoring, filtres, geo…
+    return ...
+```
+
+## Bonnes pratiques
+
+- Un fichier controller / view par domaine (`home_`, `auth_`, `chat_`, …)
+- Importer les modèles dans `models/__init__.py` pour les migrations
+- Pas de SQL / ORM complexe dans les templates
+- Pas d’accès direct Model depuis la view si une règle métier existe → passer par le controller
+- Nouveaux middlewares : fichier dans `middleware/` + entrée dans `settings.py`
+- Réponses FR, type hints, transactions atomiques dans les controllers critiques
+
+## Emplacement projet
+
+- App Django : `timalove/core/`
+- Settings / URLs projet : `timalove/config/`
+- Secrets : `timalove/.env` (jamais commités)

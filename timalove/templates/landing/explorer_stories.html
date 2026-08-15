@@ -1,0 +1,73 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}Stories{% endblock %}
+{% block body_class %}stories-page{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% endblock %}
+{% block body %}
+<div class="stories">
+  <header class="stories__top">
+    {% include "partials/btn_back.html" with href="/explorer/" extra_class="stories__back" %}
+    <a class="brand-script brand-mark" href="{% url 'public:home' %}">
+      <span>TimaLove</span>
+      <img src="{% static 'images/logo.webp' %}" alt="" width="36" height="36">
+    </a>
+    <div class="stories__top-actions">
+      <a class="stories__icon-btn stories__bell" href="{% url 'auth:inscription' %}" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M6 17h12v-1.2c0-1.4-.7-2.6-1.8-3.4V9.5a4.2 4.2 0 1 0-8.4 0v2.9C6.7 13.2 6 14.4 6 15.8V17zm4.2 1.8a1.8 1.8 0 0 0 3.6 0"/></svg>
+        <span class="stories__badge">3</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="stories__main">
+    <section class="stories__rail" aria-label="Stories">
+      {% for b in bubbles %}
+      <a class="stories__bubble" href="{% url 'auth:inscription' %}">
+        <span class="stories__ring stories__ring--{{ b.ring }}">
+          {% if b.photo_url %}
+          <img src="{{ b.photo_url }}" alt="" loading="lazy">
+          {% elif b.is_self %}
+          <span class="stories__plus">+</span>
+          {% else %}
+          <span class="stories__initial">{{ b.name|first }}</span>
+          {% endif %}
+        </span>
+        <span class="stories__name">{{ b.name }}</span>
+      </a>
+      {% endfor %}
+    </section>
+
+    <section class="stories__filters" aria-label="Filtres">
+      <button type="button" class="stories__pill" disabled>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zm6.2-2.1L21 20"/></svg>
+        Rechercher
+      </button>
+      <button type="button" class="stories__pill" disabled>Intention mariage</button>
+    </section>
+
+    <p class="stories__hint">Aperçu élégant des stories — bientôt disponible.</p>
+
+    <section class="stories__grid" aria-label="Aperçu profils">
+      {% for card in preview_cards %}
+      <article class="stories__card">
+        <a class="stories__card-media" href="{% url 'public:explorer_profil' card.id %}">
+          {% if card.photo_url %}
+          <img src="{{ card.photo_url }}" alt="{{ card.first_name }}" loading="lazy">
+          {% endif %}
+          <span class="stories__dist">{{ card.distance }}</span>
+          <span class="stories__status stories__status--{{ card.status_tone }}">{{ card.status }}</span>
+        </a>
+        <h2>{{ card.first_name }}{% if card.age %}, {{ card.age }}{% endif %}</h2>
+        <p>{{ card.location }}</p>
+      </article>
+      {% empty %}
+      <p class="stories__empty">Les aperçus arriveront bientôt.</p>
+      {% endfor %}
+    </section>
+  </main>
+
+  {% include "partials/explorer_dock.html" with dock_active="stories" %}
+</div>
+{% endblock %}

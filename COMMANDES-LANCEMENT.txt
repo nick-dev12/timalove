@@ -1,0 +1,106 @@
+================================================================================
+  TIMALOVE — Commandes de lancement
+================================================================================
+
+Prérequis : PostgreSQL démarré, base "tima" accessible (voir timalove/.env)
+
+--------------------------------------------------------------------------------
+1) ACTIVER L'ENVIRONNEMENT VIRTUEL (choisir une méthode)
+--------------------------------------------------------------------------------
+
+  PowerShell (recommandé) — le point avant le script est obligatoire :
+    cd c:\wamp64\www\projet_timalove
+    . .\activer-env.ps1
+
+  Si PowerShell bloque le script :
+    Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+    puis relancer :  . .\activer-env.ps1
+
+  Invite de commandes (CMD) :
+    cd c:\wamp64\www\projet_timalove
+    activer-env.bat
+
+  Manuel (PowerShell) :
+    cd c:\wamp64\www\projet_timalove
+    .\venv\Scripts\Activate.ps1
+    cd timalove
+
+--------------------------------------------------------------------------------
+2) LANCER LE SERVEUR DE DÉVELOPPEMENT
+--------------------------------------------------------------------------------
+
+  (venv déjà activé, dans le dossier timalove)
+
+    python manage.py runserver
+
+  Accès navigateur :
+    http://127.0.0.1:8000/
+    http://127.0.0.1:8000/admin/
+
+  Sur le réseau local (téléphone / autre PC) :
+    python manage.py runserver 0.0.0.0:8000
+
+--------------------------------------------------------------------------------
+3) COMMANDES DJANGO UTILES
+--------------------------------------------------------------------------------
+
+  Vérifier la config :
+    python manage.py check
+
+  Appliquer les migrations :
+    python manage.py migrate
+
+  Créer une migration après modification des models :
+    python manage.py makemigrations
+    python manage.py migrate
+
+  Créer un compte admin :
+    python manage.py createsuperuser
+
+  Shell Django :
+    python manage.py shell
+
+  Collecter les fichiers static (prod) :
+    python manage.py collectstatic
+
+--------------------------------------------------------------------------------
+4) DÉSACTIVER LE VENV
+--------------------------------------------------------------------------------
+
+    deactivate
+
+--------------------------------------------------------------------------------
+5) RÉINSTALLER LES DÉPENDANCES (si besoin)
+--------------------------------------------------------------------------------
+
+    cd c:\wamp64\www\projet_timalove
+    .\venv\Scripts\Activate.ps1
+    pip install -r requirements.txt
+
+================================================================================
+
+--------------------------------------------------------------------------------
+6) SEED / IMPORT / TESTS
+--------------------------------------------------------------------------------
+
+  Seed admin + site_settings :
+    python manage.py seed_site
+
+  Admin par defaut :
+    email    : admin@timalove.local
+    password : AdminTimaLove2026!
+
+  Import dump SQL (profiles / avis) :
+    python manage.py import_tinalove_dump --limit-profiles 200
+
+  Sync photos distantes :
+    python manage.py sync_profile_media --limit 50
+
+  Tests :
+    python manage.py test core.tests
+
+  Panel admin custom :
+    http://127.0.0.1:8000/espace-prive/connexion/
+
+  Django Admin :
+    http://127.0.0.1:8000/admin/

@@ -1,0 +1,134 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}{% if partner %}{{ partner.first_name }}{% else %}Messages{% endif %}{% endblock %}
+{% block body_class %}messages-page{% if is_preview %} is-guest{% endif %}{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="{% static 'js/messages-thread.js' %}?v=20260815m2" defer></script>
+{% endblock %}
+{% block body %}
+{% include "partials/explorer_atmosphere.html" %}
+
+<div class="explorer">
+  <section class="msg" aria-label="Conversation">
+    <header class="msg__top">
+      <a class="msg__icon-btn" href="{% if inbox_back %}{% url 'public:messages' %}{% else %}{% url 'public:explorer' %}{% endif %}" aria-label="Retour">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M15 6 9 12l6 6"/></svg>
+      </a>
+      <a class="msg__brand brand-script brand-mark" href="{% url 'public:explorer' %}">
+        <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
+        <span>TimaLove</span>
+      </a>
+      <button type="button" class="msg__icon-btn" aria-label="Options" data-msg-more>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 12.75a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5zm6 0a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5zm6 0a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5z"/></svg>
+      </button>
+    </header>
+
+    <div class="msg__pair">
+      <div class="msg__person">
+        <span class="msg__avatar">
+          {% if partner.photo_url %}
+          <img src="{{ partner.photo_url }}" alt="">
+          {% else %}
+          <span>{{ partner.initial }}</span>
+          {% endif %}
+          {% if partner.is_online %}<i class="msg__dot"></i>{% endif %}
+        </span>
+        <strong>{{ partner.first_name }}</strong>
+        <em>{% if partner.is_online %}En ligne{% else %}Hors ligne{% endif %}</em>
+      </div>
+      <span class="msg__heart" aria-hidden="true">
+        <svg viewBox="0 0 24 22" width="22" height="20"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+      </span>
+      <div class="msg__person msg__person--me">
+        <span class="msg__avatar">
+          {% if me.photo_url %}
+          <img src="{{ me.photo_url }}" alt="">
+          {% else %}
+          <span>{{ me.initial }}</span>
+          {% endif %}
+          {% if me.is_online %}<i class="msg__dot"></i>{% endif %}
+        </span>
+        <strong>{{ me.first_name }}</strong>
+        <em>{% if me.is_online %}En ligne{% else %}Hors ligne{% endif %}</em>
+      </div>
+    </div>
+
+    <div class="msg__thread" data-msg-thread>
+      {% for item in thread_items %}
+      <article class="msg__row{% if item.mine %} is-mine{% endif %}">
+        <span class="msg__bubble-avatar" aria-hidden="true">
+          {% if item.photo_url %}
+          <img src="{{ item.photo_url }}" alt="">
+          {% else %}
+          <span>{{ item.initial }}</span>
+          {% endif %}
+        </span>
+        <div class="msg__bubble">
+          {% if item.is_voice %}
+          <p class="msg__voice">Vocal · {{ item.voice_duration }}s</p>
+          {% else %}
+          <p>{{ item.content|linebreaksbr }}</p>
+          {% endif %}
+          <footer>
+            <time>{{ item.time }}</time>
+            {% if item.mine %}
+            <span class="msg__checks{% if item.read %} is-read{% endif %}" aria-hidden="true">
+              <svg viewBox="0 0 16 12" width="16" height="12"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M1 6.2 4.2 9.5 10.8 2.2M5.2 6.2 8.4 9.5 15 2.2"/></svg>
+            </span>
+            {% endif %}
+          </footer>
+        </div>
+      </article>
+      {% empty %}
+      <p class="msg__empty">Dites bonjour, avec douceur.</p>
+      {% endfor %}
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <p class="msg__limit" role="status">{{ message }}</p>
+    {% endfor %}
+    {% endif %}
+
+    {% if not is_preview and payment_status and not payment_status.has_active_subscription and request.user.profile.gender == 'male' %}
+    <p class="msg__limit">Messages gratuits limités. <a href="{% url 'app:parametres' %}">Passer Premium</a></p>
+    {% endif %}
+
+    {% if is_preview %}
+    <form class="msg__composer" action="{% url 'auth:inscription' %}" method="get">
+    {% else %}
+    <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}">
+      {% csrf_token %}
+    {% endif %}
+      <label class="msg__field">
+        <span class="visually-hidden">Message</span>
+        <textarea name="content" rows="1" placeholder="Écrire un message…" autocomplete="off" data-msg-input {% if not is_preview %}required{% endif %}></textarea>
+        {% if is_preview %}
+        <a class="msg__tool-ico" href="{% url 'auth:inscription' %}" aria-label="Vocal">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 15.5a3.2 3.2 0 0 0 3.2-3.2V7.2a3.2 3.2 0 1 0-6.4 0v5.1A3.2 3.2 0 0 0 12 15.5z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6.4 12.4a5.6 5.6 0 0 0 11.2 0M12 18.2v2.2"/></svg>
+        </a>
+        <a class="msg__tool-ico" href="{% url 'auth:inscription' %}" aria-label="Photos">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" d="m3.8 16.2 4.4-4.6 3.2 3.3 2.4-2.5 6.2 6.2"/><circle cx="8.2" cy="9.2" r="1.15" fill="currentColor"/></svg>
+        </a>
+        <a class="msg__send" href="{% url 'auth:inscription' %}" aria-label="Envoyer">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3.4 11.2 20.2 3.6c.7-.3 1.4.4 1.1 1.1L13.8 21.6c-.3.8-1.5.8-1.8 0l-2.6-7.2-7.2-2.6c-.8-.3-.8-1.5 0-1.8z"/></svg>
+        </a>
+        {% else %}
+        <button class="msg__tool-ico" type="button" data-msg-tool="voice" aria-label="Vocal">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 15.5a3.2 3.2 0 0 0 3.2-3.2V7.2a3.2 3.2 0 1 0-6.4 0v5.1A3.2 3.2 0 0 0 12 15.5z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6.4 12.4a5.6 5.6 0 0 0 11.2 0M12 18.2v2.2"/></svg>
+        </button>
+        <button class="msg__tool-ico" type="button" data-msg-tool="photos" aria-label="Photos">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" d="m3.8 16.2 4.4-4.6 3.2 3.3 2.4-2.5 6.2 6.2"/><circle cx="8.2" cy="9.2" r="1.15" fill="currentColor"/></svg>
+        </button>
+        <button class="msg__send" type="submit" aria-label="Envoyer">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3.4 11.2 20.2 3.6c.7-.3 1.4.4 1.1 1.1L13.8 21.6c-.3.8-1.5.8-1.8 0l-2.6-7.2-7.2-2.6c-.8-.3-.8-1.5 0-1.8z"/></svg>
+        </button>
+        {% endif %}
+      </label>
+    </form>
+  </section>
+
+  {% include "partials/explorer_dock.html" with dock_active="messages" %}
+</div>
+{% endblock %}

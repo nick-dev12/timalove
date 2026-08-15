@@ -1,0 +1,16 @@
+﻿{% extends "layouts/admin.html" %}
+{% block content %}
+{% for c in items %}
+<article class="card" style="margin-bottom:1rem;">
+  <strong>{{ c.first_name }} {{ c.last_name }}</strong> — {{ c.theme }} / {{ c.time_slot }} ({{ c.requested_date }})
+  <p>{{ c.phone }} · {{ c.email }} · {{ c.status }} / paiement {{ c.payment_status }}</p>
+  <form method="post" class="grid-2">{% csrf_token %}
+    <input type="hidden" name="id" value="{{ c.id }}">
+    <select class="form-select" name="status">{% for v,l in statuses %}<option value="{{ v }}" {% if c.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    <input class="form-input" name="meet_link" placeholder="Lien Meet" value="{{ c.meet_link|default:'' }}">
+    <textarea class="form-textarea" name="admin_notes" rows="2" placeholder="Notes">{{ c.admin_notes|default:'' }}</textarea>
+    <button class="btn btn-primary" type="submit">Enregistrer</button>
+  </form>
+</article>
+{% empty %}<div class="empty-state">Aucune demande</div>{% endfor %}
+{% endblock %}

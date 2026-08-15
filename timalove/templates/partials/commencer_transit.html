@@ -1,0 +1,46 @@
+{% load static %}
+<div
+  id="commencer-transit"
+  class="commencer-transit"
+  hidden
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="commencer-transit-brand"
+  aria-live="polite"
+>
+  <div class="commencer-transit__sparks" aria-hidden="true">
+    <span class="commencer-transit__spark commencer-transit__spark--l1">♥</span>
+    <span class="commencer-transit__spark commencer-transit__spark--l2">♥</span>
+    <span class="commencer-transit__spark commencer-transit__spark--l3">♥</span>
+    <span class="commencer-transit__spark commencer-transit__spark--r1">♥</span>
+    <span class="commencer-transit__spark commencer-transit__spark--r2">♥</span>
+    <span class="commencer-transit__spark commencer-transit__spark--r3">♥</span>
+  </div>
+  <div class="commencer-transit__glow" aria-hidden="true"></div>
+  <div class="commencer-transit__panel">
+    <p class="commencer-transit__kicker">L’histoire s’écrit</p>
+    <p id="commencer-transit-brand" class="commencer-transit__brand brand-mark">
+      <span>TimaLove</span>
+      <img src="{% static 'images/logo.webp' %}" alt="" width="52" height="52">
+    </p>
+    <p class="commencer-transit__story">
+      <span id="commencer-transit-type"></span><span class="commencer-transit__caret" aria-hidden="true"></span>
+    </p>
+    <div class="commencer-transit__merge" aria-hidden="true">
+      <span class="commencer-transit__halo"></span>
+      <span class="commencer-transit__heart commencer-transit__heart--left">♥</span>
+      <span class="commencer-transit__heart commencer-transit__heart--right">♥</span>
+      <span class="commencer-transit__heart commencer-transit__heart--one">♥</span>
+    </div>
+    <p class="commencer-transit__promise">Voici le début d’une rencontre sincère.</p>
+    <div class="commencer-transit__loader" aria-hidden="true">
+      <p class="commencer-transit__loader-label">Votre rencontre s’ouvre</p>
+      <div class="commencer-transit__track">
+        <div class="commencer-transit__fill"></div>
+        <div class="commencer-transit__convoy">
+          <span>♥</span><span>♥</span><span>♥</span><span>♥</span><span>♥</span><span>♥</span><span>♥</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

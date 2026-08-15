@@ -1,0 +1,6 @@
+{% for item in items %}
+{% include "partials/history_card.html" %}
+{% endfor %}
+{% if has_more %}
+{% include "partials/history_more_btn.html" %}
+{% endif %}

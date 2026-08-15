@@ -1,0 +1,372 @@
+﻿{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}Mon profil{% endblock %}
+{% block body_class %}visit-profil-page{% endblock %}
+{% block head %}
+<script src="{% static 'js/own-profile.js' %}?v=20260815ic2" defer></script>
+{% endblock %}
+{% block body %}
+<div class="visit visit--own" data-own-profile data-max-photos="{{ max_photos }}">
+  <header class="visit__nav">
+    {% include "partials/btn_back.html" with href="/explorer/" extra_class="visit__nav-back" %}
+    <p class="visit__nav-brand brand-mark">
+      <span>TimaLove</span>
+      <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
+    </p>
+    <span class="visit__nav-spacer" aria-hidden="true"></span>
+  </header>
+
+  <div class="visit__media">
+    <div class="visit__photo-stage">
+      <section class="visit__hero" aria-label="Photo principale">
+        {% if member.photo_url %}
+        <img class="visit__hero-img" src="{{ member.photo_url }}" alt="{{ member.first_name }}" width="800" height="1000" data-hero-img>
+        {% else %}
+        <div class="visit__hero-fallback" data-hero-fallback>{{ member.first_name|first|upper }}</div>
+        <img class="visit__hero-img" alt="{{ member.first_name }}" width="800" height="1000" data-hero-img hidden>
+        {% endif %}
+        <span class="visit__gallery-flag" data-hero-flag{% if not member.photo_url %} hidden{% endif %}>Profil</span>
+        <button type="button" class="visit__gallery-remove" data-hero-delete{% if not member.photo_url %} hidden{% endif %}>Retirer</button>
+      </section>
+    </div>
+    <button type="button" class="visit__photo-action" data-avatar-pick>Changer la photo</button>
+    <input type="file" accept="image/*" hidden data-avatar-file>
+    <p class="visit__save-msg" data-save-msg="photo" hidden></p>
+  </div>
+
+  <main class="visit__sheet">
+    <form aria-hidden="true" style="display:none">{% csrf_token %}</form>
+
+    <section class="visit__identity visit-glass">
+      <div class="visit__identity-top">
+        <div class="visit__who">
+          <h1 class="visit__name">
+            <span data-display-name>{{ member.first_name }}</span>{% if member.age %}<span class="visit__age" data-display-age>, {{ member.age }}</span>{% else %}<span class="visit__age" data-display-age></span>{% endif %}
+          </h1>
+          <p class="visit__location">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+            <span data-display-location>{{ member.location }}</span>
+          </p>
+          <p class="visit__role" data-display-role>{{ member.profession|default:"" }}</p>
+        </div>
+        <div class="visit__compat" aria-label="Profil complété à {{ member.completion }} pourcent">
+          <svg class="visit__compat-ring" viewBox="0 0 72 72" aria-hidden="true">
+            <circle cx="36" cy="36" r="30" class="visit__compat-track"></circle>
+            <circle cx="36" cy="36" r="30" class="visit__compat-value" style="--compat: {{ member.completion }}"></circle>
+          </svg>
+          <div class="visit__compat-label">
+            <strong data-display-completion>{{ member.completion }}%</strong>
+            <span>complet</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="visit__tabs" role="tablist" aria-label="Sections du profil">
+      <button type="button" class="visit__tab is-active" role="tab" id="tab-about" aria-selected="true" aria-controls="panel-about" data-tab="about">À propos</button>
+      <button type="button" class="visit__tab" role="tab" id="tab-gallery" aria-selected="false" aria-controls="panel-gallery" data-tab="gallery">Galerie</button>
+      <button type="button" class="visit__tab" role="tab" id="tab-filters" aria-selected="false" aria-controls="panel-filters" data-tab="filters">Filtres</button>
+      <button type="button" class="visit__tab" role="tab" id="tab-settings" aria-selected="false" aria-controls="panel-settings" data-tab="settings">Paramètres</button>
+    </div>
+
+    <section class="visit__panel" id="panel-about" role="tabpanel" aria-labelledby="tab-about">
+      <article class="visit-glass visit__card" data-block="interests">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Ce qui vous anime</p>
+          <h2 class="visit__card-title">Intérêts et caractère</h2>
+          <p class="visit__card-lead">Choisissez ce qui vous ressemble. Enregistrez ce bloc seulement.</p>
+        </div>
+        <p class="visit__label">Centres d’intérêt</p>
+        <div class="visit__pills visit__pills--edit" data-interests>
+          {% for item in interests %}
+          <button type="button" class="visit__pill-btn{% if item.id in member.interests %} is-on{% endif %}" data-interest="{{ item.id }}">
+            <span class="visit__pill-icon" data-icon="{{ item.icon }}"></span>
+            <span>{{ item.label }}</span>
+          </button>
+          {% endfor %}
+        </div>
+        <p class="visit__label">Caractère</p>
+        <div class="visit__pills visit__pills--edit" data-traits>
+          {% for item in traits %}
+          <button type="button" class="visit__pill-btn{% if item.id in member.personality_traits %} is-on{% endif %}" data-trait="{{ item.id }}">
+            <span class="visit__pill-icon" data-icon="{{ item.icon }}"></span>
+            <span>{{ item.label }}</span>
+          </button>
+          {% endfor %}
+        </div>
+        <div class="visit__card-foot">
+          <p class="visit__save-msg" data-save-msg="interests" hidden></p>
+          <button type="button" class="visit__save" data-save="interests">Enregistrer</button>
+        </div>
+      </article>
+
+      <article class="visit-glass visit__card" data-block="values">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Ce qui vous guide</p>
+          <h2 class="visit__card-title">Valeurs</h2>
+          <p class="visit__card-lead">Ajoutez-les une par une. Cette section est optionnelle — jusqu’à 12.</p>
+        </div>
+        <div class="visit-values" data-values>
+          <div class="visit-values__row">
+            <input type="text" maxlength="40" placeholder="Ex. : respect, famille, sincérité…" data-value-input autocomplete="off">
+            <button type="button" class="visit-values__add" data-value-add>Ajouter</button>
+          </div>
+          <div class="visit-values__list" data-value-list>
+            {% for value in member.life_values %}
+            <span class="visit-values__chip" data-value-chip="{{ value }}">{{ value }} <button type="button" data-value-remove aria-label="Retirer">×</button></span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="visit__card-foot">
+          <p class="visit__save-msg" data-save-msg="values" hidden></p>
+          <button type="button" class="visit__save" data-save="values">Enregistrer</button>
+        </div>
+      </article>
+
+      <article class="visit-glass visit__card visit__card--form" data-block="identity">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Fiche publique</p>
+          <h2 class="visit__card-title">Votre profil</h2>
+          <p class="visit__card-lead">Ces informations apparaissent telles quelles sur votre fiche, comme dans l’explorer.</p>
+        </div>
+        <form class="visit-form" data-profile-form>
+          <div class="visit-form-block">
+            <h3>Identité</h3>
+            <div class="visit-form__row">
+              <label class="visit-form__field"><span>Prénom</span><input name="first_name" required value="{{ profile.first_name }}"></label>
+              <label class="visit-form__field"><span>Nom</span><input name="last_name" required value="{{ profile.last_name }}"></label>
+            </div>
+            <div class="visit-form__row">
+              <label class="visit-form__field"><span>Âge</span><input name="age" type="number" min="18" max="99" value="{{ profile.age|default:'' }}"></label>
+              <label class="visit-form__field">
+                <span>Je suis</span>
+                <select name="gender" required>
+                  <option value="" disabled {% if not profile.gender %}selected{% endif %}>Sélectionnez une option</option>
+                  {% for value, label in genders %}
+                  <option value="{{ value }}"{% if profile.gender == value %} selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+            </div>
+            <label class="visit-form__field"><span>Profession</span><input name="profession" value="{{ profile.profession|default:'' }}" placeholder="Votre métier"></label>
+          </div>
+          <div class="visit-form-block">
+            <h3>Où vous vivez</h3>
+            <div class="visit-form__row">
+              <label class="visit-form__field"><span>Ville</span><input name="city" value="{{ profile.city }}"></label>
+              <label class="visit-form__field"><span>Commune</span><input name="commune" value="{{ profile.commune }}" placeholder="Votre commune"></label>
+            </div>
+            <div class="visit-form__row">
+              <label class="visit-form__field">
+                <span>Pays d’origine</span>
+                <select name="country">
+                  {% for c in countries %}
+                  <option value="{{ c }}"{% if profile.country == c %} selected{% endif %}>{{ c }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="visit-form__field">
+                <span>Pays de résidence</span>
+                <select name="residence_country">
+                  <option value="">Non renseigné</option>
+                  {% for c in countries %}
+                  <option value="{{ c }}"{% if profile.residence_country == c %} selected{% endif %}>{{ c }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+            </div>
+            <label class="visit-form__field">
+              <span>Religion</span>
+              <select name="religion">
+                <option value="">Sélectionnez une option</option>
+                {% for value, label in religions %}
+                <option value="{{ value }}"{% if profile.religion == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="visit-form__field"><span>Téléphone</span><input name="phone" value="{{ profile.phone|default:'' }}" autocomplete="tel"></label>
+          </div>
+          <div class="visit-form-block">
+            <h3>Votre histoire</h3>
+            <label class="visit-form__field">
+              <span>Intention</span>
+              <select name="relationship_intent">
+                <option value="">Sélectionnez une option</option>
+                {% for value, label in relationship_intents %}
+                <option value="{{ value }}"{% if profile.relationship_intent == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="visit-form__field"><span>Projet de vie</span><textarea name="life_project" rows="3" maxlength="800" placeholder="Famille, foi, installation, ce que vous construisez…">{{ profile.life_project|default:'' }}</textarea></label>
+            <label class="visit-form__field"><span>À propos de vous</span><textarea name="bio" rows="4" maxlength="800" placeholder="Ce qui vous tient à cœur…">{{ profile.bio|default:'' }}</textarea></label>
+            <label class="visit-form__field"><span>Vous recherchez</span><textarea name="looking_for" rows="3" maxlength="500" placeholder="Sérieux, bienveillant, prêt pour une union…">{{ profile.looking_for|default:'' }}</textarea></label>
+          </div>
+        </form>
+        <div class="visit__card-foot">
+          <p class="visit__save-msg" data-save-msg="identity" hidden></p>
+          <button type="button" class="visit__save" data-save="identity">Enregistrer</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="visit__panel" id="panel-gallery" role="tabpanel" aria-labelledby="tab-gallery" hidden>
+      <div class="visit__gallery-toolbar">
+        <button type="button" class="visit__gallery-add" data-gallery-add{% if member.photos|length >= max_photos %} hidden{% endif %}>Ajouter une photo</button>
+      </div>
+      <div class="visit__gallery" data-gallery>
+        {% for photo in member.photos %}
+        <figure class="visit__gallery-item{% if photo.is_primary %} is-primary{% endif %}" data-photo-id="{{ photo.id }}">
+          <div class="visit__gallery-frame">
+            <img src="{{ photo.url }}" alt="Photo {{ forloop.counter }}" loading="lazy">
+            {% if photo.is_primary %}
+            <span class="visit__gallery-flag">Profil</span>
+            {% else %}
+            <button type="button" class="visit__gallery-primary" data-set-primary>Photo de profil</button>
+            {% endif %}
+            <button type="button" class="visit__gallery-remove" data-delete-photo>Retirer</button>
+          </div>
+        </figure>
+        {% endfor %}
+      </div>
+      <input type="file" accept="image/*" multiple hidden data-gallery-file>
+      <p class="visit__save-msg" data-save-msg="gallery" hidden></p>
+    </section>
+
+    <section class="visit__panel" id="panel-filters" role="tabpanel" aria-labelledby="tab-filters" hidden>
+      <article class="visit-glass visit__card" data-block="filters">
+        <h2 class="visit__card-title">Profils proposés</h2>
+        <p class="visit__card-lead">Ces filtres s’appliquent à l’explorer et à la découverte.</p>
+        <form class="visit-form" data-filters-form>
+          <div class="visit-form__row">
+            <label class="visit-form__field"><span>Âge minimum</span><input name="age_min" type="number" min="18" max="99" value="{{ filters.age_min }}"></label>
+            <label class="visit-form__field"><span>Âge maximum</span><input name="age_max" type="number" min="18" max="99" value="{{ filters.age_max }}"></label>
+          </div>
+          <label class="visit-form__field">
+            <span>Je recherche</span>
+            <select name="gender">
+              <option value="" {% if not filters.gender %}selected{% endif %}>Le genre opposé</option>
+              <option value="all" {% if filters.gender == 'all' %}selected{% endif %}>Tous les profils</option>
+              <option value="female" {% if filters.gender == 'female' %}selected{% endif %}>Femmes</option>
+              <option value="male" {% if filters.gender == 'male' %}selected{% endif %}>Hommes</option>
+            </select>
+          </label>
+          <label class="visit-form__field">
+            <span>Religion</span>
+            <select name="religion">
+              <option value="" {% if not filters.religion %}selected{% endif %}>Toutes</option>
+              {% for value, label in religions %}
+              <option value="{{ value }}"{% if filters.religion == value %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="visit-form__field">
+            <span>Pays</span>
+            <select name="country">
+              <option value="" {% if not filters.country %}selected{% endif %}>Tous les pays</option>
+              {% for c in countries %}
+              <option value="{{ c }}"{% if filters.country == c %} selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="visit-form__check"><input type="checkbox" name="verified_only"{% if filters.verified_only %} checked{% endif %}> Uniquement les profils vérifiés</label>
+          <label class="visit-form__check"><input type="checkbox" name="online_only"{% if filters.online_only %} checked{% endif %}> Uniquement les membres en ligne</label>
+        </form>
+        <div class="visit__card-foot">
+          <p class="visit__save-msg" data-save-msg="filters" hidden></p>
+          <button type="button" class="visit__save" data-save="filters">Enregistrer</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="visit__panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+      {% if messages %}
+      <div class="visit-flash">
+        {% for message in messages %}
+        <p class="visit-flash__item{% if 'error' in message.tags %} is-error{% endif %}">{{ message }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <article class="visit-glass visit__card" data-block="privacy">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Confidentialité</p>
+          <h2 class="visit__card-title">Visibilité du profil</h2>
+          <p class="visit__card-lead">Choisissez ce que les autres membres peuvent voir de vous.</p>
+        </div>
+        <form class="visit-form" data-privacy-form>
+          <label class="visit-form__check"><input type="checkbox" name="hide_age"{% if profile.hide_age %} checked{% endif %}> Masquer mon âge</label>
+          <label class="visit-form__check"><input type="checkbox" name="is_hidden"{% if profile.is_hidden %} checked{% endif %}> Masquer mon profil dans l’explorer</label>
+          <label class="visit-form__field">
+            <span>Dernière connexion visible pour</span>
+            <select name="last_seen_visibility">
+              {% for value, label in visibilities %}
+              <option value="{{ value }}"{% if profile.last_seen_visibility == value %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </form>
+        <div class="visit__card-foot">
+          <p class="visit__save-msg" data-save-msg="privacy" hidden></p>
+          <button type="button" class="visit__save" data-save="privacy">Enregistrer</button>
+        </div>
+      </article>
+
+      <article class="visit-glass visit__card" data-block="notifications">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Alertes</p>
+          <h2 class="visit__card-title">Notifications</h2>
+          <p class="visit__card-lead">Activez ou désactivez les alertes que vous souhaitez recevoir.</p>
+        </div>
+        <form class="visit-form" data-notifs-form>
+          <label class="visit-form__check"><input type="checkbox" name="push"{% if notif_prefs.push %} checked{% endif %}> Notifications push</label>
+          <label class="visit-form__check"><input type="checkbox" name="likes"{% if notif_prefs.likes %} checked{% endif %}> Nouveaux likes</label>
+          <label class="visit-form__check"><input type="checkbox" name="matches"{% if notif_prefs.matches %} checked{% endif %}> Nouveaux matchs</label>
+          <label class="visit-form__check"><input type="checkbox" name="messages"{% if notif_prefs.messages %} checked{% endif %}> Nouveaux messages</label>
+        </form>
+        <div class="visit__card-foot">
+          <p class="visit__save-msg" data-save-msg="notifications" hidden></p>
+          <button type="button" class="visit__save" data-save="notifications">Enregistrer</button>
+        </div>
+      </article>
+
+      <article class="visit-glass visit__card" data-block="subscription">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Abonnement</p>
+          <h2 class="visit__card-title">Premium et VIP</h2>
+          <p class="visit__card-lead">Débloquez plus de messages, la visibilité et les avantages VIP.</p>
+        </div>
+        <p class="visit__meta-line">Statut : <strong>{{ status_label }}</strong></p>
+        <p class="visit__meta-line">Offre : <strong>{{ tier_label }}</strong></p>
+        {% if payment_status.has_active_subscription and subscription_end_display %}
+        <p class="visit__meta-line">Valable jusqu’au {{ subscription_end_display }}</p>
+        {% endif %}
+        {% if payment_status.is_boosted and boost_end_display %}
+        <p class="visit__meta-line">Profil mis en avant jusqu’au {{ boost_end_display }}</p>
+        {% endif %}
+        <div class="visit-plans">
+          {% for plan in plans %}
+          <button type="button" class="visit-plan{% if plan.is_vip %} visit-plan--vip{% endif %}{% if payment_status.tier == plan.id %} is-current{% endif %}" data-checkout="{{ plan.id }}">
+            <span>{{ plan.label }}</span>
+            <strong>{{ plan.price_label }}</strong>
+          </button>
+          {% endfor %}
+        </div>
+        <button type="button" class="visit__save visit__save--block" data-boost>Booster mon profil — {{ boost_price_label }}</button>
+        <p class="visit__save-msg" data-save-msg="subscription" hidden></p>
+      </article>
+
+      <article class="visit-glass visit__card visit__card--danger" data-block="danger">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Zone sensible</p>
+          <h2 class="visit__card-title">Supprimer mon compte</h2>
+          <p class="visit__card-lead">Cette action est définitive. Vos photos, conversations et matchs seront effacés.</p>
+        </div>
+        <div class="visit__card-foot">
+          <p class="visit__save-msg" data-save-msg="danger" hidden></p>
+          <button type="button" class="visit__save visit__save--danger" data-delete-account>Supprimer mon compte</button>
+        </div>
+      </article>
+    </section>
+  </main>
+</div>
+{% endblock %}

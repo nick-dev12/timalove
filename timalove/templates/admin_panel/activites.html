@@ -1,0 +1,6 @@
+﻿{% extends "layouts/admin.html" %}
+{% block content %}
+{% for a in activities %}
+<div class="card" style="margin-bottom:.5rem;"><strong>{{ a.from.first_name }}</strong> a liké <strong>{{ a.to.first_name }}</strong>{% if a.super %} ★{% endif %}<span style="color:var(--text-muted);font-size:.8rem;"> · {{ a.at }}</span></div>
+{% empty %}<div class="empty-state">Aucune activité</div>{% endfor %}
+{% endblock %}

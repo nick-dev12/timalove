@@ -1,0 +1,9 @@
+{% load static %}
+<header class="pubtop">
+  {% include "partials/btn_back.html" with href="/explorer/" extra_class="pubtop__back" %}
+  <p class="pubtop__brand brand-mark">
+    <span>TimaLove</span>
+    <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
+  </p>
+  <span class="pubtop__spacer" aria-hidden="true"></span>
+</header>

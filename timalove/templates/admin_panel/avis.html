@@ -1,0 +1,15 @@
+﻿{% extends "layouts/admin.html" %}
+{% block content %}
+{% for t in items %}
+<article class="card" style="margin-bottom:.75rem;">
+  <strong>{{ t.author_name }}</strong> — {{ t.rating }}/5 {% if t.is_published %}<span class="badge badge-premium">Publié</span>{% endif %}
+  <p>{{ t.content }}</p>
+  <form method="post" style="display:flex;gap:.5rem;">{% csrf_token %}
+    <input type="hidden" name="id" value="{{ t.id }}">
+    <button class="btn btn-primary btn-sm" name="publish" value="1" type="submit">Publier</button>
+    <button class="btn btn-outline btn-sm" name="publish" value="0" type="submit">Masquer</button>
+    <button class="btn btn-outline btn-sm" name="delete" value="1" type="submit">Supprimer</button>
+  </form>
+</article>
+{% empty %}<div class="empty-state">Aucun avis</div>{% endfor %}
+{% endblock %}

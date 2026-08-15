@@ -1,0 +1,10 @@
+﻿{% extends "layouts/public.html" %}
+{% load static %}
+{% block content %}
+<section class="section" style="min-height:70dvh;display:grid;place-items:center;background:var(--cream) url('{% static 'images/hero-section.png' %}') center/cover;">
+  <div class="card card-lg" style="max-width:28rem;text-align:center;">
+    <h1>Maintenance</h1>
+    <p>{{ message }}</p>
+  </div>
+</section>
+{% endblock %}

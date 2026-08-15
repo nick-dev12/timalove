@@ -1,0 +1,30 @@
+{% if q_len >= 2 %}
+{% if hits %}
+<ul class="explorer-search__list" role="listbox">
+  {% for hit in hits %}
+  <li>
+    <a class="explorer-search__hit" href="{{ hit.profile_url }}" data-profile-modal="{{ hit.id }}" role="option">
+      <span class="explorer-search__photo" aria-hidden="true">
+        {% if hit.photo_url %}
+        <img src="{{ hit.photo_url }}" alt="">
+        {% else %}
+        <span>{{ hit.initial }}</span>
+        {% endif %}
+      </span>
+      <span class="explorer-search__meta">
+        <strong>{{ hit.first_name }}{% if hit.age %}, {{ hit.age }}{% endif %}</strong>
+        {% if hit.city %}<em>{{ hit.city }}</em>{% endif %}
+      </span>
+      {% if hit.is_super_like %}
+      <span class="explorer-search__star" aria-label="Super like">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+      </span>
+      {% endif %}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="explorer-search__empty">Aucun profil pour « {{ q }} »</p>
+{% endif %}
+{% endif %}

@@ -1,0 +1,128 @@
+﻿{% extends "layouts/public.html" %}
+{% load static %}
+{% block title %}Accueil{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:2rem;min-height:80dvh;display:grid;align-items:center;background:var(--cream) url('{% static 'images/hero-section.png' %}') center/cover no-repeat;">
+  <div class="container" style="max-width:36rem;">
+    <div class="badge badge-verified" style="margin-bottom:1rem;">Objectif mariage</div>
+    <h1 style="font-size:clamp(2rem,6vw,3.5rem);color:var(--text-primary);">Trouvez une relation <em style="color:var(--rose-primary);font-style:italic;">authentique</em></h1>
+    <p style="font-size:1.125rem;">{{ tagline }}</p>
+    <div style="display:flex;flex-wrap:wrap;gap:.75rem;margin:1.5rem 0;">
+      <a class="btn btn-primary btn-lg" href="{% url 'auth:inscription' %}">Créer mon compte</a>
+      <a class="btn btn-outline" href="#comment-ca-marche">Découvrir le concept</a>
+    </div>
+    <div class="grid-3">
+      {% for f in hero_features %}
+      <div class="card"><strong>{{ f.icon }} {{ f.title }}</strong><p style="margin:0;font-size:.875rem;">{{ f.subtitle }}</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section" id="qui-suis-je">
+  <div class="container grid-2" style="align-items:center;">
+    <div>
+      <div class="section-label">La visionnaire</div>
+      <h2>Qui suis-je ?</h2>
+      <p>Je m'appelle Tima. J'accompagne celles et ceux qui recherchent une relation sérieuse, orientée vers le mariage, dans un cadre bienveillant et exigeant.</p>
+      <a class="btn btn-outline" href="{% url 'public:qui_suis_je' %}">Découvrir mon histoire</a>
+    </div>
+    <img src="{% static 'images/Tima-profil.webp' %}" alt="Portrait de Tima" style="border-radius:2rem;background:var(--rose-pale);aspect-ratio:4/5;object-fit:cover;">
+  </div>
+</section>
+
+<section class="section section-dark" id="comment-ca-marche">
+  <div class="container">
+    <div class="section-label" style="justify-content:center;">Notre approche</div>
+    <h2 style="text-align:center;color:white;">Comment ça marche</h2>
+    <div class="grid-4" style="margin-top:2rem;">
+      {% for s in steps %}
+      <div class="card" style="background:rgba(255,255,255,.08);color:white;border:1px solid rgba(255,255,255,.1);">
+        <div class="badge badge-premium" style="background:var(--rose-primary);">{{ s.number }}</div>
+        <h3 style="color:white;font-style:italic;margin-top:1rem;">{{ s.title }}</h3>
+        <p>{{ s.description }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="text-align:center;margin-top:2rem;"><a class="btn btn-primary" href="{% url 'auth:inscription' %}">Découvrir nos profils →</a></div>
+  </div>
+</section>
+
+<section class="section" id="membres">
+  <div class="container">
+    <div class="section-label" style="justify-content:center;">Communauté</div>
+    <h2 style="text-align:center;">Nos membres</h2>
+    <div class="grid-3" style="margin-top:2rem;">
+      {% for m in members %}
+      <article class="card card-lg" style="padding:0;overflow:hidden;">
+        {% if m.photo_url %}<img src="{{ m.photo_url }}" alt="{{ m.first_name }}" style="height:15rem;width:100%;object-fit:cover;">{% else %}<div style="height:15rem;background:var(--rose-pale);"></div>{% endif %}
+        <div style="padding:1.25rem;">
+          <span class="badge badge-premium">{{ m.badge }}</span>
+          <h3 style="margin-top:.75rem;">{{ m.first_name }}{% if m.age %}, {{ m.age }}{% endif %}</h3>
+          <p style="margin:0;color:var(--text-muted);font-size:.875rem;">{{ m.city }}</p>
+          <p style="font-style:italic;">{{ m.bio|truncatechars:90 }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <p style="text-align:center;margin-top:1.5rem;"><a href="{% url 'auth:inscription' %}" style="color:var(--rose-primary);font-weight:600;">Créer mon compte gratuitement →</a></p>
+  </div>
+</section>
+
+<section class="section section-darker" id="coaching">
+  <div class="container">
+    <div class="badge badge-verified" style="margin-bottom:1rem;">Coaching individuel</div>
+    <h2 style="color:white;">Un accompagnement sur-mesure</h2>
+    <div class="grid-2" style="margin-top:1.5rem;">
+      {% for f in coaching_features %}
+      <div class="card" style="background:rgba(255,255,255,.08);color:white;border:1px solid rgba(255,255,255,.1);">
+        <h3 style="color:white;font-style:italic;">{{ f.title }}</h3>
+        <p>{{ f.description }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:2rem;"><a class="btn btn-primary" href="{% url 'public:coaching' %}">Réserver ma séance</a></div>
+  </div>
+</section>
+
+<section class="section" id="avis">
+  <div class="container">
+    <div class="section-label" style="justify-content:center;">Témoignages</div>
+    <h2 style="text-align:center;">Ils nous font confiance</h2>
+    <div class="grid-3" style="margin-top:2rem;">
+      {% for t in temoignages %}
+      <article class="card card-lg">
+        <div style="font-family:var(--font-serif);font-size:2.5rem;color:rgba(232,99,122,.25);">“</div>
+        <p style="font-style:italic;">{{ t.quote }}</p>
+        <div style="display:flex;align-items:center;gap:.75rem;margin-top:1rem;">
+          <div class="avatar" style="display:grid;place-items:center;color:var(--rose-primary);font-family:var(--font-serif);">{{ t.initial }}</div>
+          <div><strong>{{ t.name }}</strong>{% if t.age %}<span style="color:var(--text-muted);"> · {{ t.age }} ans</span>{% endif %}</div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section section-dark" id="inscription">
+  <div class="container" style="max-width:32rem;">
+    <h2 style="text-align:center;color:white;">Rejoignez TimaLove</h2>
+    <div class="card card-lg" style="margin-top:1.5rem;">
+      <p>Créez votre compte et laissez-nous étudier votre profil avec soin.</p>
+      <a class="btn btn-primary btn-block" href="{% url 'auth:inscription' %}">S'inscrire</a>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="contact" style="background:white;">
+  <div class="container">
+    <div class="section-label" style="justify-content:center;">Contact</div>
+    <h2 style="text-align:center;">Parlons de votre projet</h2>
+    <div class="grid-3" style="margin-top:2rem;">
+      <div class="card"><strong>Email</strong><p>{{ site_config.contactEmail|default:"timaloveagence@gmail.com" }}</p></div>
+      <div class="card" style="background:var(--rose-primary);color:white;"><strong>WhatsApp</strong><p style="color:rgba(255,255,255,.9);">{{ site_config.whatsappNumber }}</p></div>
+      <div class="card"><strong>Coaching</strong><p><a href="{% url 'public:coaching' %}" style="color:var(--rose-primary);">Réserver une séance</a></p></div>
+    </div>
+  </div>
+</section>
+{% endblock %}

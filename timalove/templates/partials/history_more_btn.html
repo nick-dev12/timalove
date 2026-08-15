@@ -1,0 +1,9 @@
+<div class="history__more-wrap">
+  <button
+    type="button"
+    class="history__more"
+    hx-get="{% url 'public:historique_plus' %}?offset={{ next_offset }}"
+    hx-target="closest .history__more-wrap"
+    hx-swap="outerHTML"
+  >Voir plus</button>
+</div>

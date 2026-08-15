@@ -1,0 +1,33 @@
+{% extends "layouts/base.html" %}
+{% block title %}Témoignages{% endblock %}
+{% block body_class %}temoignages-page{% endblock %}
+{% block body %}
+{% include "partials/public_page_top.html" %}
+
+<main class="tmn">
+  <header class="tmn__intro">
+    <p class="tmn__kicker">Témoignages</p>
+    <h1>Ils ont trouvé <em>l'amour</em> avec nous</h1>
+    <p class="tmn__lead">Des histoires vraies, des parcours authentiques. Chaque témoignage publié est validé par notre équipe.</p>
+  </header>
+
+  <section class="tmn__grid" aria-label="Témoignages">
+    {% for t in temoignages %}
+    <article class="tmn__card">
+      <span class="tmn__quote-mark" aria-hidden="true">“</span>
+      <p class="tmn__stars" aria-label="Note {{ t.rating|default:5 }} sur 5">★★★★★</p>
+      <p class="tmn__text">{{ t.quote }}</p>
+      <footer class="tmn__author">
+        <span class="tmn__avatar" aria-hidden="true">{{ t.initial }}</span>
+        <span>
+          <strong>{{ t.name }}</strong>
+          {% if t.age %}<small>{{ t.age }} ans</small>{% endif %}
+        </span>
+      </footer>
+    </article>
+    {% empty %}
+    <p class="tmn__empty">Les premiers témoignages seront publiés très bientôt.</p>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}

@@ -1,0 +1,32 @@
+---
+description: Stack officiel TimaLove — Django + PostgreSQL (mémoire projet)
+alwaysApply: true
+---
+
+# Stack TimaLove (refonte)
+
+- **Code app** : `timalove/` (projet Django `config` + app `core`)
+- **Venv** : `venv/` à la racine — activer avant toute commande Python
+- **Backend** : Python **Django** (pas de PHP, pas de Next.js/React pour la nouvelle app)
+- **Architecture** : MVC strict (`core/models`, `core/controllers`, `core/views`, `core/middleware`)
+- **Base de données** : **PostgreSQL** DB `tima` (+ PostGIS plus tard pour la carte)
+- **Temps réel** : Django Channels + Redis (chat, notifs, présence)
+- **Jobs async** : Celery + Redis (stories, emails, matching, expiration)
+- **Front** : templates Django + HTMX (pas de framework JS type React/Vue/Next)
+- **Médias** : stockage objet externe (S3 / R2 / MinIO), pas sur le disque VPS
+- **Carte** : Leaflet côté client + GeoDjango / PostGIS côté serveur
+
+## Interdits
+
+- Ne pas proposer de réécrire en Next.js, Nest, Laravel, PHP natif ou FastAPI sauf demande explicite
+- Ne pas introduire React/Vue/Angular comme socle UI
+- Ne pas utiliser SQLite en production
+
+## Migration
+
+L’ancien code `tinalove/` (Next.js + Supabase) sert de **référence métier / design**, pas de cible d’architecture.
+---
+
+# Priorité
+
+En cas de doute technique : choisir la solution Django idiomatique, maintenable et sécurisée.

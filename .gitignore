@@ -1,0 +1,29 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.Python
+*.sqlite3
+
+# Env & secrets
+.env
+timalove/.env
+*.pem
+timalove/timalove-ddaa5-*.json
+
+# Django
+timalove/staticfiles/
+*.log
+
+# Médias utilisateurs (photos de profil, vocaux) — le static du site reste versionné
+timalove/media/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Ancien projet Next.js (référence locale uniquement, ne pas versionner)
+tinalove/

@@ -1,0 +1,8 @@
+﻿{% extends "layouts/auth.html" %}
+{% block auth_content %}
+<form method="post">{% csrf_token %}
+  <p>Entrez votre email pour recevoir un lien de réinitialisation.</p>
+  <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" name="email" required></div>
+  <button class="btn btn-primary btn-block" type="submit">Envoyer</button>
+</form>
+{% endblock %}

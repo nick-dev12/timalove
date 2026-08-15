@@ -1,0 +1,208 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}Bienvenue{% endblock %}
+{% block body_class %}ob-page{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@24.6.0/build/css/intlTelInput.css">
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.6.0/build/js/intlTelInput.min.js"></script>
+<script src="{% static 'js/onboarding.js' %}?v=20260813ob4" defer></script>
+{% endblock %}
+{% block body %}
+<div class="auth-hearts" aria-hidden="true">
+  <span class="auth-bubble auth-bubble--1">♥</span>
+  <span class="auth-bubble auth-bubble--3">♥</span>
+  <span class="auth-bubble auth-bubble--5">♥</span>
+  <span class="auth-bubble auth-bubble--7">♥</span>
+  <span class="auth-bubble auth-bubble--9">♥</span>
+  <span class="auth-bubble auth-bubble--12">♥</span>
+  <span class="auth-bubble auth-bubble--14">♥</span>
+</div>
+
+<div class="ob" data-ob data-step="{{ step }}" data-next="{{ next_url }}" data-phone="{{ profile.phone|default:'' }}" data-lat="{{ latitude|default_if_none:'' }}" data-lng="{{ longitude|default_if_none:'' }}">
+  <header class="ob__top">
+    {% include "partials/btn_back.html" with is_button=True extra_class="ob__back" extra="data-ob-back" %}
+    <a class="ob__brand brand-mark" href="{% url 'public:home' %}">
+      <span>TimaLove</span>
+      <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
+    </a>
+    <div class="ob__progress" aria-label="Étape {{ step }} sur 4">
+      <svg viewBox="0 0 36 36" width="44" height="44" aria-hidden="true">
+        <circle cx="18" cy="18" r="15.5" fill="none" stroke="#f5e6e8" stroke-width="3"></circle>
+        <circle class="ob__ring" data-ob-ring cx="18" cy="18" r="15.5" fill="none" stroke="#e8637a" stroke-width="3" stroke-linecap="round" transform="rotate(-90 18 18)" stroke-dasharray="97.4" stroke-dashoffset="73"></circle>
+      </svg>
+      <span data-ob-counter>{{ step }}/4</span>
+    </div>
+  </header>
+
+  <p class="ob__status" data-ob-status hidden></p>
+  <form aria-hidden="true" style="display:none">{% csrf_token %}</form>
+
+  <div class="ob-glass">
+    {# ——— Étape 1 ——— #}
+    <section class="ob__panel{% if step == 1 %} is-active{% endif %}" data-ob-panel="1">
+      <p class="ob__kicker">Étape 1 · Vous</p>
+      <h1>{{ copy.1.title }}</h1>
+      <p class="ob__lead">{{ copy.1.lead }}</p>
+      <form class="ob__form" data-ob-form="1" id="ob-form-1">
+        <div class="ob__row">
+          <label class="ob__field">
+            <span>Nom <em>*</em></span>
+            <input name="last_name" required value="{{ profile.last_name|default:'' }}" placeholder="Votre nom" autocomplete="family-name">
+          </label>
+          <label class="ob__field">
+            <span>Prénom <em>*</em></span>
+            <input name="first_name" required value="{{ profile.first_name|default:'' }}" placeholder="Votre prénom" autocomplete="given-name">
+          </label>
+        </div>
+        <label class="ob__field">
+          <span>Âge <em>*</em></span>
+          <input name="age" type="number" min="18" max="99" required value="{{ age|default:'' }}" placeholder="18 ans et plus">
+        </label>
+        <label class="ob__field">
+          <span>Je suis <em>*</em></span>
+          <select name="gender" required>
+            <option value="" disabled {% if not profile.gender %}selected{% endif %}>Sélectionnez une option</option>
+            <option value="male"{% if profile.gender == 'male' %} selected{% endif %}>Homme</option>
+            <option value="female"{% if profile.gender == 'female' %} selected{% endif %}>Femme</option>
+          </select>
+          <small class="ob__help">Choisissez l’option qui vous correspond.</small>
+        </label>
+        <label class="ob__field">
+          <span>Origine <em>*</em></span>
+          <div class="ob-combo" data-combo>
+            <input class="ob-combo__input" type="search" placeholder="Tapez pour trouver votre pays…" autocomplete="off" data-combo-input value="{{ profile.country|default:'' }}">
+            <input type="hidden" name="country" data-combo-value value="{{ profile.country|default:'' }}">
+            <ul class="ob-combo__list" data-combo-list hidden>
+              {% for c in countries %}
+              <li><button type="button" data-combo-item>{{ c }}</button></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </label>
+        <label class="ob__field ob__field--tel">
+          <span>Téléphone <em>*</em></span>
+          <input type="tel" id="ob-phone" autocomplete="tel" placeholder="Numéro de téléphone" data-phone>
+          <small class="ob__help">L’indicatif s’ajuste automatiquement selon le pays.</small>
+        </label>
+        <label class="ob__field">
+          <span>Religion <em>*</em></span>
+          <select name="religion" required>
+            <option value="" disabled {% if not profile.religion %}selected{% endif %}>Sélectionnez une option</option>
+            {% for value, label in religions %}
+            <option value="{{ value }}"{% if profile.religion == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <small class="ob__help">Sélectionnez l’option qui vous correspond.</small>
+        </label>
+        <div class="ob-map-block">
+          <p class="ob__label">Ma localisation <em>*</em></p>
+          <p class="ob__help">Nous enregistrons votre position exacte pour mieux vous situer. Autorisez l’accès, puis actualisez si besoin.</p>
+          <div class="ob-map" data-ob-map aria-label="Carte de votre position"></div>
+          <p class="ob-map__meta" data-map-meta>{% if latitude and longitude %}Position enregistrée.{% else %}Aucune position pour le moment.{% endif %}</p>
+          <input type="hidden" name="latitude" data-lat-input form="ob-form-1" value="{{ latitude|default_if_none:'' }}">
+          <input type="hidden" name="longitude" data-lng-input form="ob-form-1" value="{{ longitude|default_if_none:'' }}">
+          <button type="button" class="ob-map__refresh" data-geo-refresh>Actualiser ma position</button>
+        </div>
+      </form>
+    </section>
+
+    {# ——— Étape 2 ——— #}
+    <section class="ob__panel{% if step == 2 %} is-active{% endif %}" data-ob-panel="2">
+      <p class="ob__kicker">Étape 2 · Passions</p>
+      <h1>{{ copy.2.title }}</h1>
+      <p class="ob__lead">{{ copy.2.lead }}</p>
+      <p class="ob__label">Centres d’intérêt <em>*</em></p>
+      <p class="ob__help">Sélectionnez au moins une option parmi celles proposées.</p>
+      <div class="ob-grid" data-interests>
+        {% for item in interests %}
+        <button type="button" class="ob-card{% if profile.interests and item.id in profile.interests %} is-on{% endif %}" data-interest="{{ item.id }}">
+          <span class="ob-card__check" aria-hidden="true">✓</span>
+          <span class="ob-card__icon" data-icon="{{ item.icon }}"></span>
+          <span class="ob-card__label">{{ item.label }}</span>
+        </button>
+        {% endfor %}
+      </div>
+      <p class="ob__label">Votre caractère <em>*</em></p>
+      <p class="ob__help">Sélectionnez au moins une option parmi celles proposées.</p>
+      <div class="ob__choice ob__choice--wrap" data-traits>
+        {% for item in traits %}
+        <button type="button" class="ob__chip{% if profile.personality_traits and item.id in profile.personality_traits %} is-on{% endif %}" data-trait="{{ item.id }}">{{ item.label }}</button>
+        {% endfor %}
+      </div>
+      <p class="ob__label">Vos valeurs <span class="ob__optional">optionnel</span></p>
+      <p class="ob__help">Ajoutez-les manuellement, une valeur à la fois. Ce n’est pas obligatoire pour continuer.</p>
+      <div class="ob-values" data-values>
+        <div class="ob-values__row">
+          <input type="text" maxlength="40" placeholder="Ex. : respect, famille, sincérité…" data-value-input autocomplete="off">
+          <button type="button" class="ob-values__add" data-value-add>Ajouter</button>
+        </div>
+        <div class="ob-values__list" data-value-list>
+          {% for value in life_values %}
+          <span class="ob-values__chip" data-value-chip="{{ value }}">{{ value }} <button type="button" data-value-remove aria-label="Retirer">×</button></span>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    {# ——— Étape 3 ——— #}
+    <section class="ob__panel{% if step == 3 %} is-active{% endif %}" data-ob-panel="3">
+      <p class="ob__kicker">Étape 3 · Paroles</p>
+      <h1>{{ copy.3.title }}</h1>
+      <p class="ob__lead">{{ copy.3.lead }}</p>
+      <label class="ob__field">
+        <span>À propos de vous <span class="ob__optional">optionnel</span></span>
+        <textarea name="bio" rows="5" maxlength="800" placeholder="Ce qui vous tient à cœur, votre rythme de vie, ce que vous apportez à une relation…">{{ profile.bio|default:'' }}</textarea>
+      </label>
+      <label class="ob__field">
+        <span>Le profil que vous recherchez <span class="ob__optional">optionnel</span></span>
+        <textarea name="looking_for" rows="4" maxlength="500" placeholder="Sérieux, bienveillant, prêt pour une union sincère…">{{ profile.looking_for|default:'' }}</textarea>
+      </label>
+    </section>
+
+    {# ——— Étape 4 ——— #}
+    <section class="ob__panel{% if step == 4 %} is-active{% endif %}" data-ob-panel="4">
+      <p class="ob__kicker">Étape 4 · Confiance</p>
+      <h1>{{ copy.4.title }}</h1>
+      <p class="ob__lead">{{ copy.4.lead }}</p>
+      <p class="ob__hint"><span>♥</span> {{ copy.4.hint }}</p>
+      <div class="ob-photos">
+        <div class="ob-photos__slot">
+          <p class="ob-photos__title">Photo de profil</p>
+          <label class="ob-photos__frame" data-profile-frame>
+            {% if profile.photo_url %}
+            <img src="{{ profile.photo_url }}" alt="Profil" data-profile-preview>
+            {% else %}
+            <img alt="" data-profile-preview hidden>
+            <span class="ob-photos__placeholder">Ajouter une photo</span>
+            {% endif %}
+            <input type="file" accept="image/*" data-profile-file hidden>
+          </label>
+          <button type="button" class="ob-photos__pick" data-profile-pick>Choisir une image</button>
+        </div>
+        <div class="ob-photos__slot">
+          <p class="ob-photos__title">Vérification en direct</p>
+          <div class="ob-photos__frame ob-photos__frame--live" data-live-frame>
+            <video data-live-video playsinline muted hidden></video>
+            <img alt="" data-live-preview {% if profile.verification_photo_url %}src="{{ profile.verification_photo_url }}"{% else %}hidden{% endif %}>
+            <span class="ob-photos__placeholder" data-live-placeholder>Caméra</span>
+          </div>
+          <button type="button" class="ob-photos__pick" data-live-start>Ouvrir la caméra</button>
+          <button type="button" class="ob-photos__pick is-rose" data-live-capture hidden>Prendre la photo</button>
+        </div>
+      </div>
+      <p class="ob-photos__match" data-match-msg hidden></p>
+      <p class="ob__hint">La vérification compare votre selfie à la photo de profil.</p>
+    </section>
+  </div>
+
+  <footer class="ob__footer">
+    <div class="ob__mood">
+      <span class="ob__heart" aria-hidden="true">♥</span>
+      <p data-ob-footer>{{ copy.1.footer }}</p>
+    </div>
+    <button type="button" class="ob__cta" data-ob-next>Continuer</button>
+  </footer>
+</div>
+{% endblock %}

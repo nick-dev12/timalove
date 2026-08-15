@@ -1,0 +1,292 @@
+{% load static %}
+<div class="visit" data-profile-id="{{ member.id }}">
+  <header class="visit__nav">
+    {% include "partials/btn_back.html" with is_button=True extra_class="visit__nav-back" extra="data-profile-modal-close" %}
+    <p class="visit__nav-brand brand-mark">
+      <span>TimaLove</span>
+      <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
+    </p>
+    <button type="button" class="visit__nav-btn" data-profile-modal-close aria-label="Fermer le profil">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+    </button>
+  </header>
+
+  <div class="visit__media">
+    <div class="visit__photo-stage">
+      <section class="visit__hero" aria-label="Photo principale">
+        {% if member.photo_url %}
+        <img class="visit__hero-img" src="{{ member.photo_url }}" alt="{{ member.first_name }}" width="800" height="1000">
+        {% else %}
+        <div class="visit__hero-fallback">{{ member.first_name|first|upper }}</div>
+        {% endif %}
+      </section>
+    </div>
+    <div class="visit__hero-chips">
+      {% if member.is_online %}
+      <span class="visit__chip visit__chip--live"><span class="visit__dot"></span> En ligne</span>
+      {% endif %}
+      {% if member.is_verified %}
+      <span class="visit__chip visit__chip--ok">Vérifié</span>
+      {% endif %}
+      {% if member.is_boosted %}
+      <span class="visit__chip visit__chip--vip">Mis en avant</span>
+      {% endif %}
+      {% if member.relationship_intent_label %}
+      <span class="visit__chip">Intention : {{ member.relationship_intent_label|lower }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <main class="visit__sheet">
+    <section class="visit__identity visit-glass">
+      <div class="visit__identity-top">
+        <div class="visit__who">
+          <h1 class="visit__name">
+            {{ member.first_name }}{% if member.age %}<span class="visit__age">, {{ member.age }}</span>{% endif %}
+          </h1>
+          <p class="visit__location">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+            {{ member.location }}
+          </p>
+          {% if member.profession %}
+          <p class="visit__role">{{ member.profession }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="visit__actions">
+        {% if user.is_authenticated %}
+        <a class="visit__action visit__action--msg" href="{% url 'app:likes' %}">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+          Message
+        </a>
+        {% else %}
+        <a class="visit__action visit__action--msg" href="{% url 'auth:connexion' %}">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+          Message
+        </a>
+        {% endif %}
+        <div class="visit__compat" aria-label="Compatibilité {{ member.compatibility }} pourcent">
+          <svg class="visit__compat-ring" viewBox="0 0 72 72" aria-hidden="true">
+            <circle cx="36" cy="36" r="30" class="visit__compat-track"></circle>
+            <circle cx="36" cy="36" r="30" class="visit__compat-value" style="--compat: {{ member.compatibility }}"></circle>
+          </svg>
+          <div class="visit__compat-label">
+            <strong>{{ member.compatibility }}%</strong>
+            <span>match</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="visit__trust visit-glass" aria-label="Signaux de confiance">
+      <div class="visit__trust-item">
+        <span class="visit__trust-ico" aria-hidden="true">✓</span>
+        <div>
+          <strong>{% if member.is_verified %}Profil vérifié{% else %}Profil examiné{% endif %}</strong>
+          <p>Contrôle humain TimaLove</p>
+        </div>
+      </div>
+      <div class="visit__trust-item">
+        <span class="visit__trust-ico" aria-hidden="true">♪</span>
+        <div>
+          <strong>Réponse estimée</strong>
+          <p>Sous 24 h · bientôt live</p>
+        </div>
+      </div>
+      <div class="visit__trust-item">
+        <span class="visit__trust-ico" aria-hidden="true">♥</span>
+        <div>
+          <strong>{% if member.followers %}{{ member.followers }} attentions{% else %}Nouveau coup de cœur{% endif %}</strong>
+          <p>{% if member.member_since %}Membre depuis {{ member.member_since }}{% else %}Présence sérieuse{% endif %}</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="visit__tabs" role="tablist" aria-label="Sections du profil" data-visit-tabs>
+      <button type="button" class="visit__tab is-active" role="tab" aria-selected="true" aria-controls="panel-about" data-tab="about">À propos</button>
+      <button type="button" class="visit__tab" role="tab" aria-selected="false" aria-controls="panel-gallery" data-tab="gallery">Galerie</button>
+      <button type="button" class="visit__tab" role="tab" aria-selected="false" aria-controls="panel-affinity" data-tab="affinity">Affinités</button>
+    </div>
+
+    <section class="visit__panel" id="panel-about" role="tabpanel" data-panel="about">
+      <article class="visit-glass visit__card">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Fiche publique</p>
+          <h2 class="visit__card-title">Présentation</h2>
+          <p class="visit__card-lead">Ce qu’{{ member.first_name }} partage de soi, avec élégance et sincérité.</p>
+        </div>
+        {% if member.bio %}
+        <p class="visit__about-text">{{ member.bio }}</p>
+        {% else %}
+        <p class="visit__about-text visit__about-text--muted">
+          {{ member.first_name }} n’a pas encore rédigé de présentation. Les détails sérieux arrivent bientôt.
+        </p>
+        {% endif %}
+
+        <ul class="visit__facts">
+          {% if member.gender_label %}
+          <li><span>Genre</span><strong>{{ member.gender_label }}</strong></li>
+          {% endif %}
+          {% if member.profession %}
+          <li><span>Profession</span><strong>{{ member.profession }}</strong></li>
+          {% endif %}
+          {% if member.religion %}
+          <li><span>Religion</span><strong>{{ member.religion }}</strong></li>
+          {% endif %}
+          {% if member.relationship_intent_label %}
+          <li><span>Intention</span><strong>{{ member.relationship_intent_label }}</strong></li>
+          {% endif %}
+          {% if member.life_project %}
+          <li><span>Projet de vie</span><strong>{{ member.life_project }}</strong></li>
+          {% endif %}
+          {% if member.looking_for %}
+          <li><span>Recherche</span><strong>{{ member.looking_for }}</strong></li>
+          {% endif %}
+          {% if member.commune %}
+          <li><span>Commune</span><strong>{{ member.commune }}</strong></li>
+          {% endif %}
+          {% if member.city %}
+          <li><span>Ville</span><strong>{{ member.city }}</strong></li>
+          {% endif %}
+          {% if member.country %}
+          <li><span>Pays d’origine</span><strong>{{ member.country }}</strong></li>
+          {% endif %}
+          {% if member.residence_country %}
+          <li><span>Pays de résidence</span><strong>{{ member.residence_country }}</strong></li>
+          {% endif %}
+        </ul>
+      </article>
+
+      <article class="visit-glass visit__card">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Ce qui l’anime</p>
+          <h2 class="visit__card-title">Intérêts et caractère</h2>
+          {% if member.interest_labels or member.trait_labels %}
+          <p class="visit__card-lead">Ce que {{ member.first_name }} a choisi de partager.</p>
+          {% endif %}
+        </div>
+        {% if member.interest_labels %}
+        <p class="visit__label">Centres d’intérêt</p>
+        <div class="visit__pills">
+          {% for label in member.interest_labels %}
+          <span class="is-on">{{ label }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if member.trait_labels %}
+        <p class="visit__label">Caractère</p>
+        <div class="visit__pills">
+          {% for label in member.trait_labels %}
+          <span class="is-on">{{ label }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if not member.interest_labels and not member.trait_labels %}
+        <p class="visit__about-text visit__about-text--muted">{{ member.first_name }} n’a pas encore défini ses intérêts et son caractère.</p>
+        {% endif %}
+      </article>
+
+      <article class="visit-glass visit__card">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Ce qui compte</p>
+          <h2 class="visit__card-title">Valeurs</h2>
+        </div>
+        {% if member.life_values %}
+        <div class="visit__pills">
+          {% for value in member.life_values %}
+          <span>{{ value }}</span>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="visit__about-text visit__about-text--muted">{{ member.first_name }} n’a pas encore partagé ses valeurs.</p>
+        {% endif %}
+      </article>
+
+      <article class="visit-glass visit__card visit__prompt">
+        <p class="visit__prompt-label">Icebreaker</p>
+        <h2 class="visit__card-title">« Mon dimanche idéal… »</h2>
+        <p class="visit__prompt-answer">
+          Un brunch calme, une marche près de l’eau, puis une conversation vraie sans montre.
+        </p>
+        <p class="visit__prompt-note">Réponse illustrative — les vrais prompts arriveront bientôt.</p>
+      </article>
+    </section>
+
+    <section class="visit__panel" id="panel-gallery" role="tabpanel" data-panel="gallery" hidden>
+      {% if member.photos %}
+      <div class="visit__gallery">
+        {% for photo in member.photos %}
+        <figure class="visit__gallery-item">
+          <button type="button" class="visit__gallery-open" aria-label="Agrandir la photo {{ forloop.counter }} de {{ member.first_name }}">
+            <img src="{{ photo }}" alt="Photo {{ forloop.counter }} de {{ member.first_name }}" loading="lazy">
+          </button>
+        </figure>
+        {% endfor %}
+      </div>
+      {% else %}
+      <article class="visit-glass visit__card">
+        <p class="visit__about-text visit__about-text--muted">Aucune photo supplémentaire pour le moment.</p>
+      </article>
+      {% endif %}
+    </section>
+
+    <section class="visit__panel" id="panel-affinity" role="tabpanel" data-panel="affinity" hidden>
+      <article class="visit-glass visit__card">
+        <h2 class="visit__card-title">Pourquoi ça pourrait matcher</h2>
+        <p class="visit__card-lead">Indices statiques — le vrai scoring arrivera avec le matching.</p>
+        <ul class="visit__affinity">
+          <li>
+            <span class="visit__affinity-score">{{ member.compatibility }}%</span>
+            <div>
+              <strong>Compatibilité globale</strong>
+              <p>Projection basée sur le profil public actuel.</p>
+            </div>
+          </li>
+          <li>
+            <span class="visit__affinity-score">—</span>
+            <div>
+              <strong>Intention de vie</strong>
+              <p>{% if member.relationship_intent_label %}{{ member.first_name }} vise {{ member.relationship_intent_label|lower }}.{% else %}L’intention n’est pas encore précisée.{% endif %}{% if member.life_project %} {{ member.life_project }}{% endif %}</p>
+            </div>
+          </li>
+          <li>
+            <span class="visit__affinity-score">88%</span>
+            <div>
+              <strong>Rythme de vie</strong>
+              <p>Équilibre entre ambition, famille et présence.</p>
+            </div>
+          </li>
+        </ul>
+      </article>
+
+      <article class="visit-glass visit__card">
+        <h2 class="visit__card-title">Langages d’amour</h2>
+        <div class="visit__bars" aria-hidden="true">
+          <div class="visit__bar"><span>Temps de qualité</span><i style="--w:86%"></i></div>
+          <div class="visit__bar"><span>Paroles valorisantes</span><i style="--w:74%"></i></div>
+          <div class="visit__bar"><span>Gestes attentionnés</span><i style="--w:68%"></i></div>
+        </div>
+        <p class="visit__prompt-note">Données fictives pour prévisualiser l’expérience.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer class="visit__dock">
+    {% if user.is_authenticated %}
+    <button type="button" class="visit__dock-btn visit__dock-btn--ghost{% if super_liked %} is-on{% endif %}" data-swipe="super_like" aria-label="Super like">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+    </button>
+    <button type="button" class="visit__dock-btn visit__dock-btn--primary{% if liked %} is-on{% endif %}" data-swipe="like" aria-label="{% if liked %}Aimé{% else %}Like{% endif %}">
+      <svg viewBox="0 0 24 22" width="22" height="20" aria-hidden="true"><path d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+    </button>
+    {% else %}
+    <a class="visit__dock-btn visit__dock-btn--ghost" href="{% url 'auth:connexion' %}" aria-label="Super like">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+    </a>
+    <a class="visit__dock-btn visit__dock-btn--primary" href="{% url 'auth:connexion' %}" aria-label="Like">
+      <svg viewBox="0 0 24 22" width="22" height="20" aria-hidden="true"><path d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+    </a>
+    {% endif %}
+  </footer>
+</div>

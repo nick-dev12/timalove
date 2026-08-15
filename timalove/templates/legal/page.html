@@ -1,0 +1,13 @@
+﻿{% extends "layouts/public.html" %}
+{% block content %}
+<section class="section"><div class="container" style="max-width:48rem;">
+  <h1>{{ title }}</h1>
+  {% for s in sections %}
+  <article style="margin:2rem 0;" id="{{ s.id }}">
+    <h2 style="font-size:1.35rem;">{{ s.title }}</h2>
+    {% for p in s.paragraphs %}<p>{{ p }}</p>{% endfor %}
+    {% if s.list %}<ul>{% for i in s.list %}<li>{{ i }}</li>{% endfor %}</ul>{% endif %}
+  </article>
+  {% endfor %}
+</div></section>
+{% endblock %}

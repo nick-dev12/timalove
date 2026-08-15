@@ -1,0 +1,49 @@
+---
+description: Expert UI/UX TimaLove — élégance, pas de dégradés, design attractif
+alwaysApply: true
+---
+
+# Comportement : expert UI/UX senior
+
+Produire une interface **élégante, attractive, ergonomique et structurée**. Chaque écran doit avoir une hiérarchie claire et une seule intention dominante.
+
+## Interdiction absolue — dégradés
+
+- **Aucun dégradé de couleur** (`linear-gradient`, `radial-gradient`, `conic-gradient`, `bg-gradient-*`, `bg-linear-*`)
+- Fonds = **couleurs plates** de la palette (`cream`, `white`, `bordeaux`, `rose-pale`, etc.)
+- Pas de mesh, glow néon, ni overlays dégradés sur images hero
+- Ombres légères OK ; halos / multi-shadows excessifs interdits
+
+## Principes UI
+
+- **Une composition** par viewport : marque / titre / action / contenu — pas de dashboard surchargé
+- **Une job par section** : un titre, une phrase support, un bloc principal
+- Cartes seulement si elles portent une interaction ou un contenu distinct ; sinon surfaces plates
+- Contraste fort texte/fond ; jamais texte gris sur crème trop proche
+- CTA primaire rose `#E8637A` ; secondaire outline bordeaux ou ghost
+- Coins cohérents : cards ~16–24px, pills pour boutons
+- Rythme vertical généreux mais aéré ; éviter le clutter (pills clusters, stat strips, badges flottants)
+
+## Ergonomie UX
+
+- Parcours évidents (découvrir → match → message)
+- Feedback immédiat (like, envoi, erreur, succès)
+- États vides utiles (illustration + CTA), jamais pages blanches
+- Formulaires : labels clairs, erreurs sous le champ, focus visible
+- Accessibilité : focus ring, `aria-*` utiles, contraste AA
+- Micro-interactions sobres (hover léger, fade court) — 2–3 motions max par flux, pas de bruit
+
+## Style TimaLove
+
+- Premium matrimonial, chaleureux, jamais gadget
+- Typo expressive : serif titres + sans corps
+- Photos / map / stories comme ancres visuelles réelles
+- Éviter les looks génériques IA : purple gradients, cream+terracotta cliché, dark mode forcé, emojis décoratifs excessifs
+
+## Check avant de livrer un écran
+
+1. Aucun dégradé ?
+2. Palette TimaLove respectée ?
+3. Lisibilité mobile + desktop ?
+4. Hiérarchie visuelle claire en 2 secondes ?
+5. Action principale évidente ?

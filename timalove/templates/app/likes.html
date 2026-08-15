@@ -1,0 +1,178 @@
+﻿{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}Likes{% endblock %}
+{% block body_class %}likes-page{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260815h3" defer></script>
+<script src="{% static 'js/likes-ui.js' %}?v=20260815l1" defer></script>
+{% if user.is_authenticated %}
+<script src="{% static 'js/explorer-swipe.js' %}?v=20260815h2" defer></script>
+{% endif %}
+{% endblock %}
+{% block body %}
+{% include "partials/explorer_atmosphere.html" %}
+
+<div class="explorer">
+  <div class="explorer__chrome">
+  <header class="explorer__top">
+    <div class="explorer__menu-anchor">
+      <button type="button" class="explorer__icon-btn" aria-label="Menu" aria-expanded="false" aria-controls="explorer-menu" data-explorer-menu-btn>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 7h16v2H4V7zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/></svg>
+      </button>
+      <nav id="explorer-menu" class="explorer__menu" hidden>
+        {% if user.is_authenticated %}
+        <a href="{% url 'public:accueil' %}">En savoir plus</a>
+        <a href="{% url 'public:coaching' %}">Coaching individuel</a>
+        <a href="{% url 'public:temoignages' %}">Témoignages</a>
+        <a href="{% url 'public:contact' %}">Contact</a>
+        <a href="{% url 'auth:deconnexion' %}">Déconnexion</a>
+        {% else %}
+        <a href="{% url 'public:explorer' %}">Explorer</a>
+        <a href="{% url 'auth:connexion' %}">Se connecter</a>
+        <a href="{% url 'public:accueil' %}">En savoir plus</a>
+        <a href="{% url 'public:coaching' %}">Coaching individuel</a>
+        {% endif %}
+      </nav>
+    </div>
+    <a class="explorer__logo brand-script brand-mark" href="{% url 'public:explorer' %}">
+      <span>TimaLove</span>
+      <img src="{% static 'images/logo.webp' %}" alt="" width="36" height="36">
+    </a>
+    <div class="explorer__top-actions">
+      <a class="explorer__coach" href="{% url 'public:coaching' %}" aria-label="Coaching individuel">
+        <span class="explorer__coach-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 2.2 13.4 7 18.2 8.2 13.4 9.4 12 14.2 10.6 9.4 5.8 8.2 10.6 7 12 2.2zM19.2 13.2 20 15.8 22.6 16.6 20 17.4 19.2 20 18.4 17.4 15.8 16.6 18.4 15.8 19.2 13.2zM5.4 13.8 6 16 8.2 16.6 6 17.2 5.4 19.4 4.8 17.2 2.6 16.6 4.8 16 5.4 13.8z"/></svg>
+        </span>
+        <span class="explorer__coach-label">Coaching</span>
+      </a>
+      {% if user.is_authenticated %}
+      <a class="explorer__icon-btn explorer__bell" href="{% url 'app:parametres' %}" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M6 17h12v-1.2c0-1.4-.7-2.6-1.8-3.4V9.5a4.2 4.2 0 1 0-8.4 0v2.9C6.7 13.2 6 14.4 6 15.8V17zm4.2 1.8a1.8 1.8 0 0 0 3.6 0"/></svg>
+      </a>
+      {% else %}
+      <a class="explorer__icon-btn explorer__bell" href="{% url 'auth:inscription' %}" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M6 17h12v-1.2c0-1.4-.7-2.6-1.8-3.4V9.5a4.2 4.2 0 1 0-8.4 0v2.9C6.7 13.2 6 14.4 6 15.8V17zm4.2 1.8a1.8 1.8 0 0 0 3.6 0"/></svg>
+      </a>
+      {% endif %}
+    </div>
+  </header>
+  </div>
+
+  <main class="likes" data-likes-root>
+    <header class="likes__intro">
+      <p class="likes__kicker">Ils vous ont choisi</p>
+      <h1 class="likes__title">Likes reçus</h1>
+      <p class="likes__lead">Des regards sincères se posent déjà sur vous. Un like en retour peut ouvrir le dialogue.</p>
+    </header>
+
+    {% if likes %}
+    <section class="likes__stories" aria-label="Nouveaux likes">
+      {% for item in likes %}
+      <a class="likes__story{% if item.is_super_like %} is-super{% endif %}{% if item.is_new %} is-new{% endif %}" href="{{ item.profile_url }}" data-profile-modal="{{ item.id }}" data-filter-item data-super="{{ item.is_super_like|yesno:'1,0' }}" data-online="{{ item.is_online|yesno:'1,0' }}">
+        <span class="likes__story-ring">
+          {% if item.photo_url %}
+          <img src="{{ item.photo_url }}" alt="">
+          {% else %}
+          <span>{{ item.first_name|first|upper }}</span>
+          {% endif %}
+        </span>
+        {% if item.is_super_like %}
+        <span class="likes__story-star" aria-label="Super like">
+          <svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+        </span>
+        {% else %}
+        <span class="likes__story-heart" aria-hidden="true">
+          <svg viewBox="0 0 24 22" width="10" height="9"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+        </span>
+        {% endif %}
+        <span class="likes__story-name">{{ item.first_name }}</span>
+      </a>
+      {% endfor %}
+    </section>
+
+    {% if featured %}
+    <article class="likes__featured visit-glass" data-filter-item data-super="{{ featured.is_super_like|yesno:'1,0' }}" data-online="{{ featured.is_online|yesno:'1,0' }}">
+      <a class="likes__featured-photo" href="{{ featured.profile_url }}" data-profile-modal="{{ featured.id }}">
+        {% if featured.photo_url %}
+        <img src="{{ featured.photo_url }}" alt="{{ featured.first_name }}">
+        {% else %}
+        <span>{{ featured.first_name|first|upper }}</span>
+        {% endif %}
+        <span class="likes__featured-star" aria-label="Super like">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+        </span>
+      </a>
+      <div class="likes__featured-copy">
+        <p class="likes__kicker">Un regard plus sincère</p>
+        <h2>{{ featured.first_name }}{% if featured.age %}, {{ featured.age }}{% endif %}</h2>
+        <p class="likes__featured-meta">{{ featured.city }}{% if featured.profession %} · {{ featured.profession }}{% endif %}</p>
+        <p class="likes__featured-text">{{ featured.first_name }} vous a distingué(e) d’un super like. Un like en retour peut tout ouvrir.</p>
+        <div class="likes__featured-actions">
+          <button type="button" class="likes__btn likes__btn--ghost" data-likes-pass aria-label="Passer">Passer</button>
+          <button type="button" class="likes__btn likes__btn--primary" data-likes-back aria-pressed="false">Liker en retour</button>
+        </div>
+      </div>
+    </article>
+    {% endif %}
+
+    <div class="likes__toolbar">
+      <div class="likes__filters" role="tablist" aria-label="Filtrer les likes">
+        <button type="button" class="likes__filter is-on" data-likes-filter="all" aria-selected="true">Tous</button>
+        <button type="button" class="likes__filter" data-likes-filter="super" aria-selected="false">Super likes</button>
+        <button type="button" class="likes__filter" data-likes-filter="online" aria-selected="false">En ligne</button>
+      </div>
+      <p class="likes__count">{{ likes|length }} profil{{ likes|length|pluralize }}</p>
+    </div>
+
+    <section class="likes__grid" aria-label="Profils qui vous ont liké">
+      {% for item in grid %}
+      <article class="likes__card" data-filter-item data-super="{{ item.is_super_like|yesno:'1,0' }}" data-online="{{ item.is_online|yesno:'1,0' }}">
+        <a class="likes__card-media" href="{{ item.profile_url }}" data-profile-modal="{{ item.id }}">
+          {% if item.photo_url %}
+          <img src="{{ item.photo_url }}" alt="{{ item.first_name }}" loading="lazy">
+          {% else %}
+          <span class="likes__card-fallback">{{ item.first_name|first|upper }}</span>
+          {% endif %}
+          {% if item.is_online %}<i class="likes__online" aria-label="En ligne"></i>{% endif %}
+          {% if item.is_super_like %}
+          <span class="likes__card-star" aria-label="Super like">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+          </span>
+          {% endif %}
+          <span class="likes__card-bar">
+            <strong>{{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}</strong>
+            <em>{{ item.city }}</em>
+          </span>
+        </a>
+        <div class="likes__card-actions">
+          <button type="button" class="likes__icon-btn" data-likes-pass aria-label="Passer">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
+          </button>
+          <button type="button" class="likes__icon-btn likes__icon-btn--like" data-likes-back aria-label="Liker en retour" aria-pressed="false">
+            <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true"><path d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+          </button>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+    <p class="likes__empty-filter" hidden>Aucun profil dans ce filtre.</p>
+    {% else %}
+    <section class="likes__empty" aria-live="polite">
+      <span class="likes__empty-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 22" width="36" height="32"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+      </span>
+      <h2>Personne ne vous a encore liké</h2>
+      <p>Continuez à vous montrer. Les regards sincères finissent toujours par arriver.</p>
+      <a class="likes__cta" href="{% url 'public:explorer' %}">Découvrir des profils</a>
+    </section>
+    {% endif %}
+  </main>
+
+  {% include "partials/explorer_dock.html" with dock_active="likes" %}
+</div>
+{% if user.is_authenticated %}
+<form hidden aria-hidden="true">{% csrf_token %}</form>
+{% endif %}
+{% include "partials/profile_modal.html" %}
+{% endblock %}

@@ -1,0 +1,20 @@
+﻿{% extends "layouts/auth.html" %}
+{% block auth_content %}
+<form method="post">{% csrf_token %}
+  <div class="grid-2">
+    <div class="form-group"><label class="form-label">Prénom</label><input class="form-input" name="first_name" required></div>
+    <div class="form-group"><label class="form-label">Nom</label><input class="form-input" name="last_name" required></div>
+  </div>
+  <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" name="email" required></div>
+  <div class="form-group"><label class="form-label">Téléphone</label><input class="form-input" name="phone"></div>
+  <div class="form-group"><label class="form-label">Mot de passe</label><input class="form-input" type="password" name="password" required minlength="8"></div>
+  <div class="form-group"><label class="form-label">Date de naissance</label><input class="form-input" type="date" name="date_of_birth" required></div>
+  <div class="form-group"><label class="form-label">Genre</label><select class="form-select" name="gender" required>{% for v,l in genders %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+  <div class="form-group"><label class="form-label">Ville</label><input class="form-input" name="city" required></div>
+  <div class="form-group"><label class="form-label">Pays d'origine</label><select class="form-select" name="country">{% for v,l in origines %}<option value="{{ l }}">{{ l }}</option>{% endfor %}</select></div>
+  <div class="form-group"><label class="form-label">Religion</label><select class="form-select" name="religion"><option value="">—</option>{% for v,l in religions %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+  <div class="form-group"><label class="form-label">Bio</label><textarea class="form-textarea" name="bio" rows="3"></textarea></div>
+  <button class="btn btn-primary btn-block" type="submit">Créer mon compte</button>
+</form>
+<p style="margin-top:1rem;font-size:.9rem;">Déjà inscrit ? <a href="{% url 'auth:connexion' %}" style="color:var(--rose-primary);">Se connecter</a></p>
+{% endblock %}

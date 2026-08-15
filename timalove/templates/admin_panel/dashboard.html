@@ -1,0 +1,13 @@
+﻿{% extends "layouts/admin.html" %}
+{% block content %}
+<div class="stats-grid">
+  <div class="stat-card"><span>Membres</span><strong>{{ stats.members_total }}</strong></div>
+  <div class="stat-card"><span>Approuvés</span><strong>{{ stats.members_approved }}</strong></div>
+  <div class="stat-card"><span>En attente</span><strong>{{ stats.pending_registrations }}</strong></div>
+  <div class="stat-card"><span>Matchs actifs</span><strong>{{ stats.matches_active }}</strong></div>
+  <div class="stat-card"><span>Messages / 7j</span><strong>{{ stats.messages_week }}</strong></div>
+  <div class="stat-card"><span>Swipes / 7j</span><strong>{{ stats.swipes_week }}</strong></div>
+  <div class="stat-card"><span>Paiements</span><strong>{{ stats.revenue_paid }}</strong></div>
+  <div class="stat-card"><span>Signalements</span><strong>{{ stats.reports_pending }}</strong></div>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+﻿{% extends "layouts/public.html" %}
+{% load static %}
+{% block content %}
+<section class="section"><div class="container grid-2" style="align-items:center;">
+  <div>
+    {% include "partials/btn_back.html" with href="/explorer/" %}
+    <h1 style="margin-top:1rem;">Qui suis-je ?</h1>
+    <p>Je suis Tima, fondatrice de TimaLove. Mon engagement : créer un espace de rencontre sérieux, humain et orienté mariage.</p>
+    <p>Chaque profil est relu. Chaque mise en relation est pensée. Pas de hasard algorithmique froid — un accompagnement vrai.</p>
+    <a class="btn btn-primary" href="{% url 'auth:inscription' %}">Rejoindre la communauté</a>
+  </div>
+  <img src="{% static 'images/Tima-profil.webp' %}" alt="Tima" style="border-radius:2rem;aspect-ratio:4/5;object-fit:cover;background:var(--rose-pale);">
+</div></section>
+{% endblock %}

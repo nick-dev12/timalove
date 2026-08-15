@@ -1,0 +1,11 @@
+﻿{% extends "layouts/app.html" %}
+{% block content %}
+{% if matched %}<div class="alert alert-success">C'est un match !</div>{% endif %}
+{% if cards %}
+  {% with card=cards.0 %}
+  {% include "partials/discover_card.html" %}
+  {% endwith %}
+{% else %}
+  <div class="empty-state"><h2>Plus de profils pour le moment</h2><p>Revenez bientôt — de nouveaux membres arrivent.</p></div>
+{% endif %}
+{% endblock %}

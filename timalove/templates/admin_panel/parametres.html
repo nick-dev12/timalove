@@ -1,0 +1,12 @@
+﻿{% extends "layouts/admin.html" %}
+{% block content %}
+<form method="post" class="card card-lg">{% csrf_token %}
+  <label style="display:flex;gap:.5rem;align-items:center;margin:.75rem 0;"><input type="checkbox" name="registrations_enabled" {% if settings.registrations_enabled %}checked{% endif %}> Inscriptions ouvertes</label>
+  <label style="display:flex;gap:.5rem;align-items:center;margin:.75rem 0;"><input type="checkbox" name="maintenance_mode" {% if settings.maintenance_mode %}checked{% endif %}> Mode maintenance</label>
+  <div class="form-group"><label class="form-label">Message maintenance</label><input class="form-input" name="maintenance_message" value="{{ settings.maintenance_message }}"></div>
+  <div class="form-group"><label class="form-label">Limite messages gratuits</label><input class="form-input" type="number" name="free_messages_limit" value="{{ settings.free_messages_limit }}"></div>
+  <div class="form-group"><label class="form-label">WhatsApp</label><input class="form-input" name="whatsapp_number" value="{{ settings.whatsapp_number }}"></div>
+  <div class="form-group"><label class="form-label">Email contact</label><input class="form-input" name="contact_email" value="{{ settings.contact_email }}"></div>
+  <button class="btn btn-primary" type="submit">Enregistrer</button>
+</form>
+{% endblock %}
