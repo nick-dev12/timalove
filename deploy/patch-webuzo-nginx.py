@@ -19,7 +19,7 @@ LOCK_PATH = Path("/run/timalove-nginx-patch.lock")
 DOMAIN = "timalove.goo-bridge.com"
 MARKER_BEGIN = "# --- timalove-daphne-begin ---"
 MARKER_END = "# --- timalove-daphne-end ---"
-WS_SIGNATURE = "Sec-WebSocket-Extensions"
+WS_SIGNATURE = "proxy_pass_header Upgrade"
 
 # modsecurity off : le WAF Webuzo coupe souvent Upgrade: websocket (1006).
 # Sec-WebSocket-Extensions vide : permessage-deflate casse le handshake navigateur.
@@ -35,8 +35,9 @@ PROXY = f"""
             expires 7d;
             access_log off;
         }}
-        location /ws/ {{
+        location ^~ /ws/ {{
             modsecurity off;
+            gzip off;
             proxy_pass http://127.0.0.1:8001;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
@@ -47,6 +48,9 @@ PROXY = f"""
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header Origin $http_origin;
             proxy_set_header Sec-WebSocket-Extensions "";
+            proxy_pass_header Upgrade;
+            proxy_pass_header Connection;
+            proxy_pass_header Sec-WebSocket-Accept;
             proxy_read_timeout 86400s;
             proxy_send_timeout 86400s;
             proxy_buffering off;

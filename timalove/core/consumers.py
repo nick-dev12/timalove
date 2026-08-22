@@ -86,13 +86,17 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             await self.close(code=4401)
             return
         self.group = f"notif_{profile_id}"
-        # Accepter avant Redis : sinon un timeout Redis ferme le handshake (1006 côté navigateur).
+        # Accepter et répondre tout de suite pour que Nginx envoie le 101
+        # avant tout appel Redis (sinon le navigateur voit un 1006).
         await self.accept()
+        await self.send(text_data=json.dumps({"event": "connected", "ok": True}))
+        if self.channel_layer is None:
+            logger.warning("[ws] channel layer absent")
+            return
         try:
             await self.channel_layer.group_add(self.group, self.channel_name)
         except Exception:
             logger.exception("[ws] notification group_add a échoué")
-        await self.send(text_data=json.dumps({"event": "connected", "ok": True}))
 
     async def disconnect(self, code):
         if hasattr(self, "group"):
