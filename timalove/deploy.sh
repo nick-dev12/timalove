@@ -251,7 +251,7 @@ NGINX_CONF="/usr/local/apps/nginx/etc/conf.d/webuzoVH.conf"
 if [[ -f "$NGINX_PATCH" ]] && [[ -f "$NGINX_CONF" ]]; then
     log "Patch Nginx WebSocket (proxy wss → Daphne)"
     if python3 "$NGINX_PATCH"; then
-        ok "Nginx WebSocket proxy → appliqué (v3)"
+        ok "Nginx WebSocket proxy → appliqué (v4)"
     else
         warn "Patch Nginx WebSocket — échec (lancer : sudo python3 $NGINX_PATCH)"
     fi
