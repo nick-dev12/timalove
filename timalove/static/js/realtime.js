@@ -67,6 +67,10 @@
   }
 
   function renderLikesCount(count) {
+    if (document.body.classList.contains("likes-page")) {
+      renderBadge("[data-unread-likes]", 0, "[data-dock-likes]", "Likes");
+      return;
+    }
     renderBadge("[data-unread-likes]", count, "[data-dock-likes]", "Likes");
   }
 

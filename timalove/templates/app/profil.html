@@ -4,7 +4,7 @@
 {% block body_class %}visit-profil-page{% endblock %}
 {% block head %}
 <script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
-<script src="{% static 'js/own-profile.js' %}?v=20260822s1" defer></script>
+<script src="{% static 'js/own-profile.js' %}?v=20260822s4" defer></script>
 {% endblock %}
 {% block body %}
 <div class="visit visit--own" data-own-profile data-max-photos="{{ max_photos }}">
@@ -17,51 +17,63 @@
     <span class="visit__nav-spacer" aria-hidden="true"></span>
   </header>
 
-  <div class="visit__media">
-    <div class="visit__photo-stage">
-      <section class="visit__hero" aria-label="Photo principale">
-        {% if member.photo_url %}
-        <img class="visit__hero-img" src="{{ member.photo_url }}" alt="{{ member.first_name }}" width="800" height="1000" data-hero-img>
-        {% else %}
-        <div class="visit__hero-fallback" data-hero-fallback>{{ member.first_name|first|upper }}</div>
-        <img class="visit__hero-img" alt="{{ member.first_name }}" width="800" height="1000" data-hero-img hidden>
-        {% endif %}
-        <span class="visit__gallery-flag" data-hero-flag{% if not member.photo_url %} hidden{% endif %}>Profil</span>
-        <button type="button" class="visit__gallery-remove" data-hero-delete{% if not member.photo_url %} hidden{% endif %}>Retirer</button>
-      </section>
-    </div>
-    <button type="button" class="visit__photo-action" data-avatar-pick>Changer la photo</button>
-    <input type="file" accept="image/*" hidden data-avatar-file>
-    <p class="visit__save-msg" data-save-msg="photo" hidden></p>
+  <div class="visit__intro">
+    <header class="visit__ig">
+      <div class="visit__ig-top">
+        <div class="visit__media">
+          <div class="visit__photo-stage">
+            <section class="visit__hero" aria-label="Photo de profil">
+              {% if member.photo_url %}
+              <img class="visit__hero-img" src="{{ member.photo_url }}" alt="{{ member.first_name }}" width="160" height="160" data-hero-img>
+              {% else %}
+              <div class="visit__hero-fallback" data-hero-fallback>{{ member.first_name|first|upper }}</div>
+              <img class="visit__hero-img" alt="{{ member.first_name }}" width="160" height="160" data-hero-img hidden>
+              {% endif %}
+            </section>
+          </div>
+        </div>
+        <section class="visit__identity">
+          <div class="visit__identity-top">
+            <div class="visit__who">
+              <h1 class="visit__name">
+                <span class="visit__name-main">
+                  <span data-display-name>{{ member.full_name|default:member.first_name }}</span>{% if member.age %}<span class="visit__age" data-display-age>, {{ member.age }}</span>{% else %}<span class="visit__age" data-display-age></span>{% endif %}
+                </span>
+                {% if member.is_verified %}
+                <span class="visit__verified" title="Profil vérifié" aria-label="Profil vérifié">
+                  <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M9.2 16.6 5 12.4l1.4-1.4 2.8 2.8 8-8L18.6 7z"/></svg>
+                </span>
+                {% endif %}
+              </h1>
+              <p class="visit__handle" data-display-location>{{ member.location }}</p>
+            </div>
+          </div>
+        </section>
+      </div>
+      <ul class="visit__stats" aria-label="Activité du profil">
+        <li><strong>{{ member.photos|length }}</strong><span>Photos</span></li>
+        <li><strong>{{ member.followers }}</strong><span>Likes</span></li>
+        <li>
+          <strong data-display-completion>{{ member.completion }}%</strong>
+          <span>Complet</span>
+        </li>
+      </ul>
+      {% if member.profession %}
+      <p class="visit__ig-bio" data-display-role>{{ member.profession }}</p>
+      {% else %}
+      <p class="visit__ig-bio" data-display-role hidden></p>
+      {% endif %}
+      <div class="visit__ig-actions">
+        <button type="button" class="visit__photo-action" data-avatar-pick>Changer la photo</button>
+        <button type="button" class="visit__photo-action visit__photo-action--primary" data-settings-modal-open="subscription">Abonnements</button>
+      </div>
+      <input type="file" accept="image/*" hidden data-avatar-file>
+      <p class="visit__save-msg" data-save-msg="photo" hidden></p>
+    </header>
   </div>
 
   <main class="visit__sheet">
     <form aria-hidden="true" style="display:none">{% csrf_token %}</form>
-
-    <section class="visit__identity visit-glass">
-      <div class="visit__identity-top">
-        <div class="visit__who">
-          <h1 class="visit__name">
-            <span data-display-name>{{ member.first_name }}</span>{% if member.age %}<span class="visit__age" data-display-age>, {{ member.age }}</span>{% else %}<span class="visit__age" data-display-age></span>{% endif %}
-          </h1>
-          <p class="visit__location">
-            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
-            <span data-display-location>{{ member.location }}</span>
-          </p>
-          <p class="visit__role" data-display-role>{{ member.profession|default:"" }}</p>
-        </div>
-        <div class="visit__compat" aria-label="Profil complété à {{ member.completion }} pourcent">
-          <svg class="visit__compat-ring" viewBox="0 0 72 72" aria-hidden="true">
-            <circle cx="36" cy="36" r="30" class="visit__compat-track"></circle>
-            <circle cx="36" cy="36" r="30" class="visit__compat-value" style="--compat: {{ member.completion }}"></circle>
-          </svg>
-          <div class="visit__compat-label">
-            <strong data-display-completion>{{ member.completion }}%</strong>
-            <span>complet</span>
-          </div>
-        </div>
-      </div>
-    </section>
 
     <div class="visit__tabs" role="tablist" aria-label="Sections du profil">
       <button type="button" class="visit__tab is-active" role="tab" id="tab-about" aria-selected="true" aria-controls="panel-about" data-tab="about">À propos</button>
@@ -237,10 +249,9 @@
       {% endif %}
 
       <div class="visit__subtabs" role="tablist" aria-label="Sections des paramètres">
-        <button type="button" class="visit__subtab is-active" role="tab" id="settings-tab-profile" aria-selected="true" aria-controls="settings-panel-profile" data-settings-tab="profile">Profil</button>
-        <button type="button" class="visit__subtab" role="tab" id="settings-tab-privacy" aria-selected="false" aria-controls="settings-panel-privacy" data-settings-tab="privacy">Visibilité</button>
+        <button type="button" class="visit__subtab is-active" role="tab" id="settings-tab-profile" aria-selected="true" aria-controls="settings-panel-profile" data-settings-tab="profile">Modifier le profil</button>
         <button type="button" class="visit__subtab" role="tab" id="settings-tab-notifications" aria-selected="false" aria-controls="settings-panel-notifications" data-settings-tab="notifications">Notifications</button>
-        <button type="button" class="visit__subtab" role="tab" id="settings-tab-subscription" aria-selected="false" aria-controls="settings-panel-subscription" data-settings-tab="subscription">Abonnements</button>
+        <button type="button" class="visit__subtab visit__subtab--modal" data-settings-modal-open="privacy">Visibilité</button>
       </div>
 
       <div class="visit__settings-panel" id="settings-panel-profile" role="tabpanel" aria-labelledby="settings-tab-profile" data-settings-panel="profile">
@@ -615,32 +626,6 @@
         </article>
       </div>
 
-      <div class="visit__settings-panel" id="settings-panel-privacy" role="tabpanel" aria-labelledby="settings-tab-privacy" data-settings-panel="privacy" hidden>
-        <article class="visit-glass visit__card" data-block="privacy">
-          <div class="visit__card-head">
-            <p class="visit__kicker">Confidentialité</p>
-            <h2 class="visit__card-title">Visibilité du profil</h2>
-            <p class="visit__card-lead">Choisissez ce que les autres membres peuvent voir de vous.</p>
-          </div>
-          <form class="visit-form" data-privacy-form>
-            <label class="visit-form__check"><input type="checkbox" name="hide_age"{% if profile.hide_age %} checked{% endif %}> Masquer mon âge</label>
-            <label class="visit-form__check"><input type="checkbox" name="is_hidden"{% if profile.is_hidden %} checked{% endif %}> Masquer mon profil dans l’explorer</label>
-            <label class="visit-form__field">
-              <span>Dernière connexion visible pour</span>
-              <select name="last_seen_visibility">
-                {% for value, label in visibilities %}
-                <option value="{{ value }}"{% if profile.last_seen_visibility == value %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-            </label>
-          </form>
-          <div class="visit__card-foot">
-            <p class="visit__save-msg" data-save-msg="privacy" hidden></p>
-            <button type="button" class="visit__save" data-save="privacy">Enregistrer</button>
-          </div>
-        </article>
-      </div>
-
       <div class="visit__settings-panel" id="settings-panel-notifications" role="tabpanel" aria-labelledby="settings-tab-notifications" data-settings-panel="notifications" hidden>
         <article class="visit-glass visit__card visit-ws-test" data-block="ws-diagnostic">
           <div class="visit__card-head">
@@ -690,8 +675,56 @@
           </div>
         </article>
       </div>
+    </section>
+  </main>
 
-      <div class="visit__settings-panel" id="settings-panel-subscription" role="tabpanel" aria-labelledby="settings-tab-subscription" data-settings-panel="subscription" hidden>
+  <div class="visit-settings-modal" id="settings-modal-privacy" hidden data-settings-modal="privacy">
+    <div class="visit-settings-modal__backdrop" data-settings-modal-close tabindex="-1"></div>
+    <div class="visit-settings-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="settings-modal-privacy-title">
+      <header class="visit-settings-modal__top">
+        <h2 class="visit-settings-modal__title" id="settings-modal-privacy-title">Visibilité</h2>
+        <button type="button" class="visit-settings-modal__close" data-settings-modal-close aria-label="Fermer">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+        </button>
+      </header>
+      <div class="visit-settings-modal__body">
+        <article class="visit-glass visit__card" data-block="privacy">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Confidentialité</p>
+            <h2 class="visit__card-title">Visibilité du profil</h2>
+            <p class="visit__card-lead">Choisissez ce que les autres membres peuvent voir de vous.</p>
+          </div>
+          <form class="visit-form" data-privacy-form>
+            <label class="visit-form__check"><input type="checkbox" name="hide_age"{% if profile.hide_age %} checked{% endif %}> Masquer mon âge</label>
+            <label class="visit-form__check"><input type="checkbox" name="is_hidden"{% if profile.is_hidden %} checked{% endif %}> Masquer mon profil dans l’explorer</label>
+            <label class="visit-form__field">
+              <span>Dernière connexion visible pour</span>
+              <select name="last_seen_visibility">
+                {% for value, label in visibilities %}
+                <option value="{{ value }}"{% if profile.last_seen_visibility == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          </form>
+          <div class="visit__card-foot">
+            <p class="visit__save-msg" data-save-msg="privacy" hidden></p>
+            <button type="button" class="visit__save" data-save="privacy">Enregistrer</button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+
+  <div class="visit-settings-modal" id="settings-modal-subscription" hidden data-settings-modal="subscription">
+    <div class="visit-settings-modal__backdrop" data-settings-modal-close tabindex="-1"></div>
+    <div class="visit-settings-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="settings-modal-subscription-title">
+      <header class="visit-settings-modal__top">
+        <h2 class="visit-settings-modal__title" id="settings-modal-subscription-title">Abonnements</h2>
+        <button type="button" class="visit-settings-modal__close" data-settings-modal-close aria-label="Fermer">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+        </button>
+      </header>
+      <div class="visit-settings-modal__body">
         <article class="visit-glass visit__card visit__card--plans" data-block="subscription">
           <div class="visit__card-head">
             <p class="visit__kicker">Abonnement</p>
@@ -763,7 +796,7 @@
           </div>
         </article>
       </div>
-    </section>
-  </main>
+    </div>
+  </div>
 </div>
 {% endblock %}

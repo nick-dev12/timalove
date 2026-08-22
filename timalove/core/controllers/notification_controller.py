@@ -57,7 +57,7 @@ def _notification_payload(notification: Notification) -> dict:
     }
     try:
         payload["unread_messages"] = message_controller.unread_count(notification.user)
-        payload["likes_count"] = likes_controller.count_incoming(notification.user)
+        payload["likes_count"] = likes_controller.count_unread_incoming(notification.user)
     except Exception:
         pass
     return payload

@@ -7,10 +7,10 @@
       </span>
       <span class="explorer__tab-label">Historique</span>
     </a>
-    <a class="explorer__tab{% if dock_active == 'likes' %} is-active{% endif %}" href="{% if user.is_authenticated %}{% url 'app:likes' %}{% else %}{% url 'auth:inscription' %}{% endif %}"{% if user.is_authenticated and nav_badges.likes_count %} aria-label="Likes, {{ nav_badges.likes_count }}"{% endif %} data-dock-likes>
+    <a class="explorer__tab{% if dock_active == 'likes' %} is-active{% endif %}" href="{% if user.is_authenticated %}{% url 'app:likes' %}{% else %}{% url 'auth:inscription' %}{% endif %}"{% if user.is_authenticated and nav_badges.likes_count and dock_active != 'likes' %} aria-label="Likes, {{ nav_badges.likes_count }}"{% endif %} data-dock-likes>
       <span class="explorer__tab-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
-        <span class="explorer__tab-badge" data-unread-likes{% if not user.is_authenticated or not nav_badges.likes_count %} hidden{% endif %}>{% if nav_badges.likes_count > 99 %}99+{% else %}{{ nav_badges.likes_count }}{% endif %}</span>
+        <span class="explorer__tab-badge" data-unread-likes{% if not user.is_authenticated or not nav_badges.likes_count or dock_active == 'likes' %} hidden{% endif %}>{% if nav_badges.likes_count > 99 %}99+{% else %}{{ nav_badges.likes_count }}{% endif %}</span>
       </span>
       <span class="explorer__tab-label">Likes</span>
     </a>

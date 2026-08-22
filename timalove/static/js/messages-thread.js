@@ -325,7 +325,7 @@
     }).then(function (res) {
       return res.json().then(function (payload) {
         if (!res.ok || !payload.ok) {
-          throw new Error((payload && payload.error) || "Envoi impossible.");
+          throw failFromPayload(payload, "Envoi impossible.");
         }
         return payload.item;
       });
@@ -452,7 +452,7 @@
           appendBubble(normalizeChatItem(item));
         })
         .catch(function (err) {
-          toast(err.message || "Envoi du vocal impossible.");
+          if (!handleLimitFailure(err)) toast(err.message || "Envoi du vocal impossible.");
         });
     });
     if (rec.state !== "inactive") rec.stop();
@@ -488,6 +488,12 @@
       appendBubble(item);
       if (isFromPartner(data.item)) {
         markPartnerMessagesRead(partnerId);
+      }
+      return;
+    }
+    if (data.event === "error") {
+      if (!handleLimitFailure({ code: data.code, message: data.message || "" })) {
+        toast(data.message || "Envoi impossible.");
       }
       return;
     }
@@ -542,6 +548,142 @@
     };
   }
 
+  function failFromPayload(payload, fallback) {
+    const err = new Error((payload && (payload.message || payload.error)) || fallback);
+    if (payload && payload.code) err.code = payload.code;
+    if (!err.code && /limite/i.test(err.message || "")) err.code = "message_limit";
+    return err;
+  }
+
+  function isLimitError(err) {
+    if (!err) return false;
+    if (err.code === "message_limit") return true;
+    return /limite/i.test(err.message || "");
+  }
+
+  const limitPopup = document.getElementById("upgrade-limit-popup");
+  const plansModal = document.getElementById("upgrade-plans-modal");
+  const plansStatus = document.querySelector("[data-upgrade-plans-status]");
+
+  function setQuotaLocked(locked) {
+    if (!form) return;
+    form.setAttribute("data-quota-locked", locked ? "1" : "0");
+  }
+
+  function showLimitPopup() {
+    if (!limitPopup) {
+      toast("Votre limite a été atteinte. Passez au plan supérieur.");
+      return;
+    }
+    setQuotaLocked(true);
+    limitPopup.hidden = false;
+    document.body.classList.add("is-upgrade-popup");
+    const focusBtn = limitPopup.querySelector("[data-upgrade-open-plans]");
+    if (focusBtn) focusBtn.focus();
+  }
+
+  function hideLimitPopup() {
+    if (!limitPopup) return;
+    limitPopup.hidden = true;
+    if (!plansModal || plansModal.hidden) {
+      document.body.classList.remove("is-upgrade-popup");
+    }
+  }
+
+  function showPlansModal() {
+    if (!plansModal) return;
+    hideLimitPopup();
+    plansModal.hidden = false;
+    document.body.classList.add("is-upgrade-popup");
+    const closeBtn = plansModal.querySelector("[data-upgrade-plans-close]");
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function hidePlansModal() {
+    if (!plansModal) return;
+    plansModal.hidden = true;
+    document.body.classList.remove("is-upgrade-popup");
+  }
+
+  function handleLimitFailure(err) {
+    if (isLimitError(err)) {
+      showLimitPopup();
+      return true;
+    }
+    return false;
+  }
+
+  if (limitPopup) {
+    limitPopup.querySelectorAll("[data-upgrade-limit-close]").forEach(function (el) {
+      el.addEventListener("click", hideLimitPopup);
+    });
+    const openPlans = limitPopup.querySelector("[data-upgrade-open-plans]");
+    if (openPlans) {
+      openPlans.addEventListener("click", showPlansModal);
+    }
+  }
+
+  if (plansModal) {
+    plansModal.querySelectorAll("[data-upgrade-plans-close]").forEach(function (el) {
+      el.addEventListener("click", hidePlansModal);
+    });
+    plansModal.addEventListener("click", function (event) {
+      const btn = event.target.closest("[data-checkout]");
+      if (!btn || btn.disabled) return;
+      event.preventDefault();
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Ouverture du paiement…";
+      if (plansStatus) {
+        plansStatus.hidden = true;
+        plansStatus.textContent = "";
+      }
+      fetch("/api/payments/checkout/", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrf(),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ tier: btn.getAttribute("data-checkout") }),
+      })
+        .then(function (res) {
+          return res.json().then(function (payload) {
+            if (!res.ok || !payload.ok) {
+              throw new Error((payload && payload.message) || "Lien de paiement indisponible.");
+            }
+            return payload;
+          });
+        })
+        .then(function (data) {
+          if (!data.checkout_url) throw new Error("Lien de paiement indisponible.");
+          window.location.href = data.checkout_url;
+        })
+        .catch(function (err) {
+          if (plansStatus) {
+            plansStatus.hidden = false;
+            plansStatus.textContent = err.message || "Paiement indisponible pour le moment.";
+          } else {
+            toast(err.message || "Paiement indisponible pour le moment.");
+          }
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.textContent = original;
+        });
+    });
+  }
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape") return;
+    if (plansModal && !plansModal.hidden) {
+      hidePlansModal();
+      return;
+    }
+    if (limitPopup && !limitPopup.hidden) hideLimitPopup();
+  });
+
   function sendTextMessage(content) {
     return fetch("/api/messages/", {
       method: "POST",
@@ -555,7 +697,7 @@
     }).then(function (res) {
       return res.json().then(function (payload) {
         if (!res.ok || !payload.ok) {
-          throw new Error((payload && payload.message) || "Envoi impossible.");
+          throw failFromPayload(payload, "Envoi impossible.");
         }
         return payload;
       });
@@ -600,6 +742,10 @@
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       if (!input || !input.value.trim() || !partnerId) return;
+      if (form.getAttribute("data-quota-locked") === "1") {
+        showLimitPopup();
+        return;
+      }
       const content = input.value.trim();
       const sendBtn = form.querySelector(".msg__send");
       if (sendBtn) sendBtn.disabled = true;
@@ -613,7 +759,7 @@
           syncReadReceipts(partnerId);
         })
         .catch(function (err) {
-          toast(err.message || "Envoi impossible.");
+          if (!handleLimitFailure(err)) toast(err.message || "Envoi impossible.");
         })
         .finally(function () {
           if (sendBtn) sendBtn.disabled = false;
@@ -636,12 +782,20 @@
     const voiceBtn = event.target.closest('[data-msg-tool="voice"]');
     if (voiceBtn) {
       event.preventDefault();
+      if (form && form.getAttribute("data-quota-locked") === "1") {
+        showLimitPopup();
+        return;
+      }
       startRecord();
       return;
     }
     const photoBtn = event.target.closest('[data-msg-tool="photos"]');
     if (photoBtn && photoInput) {
       event.preventDefault();
+      if (form && form.getAttribute("data-quota-locked") === "1") {
+        showLimitPopup();
+        return;
+      }
       photoInput.click();
       return;
     }
@@ -669,7 +823,7 @@
           appendBubble(normalizeChatItem(item));
         })
         .catch(function (err) {
-          toast(err.message || "Envoi de la photo impossible.");
+          if (!handleLimitFailure(err)) toast(err.message || "Envoi de la photo impossible.");
         });
     });
   }

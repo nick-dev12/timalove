@@ -108,7 +108,7 @@ def likes_incoming(request):
 @login_required
 @require_GET
 def likes_count(request):
-    return JsonResponse({"count": likes_controller.count_incoming(request.user.profile)})
+    return JsonResponse({"count": likes_controller.count_unread_incoming(request.user.profile)})
 
 
 @login_required
@@ -162,6 +162,12 @@ def messages(request):
         request.user.profile, data.get("partner_id"), data.get("content", "")
     )
     payload = {"ok": ok, "message": msg}
+    if not ok:
+        from core.controllers import quota_controller
+
+        code = quota_controller.limit_code_for(request.user.profile)
+        if code:
+            payload["code"] = code
     if message:
         payload["id"] = str(message.id)
         payload["item"] = message_controller._serialize_message_ws(message)

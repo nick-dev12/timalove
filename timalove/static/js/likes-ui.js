@@ -78,6 +78,10 @@
     const root = document.querySelector("[data-likes-root]");
     if (!root) return;
 
+    if (typeof window.timaloveRenderLikesBadge === "function") {
+      window.timaloveRenderLikesBadge(0);
+    }
+
     const filters = root.querySelectorAll("[data-likes-filter]");
     const empty = root.querySelector(".likes__empty-filter");
     const isLive = root.getAttribute("data-likes-live") === "1";

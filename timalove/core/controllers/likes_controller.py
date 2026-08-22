@@ -174,8 +174,31 @@ def count_incoming(profile: Profile) -> int:
     ).count()
 
 
+def _is_unread_incoming(item: dict, seen_at) -> bool:
+    if not seen_at:
+        return True
+    created = item.get("created_at")
+    if not created:
+        return False
+    return created > seen_at
+
+
+def count_unread_incoming(profile: Profile) -> int:
+    seen_at = profile.likes_inbox_seen_at
+    return sum(1 for item in incoming(profile) if _is_unread_incoming(item, seen_at))
+
+
+def mark_inbox_seen(profile: Profile) -> None:
+    from django.utils import timezone
+
+    now = timezone.now()
+    Profile.objects.filter(pk=profile.pk).update(likes_inbox_seen_at=now, updated_at=now)
+    profile.likes_inbox_seen_at = now
+
+
 def incoming_cards(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> list[dict]:
     """Likes reçus, format fiche pour la page Likes."""
+    seen_at = profile.likes_inbox_seen_at
     cards = []
     for item in incoming(profile, limit=limit):
         other = item["profile"]
@@ -200,7 +223,7 @@ def incoming_cards(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> list[di
                 "already_liked_back": bool(item.get("already_liked_back")),
                 "message_url": f"/discussions/{other.pk}/",
                 "is_online": bool(getattr(other, "is_online", False)),
-                "is_new": True,
+                "is_new": _is_unread_incoming(item, seen_at),
                 "when": when,
                 "is_locked": False,
             }

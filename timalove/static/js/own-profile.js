@@ -78,20 +78,62 @@
         if (key !== "settings") url.searchParams.delete("section");
       }
       history.replaceState({}, "", url);
-      if (key === "settings") showSettingsSection(getSettingsSectionFromUrl());
+      if (key === "settings") {
+        const section = getSettingsSectionFromUrl();
+        if (MODAL_SECTIONS.includes(section)) {
+          showSettingsSection("profile");
+          openSettingsModal(section);
+        } else {
+          closeSettingsModal();
+          showSettingsSection(section);
+        }
+      } else {
+        closeSettingsModal();
+      }
     }
 
     const settingsTabs = [...root.querySelectorAll("[data-settings-tab]")];
     const settingsPanels = [...root.querySelectorAll("[data-settings-panel]")];
     const settingsSectionKeys = settingsPanels.map((p) => p.getAttribute("data-settings-panel"));
+    const MODAL_SECTIONS = ["privacy", "subscription"];
+    const settingsModals = [...root.querySelectorAll("[data-settings-modal]")];
 
     function getSettingsSectionFromUrl() {
       const section = new URLSearchParams(window.location.search).get("section");
+      if (MODAL_SECTIONS.includes(section)) return section;
       return settingsSectionKeys.includes(section) ? section : "profile";
+    }
+
+    function setSettingsUrlSection(key) {
+      const url = new URL(window.location.href);
+      if (!key || key === "profile") url.searchParams.delete("section");
+      else url.searchParams.set("section", key);
+      history.replaceState({}, "", url);
+    }
+
+    function closeSettingsModal() {
+      settingsModals.forEach((modal) => {
+        modal.hidden = true;
+      });
+      document.body.classList.remove("is-settings-modal");
+      const section = new URLSearchParams(window.location.search).get("section");
+      if (MODAL_SECTIONS.includes(section)) setSettingsUrlSection("");
+    }
+
+    function openSettingsModal(key) {
+      if (!MODAL_SECTIONS.includes(key)) return;
+      settingsModals.forEach((modal) => {
+        modal.hidden = modal.getAttribute("data-settings-modal") !== key;
+      });
+      document.body.classList.add("is-settings-modal");
+      setSettingsUrlSection(key);
+      const dialog = root.querySelector(`[data-settings-modal="${key}"] .visit-settings-modal__dialog`);
+      dialog?.querySelector("[data-settings-modal-close]")?.focus();
     }
 
     function showSettingsSection(key) {
       if (!settingsSectionKeys.includes(key)) key = "profile";
+      closeSettingsModal();
       settingsTabs.forEach((tab) => {
         const on = tab.getAttribute("data-settings-tab") === key;
         tab.classList.toggle("is-active", on);
@@ -101,14 +143,21 @@
         const on = panel.getAttribute("data-settings-panel") === key;
         panel.hidden = !on;
       });
-      const url = new URL(window.location.href);
-      if (key === "profile") url.searchParams.delete("section");
-      else url.searchParams.set("section", key);
-      history.replaceState({}, "", url);
+      setSettingsUrlSection(key);
     }
 
     settingsTabs.forEach((tab) => {
       tab.addEventListener("click", () => showSettingsSection(tab.getAttribute("data-settings-tab")));
+    });
+
+    root.querySelectorAll("[data-settings-modal-open]").forEach((btn) => {
+      btn.addEventListener("click", () => openSettingsModal(btn.getAttribute("data-settings-modal-open")));
+    });
+    root.querySelectorAll("[data-settings-modal-close]").forEach((el) => {
+      el.addEventListener("click", closeSettingsModal);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeSettingsModal();
     });
 
     tabs.forEach((tab) => {
@@ -203,7 +252,12 @@
         life_project: fd.get("life_project"),
         bio: fd.get("bio"),
       });
-      const name = fd.get("first_name") || "";
+      const first = String(fd.get("first_name") || "").trim().replace(/\s+/g, " ");
+      const last = String(fd.get("last_name") || "").trim().replace(/\s+/g, " ");
+      let name = first || last || "Membre";
+      if (first && last && first.toLowerCase() !== last.toLowerCase() && !first.toLowerCase().endsWith(" " + last.toLowerCase())) {
+        name = first + " " + last;
+      }
       const age = fd.get("age");
       root.querySelector("[data-display-name]").textContent = name;
       const ageEl = root.querySelector("[data-display-age]");
@@ -349,7 +403,7 @@
 
     async function disableNotifications() {
       if (typeof window.timaloveDisablePush === "function") {
-        await window.timaloveDisablePush().catch(() => {});
+        await window.timaloveDisablePush().catch(() => { });
       }
       await postJSON("/api/profile/update/", {
         notification_preferences: {
@@ -376,9 +430,9 @@
       setNotifEnableMsg("");
       try {
         await enableNotifications();
-      window.timaloveNotifPopup?.showSuccess(
-        "Vous recevrez les likes, matchs et messages en temps réel.",
-      );
+        window.timaloveNotifPopup?.showSuccess(
+          "Vous recevrez les likes, matchs et messages en temps réel.",
+        );
       } catch (err) {
         setNotifEnableMsg(err.message || "Activation impossible.", true);
       } finally {
@@ -798,19 +852,8 @@
 
     function syncHeroChrome(hasPhoto) {
       const flag = root.querySelector("[data-hero-flag]");
-      const del = root.querySelector("[data-hero-delete]");
       if (flag) flag.hidden = !hasPhoto;
-      if (del) del.hidden = !hasPhoto;
     }
-
-    root.querySelector("[data-hero-delete]")?.addEventListener("click", async () => {
-      try {
-        await postJSON("/api/profile/photo/delete/", { id: "primary" });
-        window.location.reload();
-      } catch (err) {
-        setMsg("photo", err.message, true);
-      }
-    });
 
     root.querySelector("[data-avatar-pick]")?.addEventListener("click", () => avatarFile?.click());
     avatarFile?.addEventListener("change", async () => {

@@ -84,6 +84,7 @@ class Profile(models.Model):
     is_boosted = models.BooleanField(default=False)
     boost_end_date = models.DateTimeField(blank=True, null=True)
     last_active_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
+    likes_inbox_seen_at = models.DateTimeField(blank=True, null=True)
     is_online = models.BooleanField(default=False)
     is_hidden = models.BooleanField(default=False)
     last_seen_visibility = models.CharField(
@@ -169,7 +170,14 @@ class Profile(models.Model):
 
     @property
     def display_name(self) -> str:
-        return self.first_name
+        first = " ".join((self.first_name or "").split())
+        last = " ".join((self.last_name or "").split())
+        if first and last:
+            first_l, last_l = first.lower(), last.lower()
+            if last_l == first_l or first_l.endswith(" " + last_l):
+                return first
+            return f"{first} {last}"
+        return first or last or "Membre"
 
     @property
     def primary_photo(self) -> str | None:

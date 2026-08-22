@@ -42,7 +42,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         ok, msg, message = await self._send(self.profile_id, self.partner_id, content)
         if not ok:
             await self.send(
-                text_data=json.dumps({"event": "error", "ok": False, "message": msg})
+                text_data=json.dumps({"event": "error", "ok": False, "message": msg, "code": "message_limit" if "limite" in (msg or "").lower() else ""})
             )
         elif message:
             await self.send(

@@ -120,8 +120,15 @@ def completion_score(profile: Profile) -> int:
     return int(round(100 * sum(1 for c in checks if c) / len(checks)))
 
 
+def _public_place(value: str | None) -> str:
+    text = (value or "").strip()
+    if not text or "@" in text:
+        return ""
+    return text
+
+
 def serialize_visit(profile: Profile) -> dict:
-    location_parts = [p for p in (profile.commune, profile.city, profile.country) if p]
+    location_parts = [p for p in (_public_place(profile.commune), _public_place(profile.city), _public_place(profile.country)) if p]
     photos = gallery_urls(profile)
     interest_labels = {i["id"]: i["label"] for i in INTERESTS}
     trait_labels = {t["id"]: t["label"] for t in TRAITS}
@@ -129,10 +136,11 @@ def serialize_visit(profile: Profile) -> dict:
         "id": str(profile.pk),
         "first_name": profile.first_name or "Membre",
         "last_name": profile.last_name or "",
+        "full_name": profile.display_name,
         "age": None if profile.hide_age else profile.age,
-        "city": profile.city or "",
-        "commune": profile.commune or "",
-        "country": profile.country or "",
+        "city": _public_place(profile.city),
+        "commune": _public_place(profile.commune),
+        "country": _public_place(profile.country),
         "residence_country": profile.residence_country or "",
         "location": ", ".join(location_parts) if location_parts else "TimaLove",
         "photo_url": profile.primary_photo,

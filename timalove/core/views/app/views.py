@@ -67,7 +67,9 @@ def swipe(request):
 
 @ensure_csrf_cookie
 def likes(request):
-    ctx = likes_controller.feed_context(_profile(request))
+    profile = _profile(request)
+    likes_controller.mark_inbox_seen(profile)
+    ctx = likes_controller.feed_context(profile)
     ctx.update(
         {
             "title": "Likes",
@@ -82,7 +84,9 @@ def likes(request):
 @ensure_csrf_cookie
 def likes_feed(request):
     """Fragment HTML — rafraîchissement live des likes reçus."""
-    ctx = likes_controller.feed_context(_profile(request))
+    profile = _profile(request)
+    likes_controller.mark_inbox_seen(profile)
+    ctx = likes_controller.feed_context(profile)
     return render(request, "partials/likes_feed.html", ctx)
 
 
@@ -168,6 +172,7 @@ def discussion_detail(request, partner_id):
             "quota_message": thread.get("quota_message", ""),
             "messages_remaining": thread.get("messages_remaining"),
             "report_reasons": ReportReason.choices,
+            "plans": profile_controller.subscription_plans_for(profile) if thread.get("messages_remaining") is not None or thread.get("quota_locked") else [],
         },
     )
 
@@ -188,7 +193,14 @@ def discussion_media(request, partner_id):
         duration,
     )
     if not ok:
-        return JsonResponse({"ok": False, "error": msg}, status=400)
+        from core.controllers import quota_controller
+
+        payload = {"ok": False, "error": msg}
+        code = quota_controller.limit_code_for(profile)
+        if code:
+            payload["code"] = code
+            payload["message"] = msg
+        return JsonResponse(payload, status=400)
     item = message_controller._serialize_message(message, profile)
     return JsonResponse({"ok": True, "item": item})
 

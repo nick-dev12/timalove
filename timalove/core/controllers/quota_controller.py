@@ -11,10 +11,11 @@ from core.models import Message, Profile, Swipe
 from core.models.choices import SwipeAction
 
 LIKE_Q = Q(is_like=True) | Q(is_super_like=True)
-UPGRADE_PATH = "/profil/?tab=settings"
+UPGRADE_PATH = "/profil/?tab=settings&section=subscription"
 
 SWIPE_LIMIT_MSG = "Limite de {n} profils par jour atteinte. Passez Premium pour continuer."
 LIKE_LIMIT_MSG = "Limite de {n} likes par jour atteinte. Passez Premium pour continuer."
+MESSAGE_LIMIT_CODE = "message_limit"
 MESSAGE_LIMIT_MSG = (
     "Limite de {n} messages gratuits atteinte (toutes discussions confondues). "
     "Passez Premium pour continuer."
@@ -88,6 +89,11 @@ def check_message(profile: Profile) -> tuple[bool, str]:
     if messages_sent_count(profile) >= messages_limit():
         return False, MESSAGE_LIMIT_MSG.format(n=messages_limit())
     return True, ""
+
+
+def limit_code_for(profile: Profile) -> str:
+    ok, _ = check_message(profile)
+    return "" if ok else MESSAGE_LIMIT_CODE
 
 
 def check_swipe(swiper: Profile, swiped_id, action: str) -> tuple[bool, str, str]:

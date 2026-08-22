@@ -514,7 +514,8 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
 
     flags = _block_flags(profile, partner)
     items = [_serialize_message(msg, profile) for msg in messages_for(profile, partner_id)]
-    ok_send, send_err = can_send(profile, match)
+    denied = _messaging_denied(profile, partner)
+    quota_ok, quota_err = quota_controller.check_message(profile)
     blocked = bool(flags["is_blocked"])
     return {
         "me": _person_card(profile),
@@ -522,9 +523,9 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
         "thread_items": items,
         "match": match,
         **flags,
-        "can_send": (not blocked) and ok_send,
-        "quota_locked": (not blocked) and not ok_send,
-        "quota_message": send_err if (not blocked and not ok_send) else "",
+        "can_send": not blocked and not denied,
+        "quota_locked": (not blocked) and not quota_ok,
+        "quota_message": quota_err if (not blocked and not quota_ok) else "",
         "messages_remaining": quota_controller.messages_remaining(profile),
     }
 

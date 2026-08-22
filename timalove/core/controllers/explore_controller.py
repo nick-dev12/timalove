@@ -30,8 +30,15 @@ def _chip_catalog(catalog: list[dict], selected_raw) -> list[dict]:
     ]
 
 
+def _public_place(value: str | None) -> str:
+    text = (value or "").strip()
+    if not text or "@" in text:
+        return ""
+    return text
+
+
 def _location_label(profile: Profile) -> str:
-    parts = [p for p in (profile.commune, profile.city, profile.country) if p]
+    parts = [p for p in (_public_place(profile.commune), _public_place(profile.city), _public_place(profile.country)) if p]
     return ", ".join(parts) if parts else "TimaLove"
 
 
@@ -80,14 +87,16 @@ def serialize_card(
     super_liked: bool = False,
     viewer=None,
 ) -> dict:
-    location_parts = [p for p in (profile.city, profile.country) if p]
     photos = collect_photos(profile)
+    city = _public_place(profile.city)
+    country = _public_place(profile.country)
+    location_parts = [p for p in (city, country) if p]
     return {
         "id": str(profile.pk),
         "first_name": profile.first_name or "Membre",
         "age": None if profile.hide_age else profile.age,
-        "city": profile.city or "",
-        "country": profile.country or "",
+        "city": city,
+        "country": country,
         "location": ", ".join(location_parts) if location_parts else "TimaLove",
         "photo_url": photos[0] if photos else profile.primary_photo,
         "photos": photos,
@@ -165,10 +174,12 @@ def get_public_profile(profile_id, viewer=None) -> dict | None:
     return {
         "id": str(profile.pk),
         "first_name": profile.first_name or "Membre",
+        "last_name": (profile.last_name or "").strip(),
+        "full_name": profile.display_name,
         "age": None if profile.hide_age else profile.age,
-        "city": profile.city or "",
-        "commune": profile.commune or "",
-        "country": profile.country or "",
+        "city": _public_place(profile.city),
+        "commune": _public_place(profile.commune),
+        "country": _public_place(profile.country),
         "residence_country": profile.residence_country or "",
         "location": _location_label(profile),
         "photo_url": profile.primary_photo,

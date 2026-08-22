@@ -22,7 +22,7 @@ def app_nav_badges(request):
 
         membership["is_freemium"] = quota_controller.is_freemium(profile)
         membership["has_premium"] = not membership["is_freemium"]
-        badges["likes_count"] = likes_controller.count_incoming(profile)
+        badges["likes_count"] = likes_controller.count_unread_incoming(profile)
         badges["unread_messages"] = message_controller.unread_count(profile)
         badges["unread_notifications"] = notification_controller.unread_count(profile)
     except Exception:

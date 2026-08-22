@@ -5,7 +5,7 @@
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="{% static 'js/explorer-chrome.js' %}?v=20260822h6" defer></script>
-<script src="{% static 'js/messages-thread.js' %}?v=20260822m14" defer></script>
+<script src="{% static 'js/messages-thread.js' %}?v=20260822m15" defer></script>
 {% endblock %}
 {% block body %}
 {% include "partials/explorer_atmosphere.html" %}
@@ -127,10 +127,8 @@
     {% endfor %}
     {% endif %}
 
-    {% if not is_preview and quota_locked %}
-    <p class="msg__limit" role="status">{{ quota_message }} <a href="{% url 'app:parametres' %}">Passer Premium</a></p>
-    {% elif not is_preview and messages_remaining != None %}
-    <p class="msg__limit" role="status">Il vous reste {{ messages_remaining }} message{{ messages_remaining|pluralize }} gratuit{{ messages_remaining|pluralize }}. <a href="{% url 'app:parametres' %}">Passer Premium</a></p>
+    {% if not is_preview and messages_remaining != None and not quota_locked %}
+    <p class="msg__limit" role="status">Il vous reste {{ messages_remaining }} message{{ messages_remaining|pluralize }} gratuit{{ messages_remaining|pluralize }}.</p>
     {% endif %}
 
     {% if is_preview %}
@@ -149,16 +147,12 @@
         </a>
       </label>
     </form>
-    {% elif quota_locked %}
-    <div class="msg__composer msg__composer--disabled" aria-disabled="true">
-      <p class="msg__composer-lock">Vos messages gratuits sont utilisés. <a href="{% url 'app:parametres' %}">Passez Premium</a> pour écrire sans limite.</p>
-    </div>
-    {% elif not can_send %}
+    {% elif blocked_by_me or blocked_me or not can_send %}
     <div class="msg__composer msg__composer--disabled" aria-disabled="true">
       <p class="msg__composer-lock">Messagerie désactivée pour cette conversation.</p>
     </div>
     {% else %}
-    <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}" data-partner-id="{{ partner_id }}" data-media-url="{% url 'app:discussion_media' partner_id %}">
+    <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}" data-partner-id="{{ partner_id }}" data-media-url="{% url 'app:discussion_media' partner_id %}" data-quota-locked="{% if quota_locked %}1{% else %}0{% endif %}">
       {% csrf_token %}
       <div class="msg__record" data-msg-record hidden>
         <button class="msg__tool-ico" type="button" data-msg-record-cancel aria-label="Annuler">
@@ -200,5 +194,8 @@
 </div>
 {% include "partials/message_report_modal.html" %}
 {% include "partials/message_delete_modal.html" %}
+{% if not is_preview and plans %}
+{% include "partials/upgrade_plans_modal.html" %}
+{% endif %}
 {% endif %}
 {% endblock %}

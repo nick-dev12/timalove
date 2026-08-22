@@ -12,16 +12,39 @@
   </header>
 
   <div class="visit__intro">
-    <div class="visit__media">
-      <div class="visit__photo-stage">
-        <section class="visit__hero" aria-label="Photo principale">
-          {% if member.photo_url %}
-          <img class="visit__hero-img" src="{{ member.photo_url }}" alt="{{ member.first_name }}" width="800" height="1000">
-          {% else %}
-          <div class="visit__hero-fallback">{{ member.first_name|first|upper }}</div>
-          {% endif %}
+    <header class="visit__ig">
+      <div class="visit__ig-top">
+        <div class="visit__media">
+          <div class="visit__photo-stage">
+            <section class="visit__hero" aria-label="Photo de profil">
+              {% if member.photo_url %}
+              <img class="visit__hero-img" src="{{ member.photo_url }}" alt="{{ member.first_name }}" width="160" height="160">
+              {% else %}
+              <div class="visit__hero-fallback">{{ member.first_name|first|upper }}</div>
+              {% endif %}
+            </section>
+          </div>
+        </div>
+        <section class="visit__identity">
+          <div class="visit__identity-top">
+            <div class="visit__who">
+              <h1 class="visit__name">
+                <span class="visit__name-main">{{ member.full_name|default:member.first_name }}{% if member.age %}<span class="visit__age">, {{ member.age }}</span>{% endif %}</span>
+                {% if member.is_verified %}
+                <span class="visit__verified" title="Profil vérifié" aria-label="Profil vérifié">
+                  <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M9.2 16.6 5 12.4l1.4-1.4 2.8 2.8 8-8L18.6 7z"/></svg>
+                </span>
+                {% endif %}
+              </h1>
+              <p class="visit__handle">{{ member.location }}</p>
+            </div>
+          </div>
         </section>
       </div>
+      {% if member.profession %}
+      <p class="visit__ig-bio">{{ member.profession }}</p>
+      {% endif %}
+      {% if member.is_online or member.is_verified or member.is_boosted or member.relationship_intent_label %}
       <div class="visit__hero-chips">
         {% if member.is_online %}
         <span class="visit__chip visit__chip--live"><span class="visit__dot"></span> En ligne</span>
@@ -36,24 +59,7 @@
         <span class="visit__chip">Intention : {{ member.relationship_intent_label|lower }}</span>
         {% endif %}
       </div>
-    </div>
-
-    <section class="visit__identity visit-glass">
-      <div class="visit__identity-top">
-        <div class="visit__who">
-          <h1 class="visit__name">
-            {{ member.first_name }}{% if member.age %}<span class="visit__age">, {{ member.age }}</span>{% endif %}
-          </h1>
-          <p class="visit__location">
-            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
-            {{ member.location }}
-          </p>
-          {% if member.profession %}
-          <p class="visit__role">{{ member.profession }}</p>
-          {% endif %}
-        </div>
-      </div>
-
+      {% endif %}
       <div class="visit__actions">
         {% if user.is_authenticated %}
         <button
@@ -63,27 +69,27 @@
           data-profile-id="{{ member.id }}"
           aria-label="Message à {{ member.first_name }}"
         >
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
           Message
         </button>
         {% else %}
         <a class="visit__action visit__action--msg" href="{% url 'auth:connexion' %}">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
           Message
         </a>
         {% endif %}
-        <div class="visit__compat" aria-label="Compatibilité {{ member.compatibility }} pourcent">
+        <div class="visit__compat" style="--compat: {{ member.compatibility }}" role="img" aria-label="Compatibilité {{ member.compatibility }} pour cent">
           <svg class="visit__compat-ring" viewBox="0 0 72 72" aria-hidden="true">
-            <circle cx="36" cy="36" r="30" class="visit__compat-track"></circle>
-            <circle cx="36" cy="36" r="30" class="visit__compat-value" style="--compat: {{ member.compatibility }}"></circle>
+            <circle class="visit__compat-track" cx="36" cy="36" r="30"></circle>
+            <circle class="visit__compat-value" cx="36" cy="36" r="30"></circle>
           </svg>
           <div class="visit__compat-label">
             <strong>{{ member.compatibility }}%</strong>
-            <span>match</span>
+            <span>Match</span>
           </div>
         </div>
       </div>
-    </section>
+    </header>
   </div>
 
   <main class="visit__sheet">
