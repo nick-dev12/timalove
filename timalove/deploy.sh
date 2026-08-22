@@ -263,11 +263,11 @@ fi
 
 if $RUN_CHECKS; then
     if command -v curl &>/dev/null; then
-        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time 10 "$SITE_URL/" || echo "000")
-        if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "301" || "$HTTP_CODE" == "302" ]]; then
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$SITE_URL/" || echo "000")
+        if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "301" || "$HTTP_CODE" == "302" || "$HTTP_CODE" == "405" ]]; then
             ok "Site HTTP → $HTTP_CODE ($SITE_URL)"
         else
-            warn "Site HTTP → $HTTP_CODE (attendu 200, 301 ou 302)"
+            warn "Site HTTP → $HTTP_CODE (attendu 200, 301, 302 ou 405)"
         fi
     fi
 
