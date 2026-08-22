@@ -87,16 +87,25 @@ def main() -> int:
     print("  - Private key = cle .p8 telechargee depuis Apple (collee dans Firebase)")
 
     print("\nCote Firebase > Authentication > Settings > Authorized domains :")
-    for domain in ("127.0.0.1", "localhost", "mytimalove.com"):
+    for domain in (
+        "127.0.0.1",
+        "localhost",
+        "mytimalove.com",
+        "timalove.goo-bridge.com",
+    ):
         print(f"  • {domain}")
+
+    print("\nCote Apple Developer > Identifiers > Services ID (com.mytimalove.timalove) :")
+    print("  • Domains : timalove-ddaa5.firebaseapp.com + timalove.goo-bridge.com")
+    print(f"  • Return URL : {FIREBASE_CALLBACK}")
 
     print("\nFlux applicatif TimaLove :")
     ok("Bouton Continuer avec Apple sur /connexion/")
     ok("Endpoint POST /api/auth/apple/")
     ok("Champ Profile.apple_uid en base")
 
-    print("\nTest manuel :")
-    print("  1. Ouvrir http://127.0.0.1:8000/connexion/")
+    print("\nTest manuel (production) :")
+    print("  1. Ouvrir https://timalove.goo-bridge.com/connexion/")
     print("  2. Cliquer Continuer avec Apple")
     print("  3. Autoriser -> completer le wizard si nouveau compte")
 

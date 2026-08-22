@@ -382,7 +382,9 @@
         } else if (code === "auth/unauthorized-domain") {
           setStatus(
             statusEl,
-            "Ajoutez 127.0.0.1 dans Firebase → Authentication → Settings → Authorized domains.",
+            "Domaine non autorisé dans Firebase → Authentication → Settings → Authorized domains (ajoutez " +
+              window.location.hostname +
+              ").",
             true,
           );
         } else {

@@ -223,28 +223,19 @@ for b in /usr/local/apps/nginx/sbin/nginx /usr/sbin/nginx nginx; do
 done
 
 if [[ -z "$NGINX_CONF_DIR" ]]; then
-    warn "Dossier conf.d Nginx introuvable. Copiez manuellement :"
-    warn "  $REPO_DIR/deploy/nginx-timalove.conf"
+    warn "Dossier conf.d Nginx introuvable."
 else
-    BACKUP_DIR="$REPO_DIR/deploy/nginx-backup-$(date +%Y%m%d-%H%M%S)"
-    mkdir -p "$BACKUP_DIR"
-    FOUND_EXISTING=false
-    while IFS= read -r f; do
-        [[ -z "$f" ]] && continue
-        [[ "$(basename "$f")" == "timalove-django.conf" ]] && continue
-        [[ "$f" == *.bak ]] && continue
-        [[ "$f" == *.timalove.bak ]] && continue
-        cp -a "$f" "$BACKUP_DIR/"
-        mv "$f" "${f}.timalove.bak"
-        FOUND_EXISTING=true
-        warn "Ancien vhost déplacé : $f → ${f}.timalove.bak"
-    done < <(grep -rl "server_name.*${DOMAIN}" "$NGINX_CONF_DIR" /usr/local/apps/nginx/etc /etc/nginx 2>/dev/null || true)
-
-    cp "$REPO_DIR/deploy/nginx-timalove.conf" "$NGINX_CONF_DIR/timalove-django.conf"
-    ok "vhost installé : $NGINX_CONF_DIR/timalove-django.conf"
-    if $FOUND_EXISTING; then
-        ok "Sauvegarde des anciens vhosts : $BACKUP_DIR"
+    # Ne jamais déplacer webuzoVH.conf (vhost global Webuzo).
+    # On patche uniquement les server { } TimaLove, puis on installe
+    # le garde-fou systemd/cron qui re-colle le proxy si Webuzo réécrit le fichier.
+    rm -f "$NGINX_CONF_DIR/timalove-django.conf"
+    if [[ -f "$REPO_DIR/deploy/patch-webuzo-nginx.py" ]]; then
+        python3 "$REPO_DIR/deploy/patch-webuzo-nginx.py" || warn "patch-webuzo-nginx.py a échoué"
     fi
+    if [[ -f "$REPO_DIR/deploy/install-nginx-guard.sh" ]]; then
+        bash "$REPO_DIR/deploy/install-nginx-guard.sh" || warn "install-nginx-guard.sh a échoué"
+    fi
+    ok "Proxy Daphne + garde-fou Webuzo"
 
     TEST_OK=false
     if [[ -n "$NGINX_BIN" && -x "$NGINX_BIN" ]]; then

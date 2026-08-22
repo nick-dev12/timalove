@@ -1,0 +1,11 @@
+[Unit]
+Description=TimaLove — surveille webuzoVH.conf (Webuzo réécrit ce fichier)
+
+[Path]
+PathChanged=/usr/local/apps/nginx/etc/conf.d/webuzoVH.conf
+PathModified=/usr/local/apps/nginx/etc/conf.d/webuzoVH.conf
+Unit=timalove-nginx-patch.service
+MakeDirectory=false
+
+[Install]
+WantedBy=multi-user.target

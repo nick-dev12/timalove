@@ -1,0 +1,13 @@
+[Unit]
+Description=TimaLove — ré-applique le proxy Daphne si Webuzo réécrit Nginx
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 3
+ExecStart=/usr/bin/python3 /usr/local/sbin/timalove-nginx-patch.py
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
