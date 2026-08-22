@@ -19,7 +19,10 @@ LOCK_PATH = Path("/run/timalove-nginx-patch.lock")
 DOMAIN = "timalove.goo-bridge.com"
 MARKER_BEGIN = "# --- timalove-daphne-begin ---"
 MARKER_END = "# --- timalove-daphne-end ---"
+WS_SIGNATURE = "Sec-WebSocket-Extensions"
 
+# modsecurity off : le WAF Webuzo coupe souvent Upgrade: websocket (1006).
+# Sec-WebSocket-Extensions vide : permessage-deflate casse le handshake navigateur.
 PROXY = f"""
         {MARKER_BEGIN}
         location /static/ {{
@@ -33,6 +36,7 @@ PROXY = f"""
             access_log off;
         }}
         location /ws/ {{
+            modsecurity off;
             proxy_pass http://127.0.0.1:8001;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
@@ -41,7 +45,13 @@ PROXY = f"""
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_read_timeout 86400;
+            proxy_set_header Origin $http_origin;
+            proxy_set_header Sec-WebSocket-Extensions "";
+            proxy_read_timeout 86400s;
+            proxy_send_timeout 86400s;
+            proxy_buffering off;
+            proxy_request_buffering off;
+            proxy_cache off;
         }}
         location / {{
             proxy_pass http://127.0.0.1:8001;
@@ -113,10 +123,21 @@ def comment_location_slash(block: str) -> str:
     return "".join(out)
 
 
+def strip_marked_proxy(block: str) -> str:
+    pattern = re.compile(
+        re.escape(MARKER_BEGIN) + r".*?" + re.escape(MARKER_END),
+        re.DOTALL,
+    )
+    return pattern.sub("", block)
+
+
 def patch_block(block: str) -> str:
-    if MARKER_BEGIN in block:
+    if MARKER_BEGIN in block and WS_SIGNATURE in block:
         return block
-    block = comment_location_slash(block)
+    if MARKER_BEGIN in block:
+        block = strip_marked_proxy(block)
+    else:
+        block = comment_location_slash(block)
     close = block.rfind("}")
     return block[:close] + PROXY + "\n    }\n"
 
@@ -206,9 +227,20 @@ def main() -> int:
     try:
         nginx_test_and_reload()
     except Exception as exc:
-        CONF.write_text(original, encoding="utf-8")
-        log(f"échec, fichier restauré : {exc}")
-        return 1
+        if "modsecurity" in str(exc).lower() and "modsecurity off;" in new_text:
+            log("modsecurity absent — nouvel essai sans la directive")
+            fallback = new_text.replace("            modsecurity off;\n", "")
+            CONF.write_text(fallback, encoding="utf-8")
+            try:
+                nginx_test_and_reload()
+            except Exception as exc2:
+                CONF.write_text(original, encoding="utf-8")
+                log(f"échec, fichier restauré : {exc2}")
+                return 1
+        else:
+            CONF.write_text(original, encoding="utf-8")
+            log(f"échec, fichier restauré : {exc}")
+            return 1
 
     log(f"Webuzo avait écrasé Nginx — proxy Daphne ré-appliqué ({patched} block(s)), Nginx rechargé")
     return 0

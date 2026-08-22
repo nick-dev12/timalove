@@ -55,6 +55,8 @@ def _notification_payload(notification: Notification) -> dict:
         "unread_messages": 0,
         "likes_count": 0,
     }
+    if notification.type == NotificationType.PROFILE_APPROVED and notification.title == "Test TimaLove":
+        payload["test"] = True
     try:
         payload["unread_messages"] = message_controller.unread_count(notification.user)
         payload["likes_count"] = likes_controller.count_unread_incoming(notification.user)
@@ -76,7 +78,7 @@ def _broadcast_realtime(notification: Notification) -> None:
             {"type": "notify", "payload": _notification_payload(notification)},
         )
     except Exception as exc:
-        logger.debug("[notif] websocket indisponible : %s", exc)
+        logger.warning("[notif] websocket indisponible : %s", exc)
 
 
 def _dispatch_push(notification: Notification, *, force: bool = False) -> None:
@@ -207,8 +209,9 @@ def send_test(profile: Profile) -> dict:
         title="Test TimaLove",
         message="Vos notifications fonctionnent. Vous recevrez likes, matchs et messages ici.",
     )
-    _broadcast_realtime(notification)
+    # Push FCM d'abord : le broadcast Redis ne doit pas bloquer le bouton de test.
     result = push_controller.send_for_notification(str(notification.id), force=True)
+    _broadcast_realtime(notification)
     return {
         "notification_id": str(notification.id),
         "url": push_controller.notification_link(notification),

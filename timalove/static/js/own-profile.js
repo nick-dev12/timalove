@@ -477,12 +477,30 @@
     });
 
     root.querySelector("[data-notifs-test]")?.addEventListener("click", (e) => {
+      const shown = window.timaloveShowOsNotification?.({
+        title: "Test TimaLove",
+        body: "Vos notifications fonctionnent. Vous recevrez likes, matchs et messages ici.",
+        url: "/profil/?tab=settings&section=notifications",
+        tag: "timalove-test",
+        force: true,
+      });
       void withButton(e.currentTarget, "notifications", async () => {
         const data = await postJSON("/api/push/test/", {});
+        if (!shown) {
+          window.timaloveShowOsNotification?.({
+            title: "Test TimaLove",
+            body: "Vos notifications fonctionnent. Vous recevrez likes, matchs et messages ici.",
+            url: data.url || "/profil/?tab=settings&section=notifications",
+            tag: "timalove-test",
+            force: true,
+          });
+        }
         window.timaloveNotifPopup?.showSuccess(
-          data.message || "Notification test envoyée. Vérifiez votre appareil.",
+          shown
+            ? "Regardez la notification Windows (coin bas-droit)."
+            : (data.message || "Notification test envoyée."),
         );
-      }, "Envoi du test…");
+      }, "Notification test envoyée.");
     });
 
     const wsTestBtn = root.querySelector("[data-ws-test]");
@@ -553,7 +571,15 @@
       };
 
       ws.onmessage = (event) => {
-        console.log("[TimaLove WS test] Notif reçue:", event.data);
+        console.log("[TimaLove WS test] Message:", event.data);
+        try {
+          const payload = JSON.parse(event.data || "{}");
+          if (payload.event === "connected") {
+            finish("WS OK — connexion WebSocket réussie.", false);
+          }
+        } catch (_err) {
+          /* ignore */
+        }
       };
 
       ws.onerror = () => {

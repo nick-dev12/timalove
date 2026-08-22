@@ -192,9 +192,25 @@
     popupTimer = window.setTimeout(hidePopup, POPUP_MS);
   }
 
+  function isTestNotification(payload) {
+    const kind = payload.kind || payload.type || "";
+    return kind === "profile_approved" && (payload.test === true || payload.test === "true" || payload.title === "Test TimaLove");
+  }
+
   function showNative(payload) {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
-    if (document.visibilityState === "visible") return;
+    const forceOs = isTestNotification(payload);
+    if (!forceOs && document.visibilityState === "visible") return;
+    if (forceOs && window.timaloveShowOsNotification) {
+      void window.timaloveShowOsNotification({
+        title: payload.title || "TimaLove",
+        body: payload.message || "",
+        url: payload.url || "/",
+        tag: "timalove-test",
+        force: true,
+      });
+      return;
+    }
     const title = payload.title || "TimaLove";
     const body = payload.message || "";
     const url = normalizeNotifUrl(payload.url || "/");
@@ -298,7 +314,9 @@
 
     ws.onmessage = function (event) {
       try {
-        handleNotification(JSON.parse(event.data));
+        const payload = JSON.parse(event.data);
+        if (payload && (payload.event === "connected" || payload.event === "pong")) return;
+        handleNotification(payload);
       } catch (_err) {
         /* ignore */
       }

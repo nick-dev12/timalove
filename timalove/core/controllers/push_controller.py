@@ -199,6 +199,8 @@ def send_for_notification(notification_id: str, *, force: bool = False) -> dict[
         "message": notification.message,
         "url": link,
     }
+    if force and notification.type == "profile_approved" and notification.title == "Test TimaLove":
+        data["test"] = "true"
     if notification.related_user_id:
         data["related_user_id"] = str(notification.related_user_id)
     if notification.related_match_id:

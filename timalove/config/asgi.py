@@ -17,6 +17,7 @@ from core.routing import websocket_urlpatterns  # noqa: E402
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
+        # AuthMiddlewareStack inclut déjà Cookie + Session + Auth.
         "websocket": AuthMiddlewareStack(URLRouter(websocket_urlpatterns)),
     }
 )

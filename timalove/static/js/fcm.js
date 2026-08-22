@@ -21,6 +21,56 @@
 
   window.timaloveNormalizeNotifUrl = normalizeNotifUrl;
 
+  function isTestPush(data) {
+    return data && (data.test === "true" || data.test === true);
+  }
+
+  function showOsNotification(options) {
+    const opts = options || {};
+    if (!("Notification" in window) || Notification.permission !== "granted") {
+      return false;
+    }
+    if (!opts.force && document.visibilityState === "visible") {
+      return false;
+    }
+    const title = opts.title || "TimaLove";
+    const body = opts.body || opts.message || "";
+    const url = normalizeNotifUrl(opts.url || "/");
+    const tag = opts.tag || "timalove-" + (opts.type || "notif") + "-" + Date.now();
+    const icon = opts.icon || "/static/images/logo.webp";
+    try {
+      const n = new Notification(title, {
+        body: body,
+        icon: icon,
+        tag: tag,
+        data: { url: url },
+      });
+      n.onclick = function () {
+        window.focus();
+        if (url) window.location.href = url;
+        n.close();
+      };
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.ready
+          .then(function (reg) {
+            return reg.showNotification(title, {
+              body: body,
+              icon: icon,
+              tag: tag,
+              renotify: true,
+              data: { url: url },
+            });
+          })
+          .catch(function () {});
+      }
+      return true;
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  window.timaloveShowOsNotification = showOsNotification;
+
   function getCookie(name) {
     const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
     return match ? decodeURIComponent(match[1]) : "";
@@ -142,18 +192,22 @@
             message: body,
             url: url,
             related_user_id: data.related_user_id || null,
+            test: data.test === "true" || data.test === true,
           },
         })
       );
-      if (document.visibilityState === "visible") return;
-      const tag = "timalove-" + (data.type || "notif") + "-" + (data.notification_id || Date.now());
-      registration.showNotification(title, {
+      const forceOs = isTestPush(data);
+      if (!forceOs && document.visibilityState === "visible") return;
+      showOsNotification({
+        title: title,
         body: body,
-        icon: "/static/images/logo.webp",
-        tag: tag,
-        renotify: true,
-        data: Object.assign({ url: url }, data),
-      }).catch(function () {});
+        url: url,
+        type: data.type || "notif",
+        tag: forceOs
+          ? "timalove-test"
+          : "timalove-" + (data.type || "notif") + "-" + (data.notification_id || Date.now()),
+        force: forceOs,
+      });
     });
 
     return token;
