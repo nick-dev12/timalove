@@ -103,7 +103,7 @@ def explorer(request):
         "cards": cards,
         "has_more": has_more,
         "next_offset": next_offset,
-        "reveal_first": (not is_hx) and offset == 0,
+        "reveal_first": not is_hx,
         "swipe_quota": quota,
     }
 
