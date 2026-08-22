@@ -19,6 +19,18 @@
   let popupTimer = null;
   const seenIds = [];
 
+  function cookie(name) {
+    const m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+    return m ? decodeURIComponent(m[1]) : "";
+  }
+
+  function csrf() {
+    const fromCookie = cookie("csrftoken");
+    if (fromCookie) return fromCookie;
+    const input = document.querySelector("[name=csrfmiddlewaretoken]");
+    return input ? input.value : "";
+  }
+
   function notificationsUrl() {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     return proto + "//" + window.location.host + "/ws/notifications/";
@@ -71,8 +83,13 @@
     const bell = document.querySelector(".explorer__bell");
     if (!badge) return;
     const n = Math.max(0, parseInt(count, 10) || 0);
-    badge.hidden = n < 1;
-    badge.textContent = n > 99 ? "99+" : String(n);
+    if (n < 1) {
+      badge.hidden = true;
+      badge.textContent = "";
+    } else {
+      badge.hidden = false;
+      badge.textContent = n > 99 ? "99+" : String(n);
+    }
     if (!bell) return;
     if (n > 0) {
       bell.setAttribute(
@@ -139,6 +156,51 @@
         renderUnreadNotifications(data && data.count);
       })
       .catch(function () {});
+  }
+
+  function markNotificationsSeen(context, partnerId) {
+    const payload = { context: context || "all" };
+    if (partnerId) payload.partner_id = String(partnerId);
+    return fetch("/api/notifications/mark-read/", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrf(),
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error("mark-read");
+        return res.json();
+      })
+      .then(function (data) {
+        if (data && typeof data.count === "number") {
+          renderUnreadNotifications(data.count);
+        } else {
+          fetchNotificationsCount();
+        }
+      })
+      .catch(function () {});
+  }
+
+  function syncPageNotificationReads() {
+    const body = document.body;
+    if (!body || body.classList.contains("is-guest")) return;
+    if (body.classList.contains("likes-page")) {
+      markNotificationsSeen("likes");
+      return;
+    }
+    if (body.classList.contains("messages-inbox-page")) {
+      markNotificationsSeen("messages");
+      return;
+    }
+    if (body.classList.contains("messages-page")) {
+      const section = document.querySelector(".msg[data-partner-id]");
+      const partnerId = section ? section.getAttribute("data-partner-id") : "";
+      if (partnerId) markNotificationsSeen("messages", partnerId);
+    }
   }
 
   window.timaloveRefreshUnreadBadge = fetchUnread;
@@ -286,6 +348,9 @@
     if (!payload.type && !payload.kind) return;
     if (alreadySeen(payload.id)) return;
 
+    const kind = payload.kind || payload.type || "";
+    const partnerId = payload.related_user_id || "";
+
     if (typeof payload.unread_messages === "number") {
       renderUnreadMessages(payload.unread_messages);
     } else {
@@ -295,13 +360,22 @@
       renderLikesCount(payload.likes_count);
     }
     if (typeof payload.unread_notifications === "number") {
-      renderUnreadNotifications(payload.unread_notifications);
+      if (
+        (kind === "new_like" || kind === "super_like") &&
+        document.body.classList.contains("likes-page")
+      ) {
+        markNotificationsSeen("likes");
+      } else if (
+        kind === "new_message" &&
+        (document.body.classList.contains("messages-inbox-page") || onSameThread(partnerId))
+      ) {
+        markNotificationsSeen("messages", onSameThread(partnerId) ? partnerId : "");
+      } else {
+        renderUnreadNotifications(payload.unread_notifications);
+      }
     } else {
       fetchNotificationsCount();
     }
-
-    const kind = payload.kind || payload.type || "";
-    const partnerId = payload.related_user_id || "";
 
     if (kind === "new_message") {
       document.dispatchEvent(new CustomEvent("timalove:inbox-refresh", { detail: payload }));
@@ -414,8 +488,12 @@
   }, POLL_MS);
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", connect);
+    document.addEventListener("DOMContentLoaded", function () {
+      syncPageNotificationReads();
+      connect();
+    });
   } else {
+    syncPageNotificationReads();
     connect();
   }
 })();

@@ -144,7 +144,10 @@ def messages(request):
     if not profile:
         return redirect(f"{reverse('public:explorer')}?gate=1")
 
+    from core.controllers import notification_controller
+
     conversations = message_controller.list_conversations(profile)
+    notification_controller.mark_read_for_context(profile, "messages")
     return render(
         request,
         "app/messages.html",

@@ -67,8 +67,11 @@ def swipe(request):
 
 @ensure_csrf_cookie
 def likes(request):
+    from core.controllers import notification_controller
+
     profile = _profile(request)
     likes_controller.mark_inbox_seen(profile)
+    notification_controller.mark_read_for_context(profile, "likes")
     ctx = likes_controller.feed_context(profile)
     ctx.update(
         {
@@ -148,10 +151,13 @@ def discussion_detail(request, partner_id):
         else:
             message_controller.mark_read(profile, partner_id)
         return redirect("app:discussion_detail", partner_id=partner_id)
+    from core.controllers import notification_controller
+
     thread = message_controller.thread_for(profile, partner_id)
     if not thread:
         raise Http404("Conversation introuvable.")
     message_controller.mark_read(profile, partner_id)
+    notification_controller.mark_read_for_context(profile, "messages", partner_id=partner_id)
     inbox_back = len(message_controller.list_conversations(profile)) > 1
     return render(
         request,

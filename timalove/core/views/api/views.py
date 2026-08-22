@@ -226,6 +226,24 @@ def unread_notifications_count(request):
 
 
 @login_required
+@require_POST
+def notifications_mark_read(request):
+    from core.controllers import notification_controller
+
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    data = _json(request) or {}
+    context = (data.get("context") or request.POST.get("context") or "").strip().lower()
+    partner_id = data.get("partner_id") or request.POST.get("partner_id")
+    marked = notification_controller.mark_read_for_context(
+        profile, context, partner_id=partner_id or None
+    )
+    unread = notification_controller.unread_count(profile)
+    return JsonResponse({"ok": True, "marked": marked, "count": unread})
+
+
+@login_required
 @require_GET
 def messages_inbox(request):
     profile = getattr(request.user, "profile", None)

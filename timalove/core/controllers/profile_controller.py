@@ -499,16 +499,21 @@ def dob_bounds(age_min: int, age_max: int) -> tuple[date, date]:
     return oldest, youngest
 
 
-def apply_discover_filters(qs, viewer: Profile):
-    from django.db.models import Q
+def apply_opposite_gender_filter(qs, viewer: Profile | None):
+    """Homme → femmes uniquement, femme → hommes uniquement (genre strict)."""
+    if viewer is None or not viewer.gender:
+        return qs
+    opposite = Gender.FEMALE if viewer.gender == Gender.MALE else Gender.MALE
+    return qs.filter(gender=opposite)
 
+
+def apply_discover_filters(qs, viewer: Profile):
     filters = filters_for(viewer)
     gender = filters.get("gender") or ""
     if gender in {Gender.MALE, Gender.FEMALE}:
-        qs = qs.filter(Q(gender=gender) | Q(gender=""))
+        qs = qs.filter(gender=gender)
     elif gender != "all" and viewer.gender:
-        opposite = Gender.FEMALE if viewer.gender == Gender.MALE else Gender.MALE
-        qs = qs.filter(Q(gender=opposite) | Q(gender=""))
+        qs = apply_opposite_gender_filter(qs, viewer)
     if filters.get("religion"):
         qs = qs.filter(religion=filters["religion"])
     if filters.get("country"):

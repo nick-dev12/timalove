@@ -234,3 +234,22 @@ def mark_read(profile: Profile, ids: list | None = None) -> int:
     if ids:
         qs = qs.filter(id__in=ids)
     return qs.update(is_read=True, read_at=timezone.now())
+
+
+def mark_read_for_context(profile: Profile, context: str, *, partner_id=None) -> int:
+    """Marque lues les notifications liées à une page (likes, messages, matchs)."""
+    qs = profile.notifications.filter(is_read=False)
+    ctx = (context or "").strip().lower()
+    if ctx == "likes":
+        qs = qs.filter(type=NotificationType.NEW_LIKE)
+    elif ctx == "messages":
+        qs = qs.filter(type__in=[NotificationType.NEW_MESSAGE, NotificationType.NEW_MATCH])
+        if partner_id:
+            qs = qs.filter(related_user_id=partner_id)
+    elif ctx == "matches":
+        qs = qs.filter(type=NotificationType.NEW_MATCH)
+    elif ctx == "all":
+        pass
+    else:
+        return 0
+    return qs.update(is_read=True, read_at=timezone.now())

@@ -129,9 +129,10 @@ def public_feed(*, offset: int = 0, limit: int = PAGE_SIZE, seed: str | None = N
     qs = _eligible_queryset()
     if viewer is not None:
         qs = qs.exclude(pk=viewer.pk)
-        from core.controllers.profile_controller import apply_discover_filters
+        from core.controllers.profile_controller import apply_discover_filters, apply_opposite_gender_filter
 
         qs = apply_discover_filters(qs, viewer)
+        qs = apply_opposite_gender_filter(qs, viewer)
         qs = swipe_controller.apply_feed_exclusions(qs, viewer)
     ids = list(qs.values_list("pk", flat=True))
     rng = random.Random(seed or "timalove")
@@ -246,6 +247,9 @@ def search_profiles(query: str, *, viewer=None, limit: int = 8) -> list[dict]:
     qs = _search_queryset()
     if viewer is not None:
         qs = qs.exclude(pk=viewer.pk)
+        from core.controllers.profile_controller import apply_opposite_gender_filter
+
+        qs = apply_opposite_gender_filter(qs, viewer)
 
     text_q = (
         Q(first_name__icontains=q)
