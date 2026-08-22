@@ -151,15 +151,28 @@
     async function sendToken(idToken, provider, hints) {
       const endpoint = provider === "apple" ? "/api/auth/apple/" : "/api/auth/google/";
       const body = Object.assign({ idToken, next: nextUrl }, hints || {});
-      const res = await fetch(endpoint, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-        body: JSON.stringify(body),
-      });
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 25000);
+      let res;
+      try {
+        res = await fetch(endpoint, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+      } catch (err) {
+        if (err?.name === "AbortError") {
+          throw new Error("Le serveur met trop de temps à répondre. Réessayez.");
+        }
+        throw err;
+      } finally {
+        window.clearTimeout(timeout);
+      }
       let data = {};
       try {
         data = await res.json();
@@ -170,17 +183,17 @@
         throw new Error(data.message || "Connexion refusée.");
       }
       sessionStorage.removeItem("tl_next");
-      if (data.needs_completion && window.TimaLoveSignup?.startOauth) {
-        window.TimaLoveSignup.startOauth(data.profile || {});
-        setStatus(statusEl, "", false);
-        setSocialBusy(false);
+      if (data.needs_completion) {
+        if (typeof window.TimaLoveSignup?.startOauth === "function") {
+          window.TimaLoveSignup.startOauth(data.profile || {});
+          setStatus(statusEl, "", false);
+          setSocialBusy(false);
+          return;
+        }
+        window.location.href = data.redirect || "/connexion/?signup=1";
         return;
       }
-      if (window.TimaLoveTransit?.start) {
-        window.TimaLoveTransit.start(data.redirect || "/explorer/");
-      } else {
-        window.location.href = data.redirect || "/explorer/";
-      }
+      window.location.href = data.redirect || "/explorer/";
     }
 
     async function loadFirebase() {
@@ -311,9 +324,13 @@
 
     async function finishWithUser(user, provider, credentialResult) {
       setStatus(statusEl, "Connexion en cours…", false);
-      const idToken = await user.getIdToken();
-      const hints = provider === "apple" ? appleProfileHints(user, credentialResult) : {};
-      await sendToken(idToken, provider, hints);
+      try {
+        const idToken = await user.getIdToken();
+        const hints = provider === "apple" ? appleProfileHints(user, credentialResult) : {};
+        await sendToken(idToken, provider, hints);
+      } finally {
+        setSocialBusy(false);
+      }
     }
 
     async function signInWithProvider(kind) {
@@ -335,8 +352,6 @@
 
         let provider;
         if (isApple) {
-          // Comme poid_lourd : popup Firebase depuis un domaine HTTPS enregistré chez Apple.
-          // En local HTTP, Apple refuse context_uri=127.0.0.1 → passer par firebaseapp.com.
           if (isLocalHttpOrigin()) {
             await signInWithAppleBridge();
             return;

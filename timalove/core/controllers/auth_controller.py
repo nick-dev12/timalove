@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import date
 
@@ -12,10 +13,13 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
 from core.controllers import site_settings_controller
+from core.controllers.firebase_app import get_firebase_app
 from core.models import BannedIdentity, Profile
 from core.models.choices import Gender, RegistrationStatus, Religion, UserRole
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_email(email: str | None) -> str | None:
@@ -158,6 +162,7 @@ def verify_firebase_id_token(id_token: str, expected_provider: str) -> dict | No
 
     app = get_firebase_app()
     if app is None:
+        logger.error("[auth] Firebase Admin indisponible — impossible de vérifier le jeton %s", expected_provider)
         return None
 
     decoded = firebase_auth.verify_id_token(token, app=app)
@@ -192,6 +197,8 @@ def login_or_register_oauth(
         return False, f"Connexion {label} impossible. Réessayez.", False
 
     if not decoded:
+        if not get_firebase_app():
+            return False, f"Connexion {label} indisponible (Firebase Admin non configuré sur le serveur).", False
         return False, f"Jeton {label} invalide.", False
 
     uid = str(decoded.get("uid") or "")
