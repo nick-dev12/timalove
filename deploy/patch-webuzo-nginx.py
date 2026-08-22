@@ -17,10 +17,10 @@ CONF = Path("/usr/local/apps/nginx/etc/conf.d/webuzoVH.conf")
 NGINX_BIN = Path("/usr/local/apps/nginx/sbin/nginx")
 LOCK_PATH = Path("/run/timalove-nginx-patch.lock")
 DOMAIN = "timalove.goo-bridge.com"
-PATCH_VERSION = "v3"
+PATCH_VERSION = "v4"
 MARKER_BEGIN = f"# --- timalove-daphne-{PATCH_VERSION}-begin ---"
 MARKER_END = f"# --- timalove-daphne-{PATCH_VERSION}-end ---"
-WS_SIGNATURE = "connection_upgrade"
+WS_SIGNATURE = "proxy_pass_header Upgrade"
 
 WS_MAP = """
 # --- timalove-ws-map ---
@@ -55,6 +55,8 @@ PROXY = f"""
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_pass_header Upgrade;
+            proxy_pass_header Connection;
             proxy_read_timeout 86400s;
             proxy_send_timeout 86400s;
             proxy_buffering off;
@@ -158,6 +160,7 @@ def ensure_ws_map(text: str) -> str:
 def patch_block(block: str) -> str:
     if MARKER_BEGIN in block and WS_SIGNATURE in block:
         return block
+    # Ré-appliquer si un ancien marqueur v1/v2/v3 est encore présent.
     had_marker = "timalove-daphne" in block
     block = strip_marked_proxy(block)
     if not had_marker:

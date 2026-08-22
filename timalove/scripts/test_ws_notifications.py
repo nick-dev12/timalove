@@ -75,12 +75,9 @@ def test_live_ws(cookie: str, site_url: str, *, label: str = "live") -> bool:
         sock.close()
 
     ws_url = f"{ws_scheme}://{host}:{port}/ws/notifications/"
-    origin = f"{parsed.scheme}://{host}"
-    if parsed.port and parsed.port not in (80, 443):
-        origin = f"{origin}:{parsed.port}"
-    headers = [f"Origin: {origin}"]
+    # Laisser websocket-client déduire Origin depuis ws_url (évite doublons → 400 Daphne).
     try:
-        ws = create_connection(ws_url, cookie=cookie, timeout=12, header=headers)
+        ws = create_connection(ws_url, cookie=cookie, timeout=12)
         ws.close()
         return True
     except Exception as exc:  # noqa: BLE001
