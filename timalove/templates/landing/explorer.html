@@ -10,7 +10,7 @@
 {% if user.is_authenticated %}
 <script src="{% static 'js/message-invite.js' %}?v=20260821m5" defer></script>
 <script src="{% static 'js/explorer-match.js' %}?v=20260821c1" defer></script>
-<script src="{% static 'js/explorer-swipe.js' %}?v=20260822s6" defer></script>
+<script src="{% static 'js/explorer-swipe.js' %}?v=20260822s7" defer></script>
 {% else %}
 <script src="{% static 'js/explorer-match.js' %}?v=20260821c1" defer></script>
 {% endif %}
@@ -127,6 +127,7 @@
   if (!feed || !sentinel) return;
 
   const REVEAL_MS = 380;
+  const PRELOAD_AHEAD = 3;
   let fetching = false;
   let paging = false;
   let gestureLock = 0;
@@ -173,11 +174,20 @@
     }, REVEAL_MS);
   }
 
+  function maybePrefetch() {
+    if (fetching || feed.dataset.hasMore !== "true") return;
+    const list = slideList();
+    const idx = currentIndex();
+    if (idx >= list.length - PRELOAD_AHEAD) loadMore();
+  }
+
   function goTo(index) {
     const list = slideList();
     if (index < 0) return;
     if (index >= list.length) {
-      loadMore();
+      loadMore().then(function (loaded) {
+        if (loaded && index < slideList().length) goTo(index);
+      });
       return;
     }
     paging = true;
@@ -188,6 +198,7 @@
     }
     window.setTimeout(function () {
       paging = false;
+      maybePrefetch();
     }, 280);
   }
 
@@ -196,7 +207,6 @@
     const cur = slideList()[i];
     if (!force && cur && cur.dataset.ready !== "true") return;
     goTo(i + 1);
-    if (i + 2 >= slideList().length) loadMore();
   }
 
   function goPrev() {
@@ -292,19 +302,29 @@
   );
 
   function loadMore() {
-    if (fetching || feed.dataset.hasMore !== "true") return;
+    if (fetching || feed.dataset.hasMore !== "true") {
+      return Promise.resolve(false);
+    }
     fetching = true;
-    const offset = feed.dataset.nextOffset || "0";
     const url = new URL(feed.dataset.loadUrl, window.location.origin);
-    url.searchParams.set("offset", offset);
 
-    fetch(url.toString(), { headers: { "HX-Request": "true" } })
-      .then(function (r) { return r.text(); })
+    return fetch(url.toString(), {
+      credentials: "same-origin",
+      headers: { "HX-Request": "true", "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("feed");
+        return r.text();
+      })
       .then(function (html) {
         const tmp = document.createElement("div");
         tmp.innerHTML = html.trim();
         const slides = tmp.querySelectorAll(".explorer__slide");
         const meta = tmp.querySelector("[data-explorer-meta]");
+        if (!slides.length) {
+          feed.dataset.hasMore = "false";
+          return false;
+        }
         slides.forEach(function (slide) {
           feed.insertBefore(slide, sentinel);
         });
@@ -313,14 +333,16 @@
           window.timaloveMatchScore.scan(feed);
         }
         if (meta) {
-          feed.dataset.nextOffset = meta.dataset.nextOffset || offset;
+          feed.dataset.nextOffset = meta.dataset.nextOffset || feed.dataset.nextOffset || "0";
           feed.dataset.hasMore = meta.dataset.hasMore || "false";
         } else {
           feed.dataset.hasMore = "false";
         }
+        return true;
       })
       .catch(function () {
         feed.dataset.hasMore = "false";
+        return false;
       })
       .finally(function () {
         fetching = false;
@@ -333,6 +355,27 @@
   }
   const first = slideList()[0];
   if (first) startReveal(first);
+
+  if ("IntersectionObserver" in window && sentinel) {
+    const sentinelObserver = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) maybePrefetch();
+        });
+      },
+      { root: feed, rootMargin: "120px 0px 240px 0px", threshold: 0.01 }
+    );
+    sentinelObserver.observe(sentinel);
+  }
+
+  feed.addEventListener(
+    "scroll",
+    function () {
+      if (paging) return;
+      maybePrefetch();
+    },
+    { passive: true }
+  );
 
   window.timaloveExplorer = {
     goNext: function () {

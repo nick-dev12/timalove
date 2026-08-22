@@ -13,8 +13,12 @@ from core.data.onboarding import INTERESTS, TRAITS, looking_for_free_text, looki
 from core.models import Profile, Swipe
 from core.models.choices import RegistrationStatus, UserRole
 
-PAGE_SIZE = 8
+PAGE_SIZE = 20
 PHOTOS_PER_CARD = 8
+
+SESSION_QUEUE_KEY = "explorer_queue"
+SESSION_SERVED_KEY = "explorer_served"
+SESSION_SEED_KEY = "explorer_feed_seed"
 
 
 def _chip_catalog(catalog: list[dict], selected_raw) -> list[dict]:
@@ -122,10 +126,8 @@ def serialize_card(
     }
 
 
-def public_feed(*, offset: int = 0, limit: int = PAGE_SIZE, seed: str | None = None, viewer=None) -> tuple[list[dict], bool]:
-    """Retourne (cartes, has_more) en ordre aléatoire stable via seed session."""
-    offset = max(0, offset)
-    limit = min(max(1, limit), 20)
+def _eligible_ids(viewer=None) -> list:
+    """IDs éligibles au feed (filtres + exclusions swipe)."""
     qs = _eligible_queryset()
     if viewer is not None:
         qs = qs.exclude(pk=viewer.pk)
@@ -134,13 +136,12 @@ def public_feed(*, offset: int = 0, limit: int = PAGE_SIZE, seed: str | None = N
         qs = apply_discover_filters(qs, viewer)
         qs = apply_opposite_gender_filter(qs, viewer)
         qs = swipe_controller.apply_feed_exclusions(qs, viewer)
-    ids = list(qs.values_list("pk", flat=True))
-    rng = random.Random(seed or "timalove")
-    rng.shuffle(ids)
+    return list(qs.values_list("pk", flat=True))
 
-    chunk = ids[offset : offset + limit + 1]
-    has_more = len(chunk) > limit
-    page_ids = chunk[:limit]
+
+def _cards_for_ids(page_ids: list, viewer=None) -> list[dict]:
+    if not page_ids:
+        return []
     by_id = Profile.objects.prefetch_related("gallery_photos").in_bulk(page_ids)
     profiles = [by_id[i] for i in page_ids if i in by_id]
     liked_ids: set = set()
@@ -158,7 +159,80 @@ def public_feed(*, offset: int = 0, limit: int = PAGE_SIZE, seed: str | None = N
     return [
         serialize_card(p, liked=p.pk in liked_ids, super_liked=p.pk in super_ids, viewer=viewer)
         for p in profiles
-    ], has_more
+    ]
+
+
+def reset_feed_session(session) -> None:
+    if session is None:
+        return
+    session.pop(SESSION_QUEUE_KEY, None)
+    session.pop(SESSION_SERVED_KEY, None)
+    session.pop(SESSION_SEED_KEY, None)
+    session.modified = True
+
+
+def public_feed(
+    *,
+    offset: int = 0,
+    limit: int = PAGE_SIZE,
+    seed: str | None = None,
+    viewer=None,
+    session=None,
+    reset: bool = False,
+) -> tuple[list[dict], bool]:
+    """Retourne (cartes, has_more). Avec session : file persistante, sans offset cassé par les swipes."""
+    limit = min(max(1, limit), 20)
+    seed = seed or "timalove"
+
+    if session is not None:
+        if reset or session.get(SESSION_SEED_KEY) != seed:
+            reset_feed_session(session)
+            session[SESSION_SEED_KEY] = seed
+
+        eligible = _eligible_ids(viewer)
+        eligible_set = set(eligible)
+        served = {str(pk) for pk in session.get(SESSION_SERVED_KEY, [])}
+
+        raw_queue = session.get(SESSION_QUEUE_KEY, [])
+        queue: list = []
+        seen_in_queue: set = set()
+        for raw in raw_queue:
+            try:
+                pk = uuid.UUID(str(raw))
+            except (TypeError, ValueError):
+                continue
+            key = str(pk)
+            if key in served or key in seen_in_queue or pk not in eligible_set:
+                continue
+            queue.append(pk)
+            seen_in_queue.add(key)
+
+        in_queue = set(queue)
+        remaining = [pk for pk in eligible if str(pk) not in served and pk not in in_queue]
+        if len(queue) < limit and remaining:
+            rng = random.Random(f"{seed}:refill:{len(served)}")
+            rng.shuffle(remaining)
+            queue.extend(remaining)
+
+        page_ids = queue[:limit]
+        tail = queue[limit:]
+        session[SESSION_QUEUE_KEY] = [str(pk) for pk in tail]
+        served.update(str(pk) for pk in page_ids)
+        session[SESSION_SERVED_KEY] = list(served)
+        session.modified = True
+
+        unserved = sum(1 for pk in eligible if str(pk) not in served)
+        has_more = bool(tail) or unserved > 0
+        return _cards_for_ids(page_ids, viewer), has_more
+
+    ids = _eligible_ids(viewer)
+    rng = random.Random(seed)
+    rng.shuffle(ids)
+    offset = max(0, offset)
+    chunk = ids[offset : offset + limit + 1]
+    has_more = len(chunk) > limit
+    page_ids = chunk[:limit]
+    return _cards_for_ids(page_ids, viewer), has_more
 
 
 def get_public_profile(profile_id, viewer=None) -> dict | None:

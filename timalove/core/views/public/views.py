@@ -76,23 +76,23 @@ def explorer(request):
 
     is_hx = request.headers.get("HX-Request") == "true"
 
-    # Nouvel ordre aléatoire à chaque refresh (page complète) ; HTMX garde le seed
     if not is_hx:
         request.session["explorer_seed"] = secrets.token_hex(8)
+        from core.controllers.explore_controller import reset_feed_session
+
+        reset_feed_session(request.session)
     elif "explorer_seed" not in request.session:
         request.session["explorer_seed"] = secrets.token_hex(8)
 
-    try:
-        offset = int(request.GET.get("offset", 0))
-    except (TypeError, ValueError):
-        offset = 0
-
+    seed = request.session["explorer_seed"]
     cards, has_more = explore_controller.public_feed(
-        offset=offset,
-        seed=request.session["explorer_seed"],
+        seed=seed,
         viewer=getattr(request.user, "profile", None) if request.user.is_authenticated else None,
+        session=request.session,
+        reset=not is_hx,
     )
-    next_offset = offset + len(cards)
+    served = len(request.session.get("explorer_served", []))
+    next_offset = served
     quota = None
     if request.user.is_authenticated:
         from core.controllers import quota_controller
