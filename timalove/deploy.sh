@@ -132,6 +132,21 @@ django_cmd() {
     run_as_app "cd '$DJANGO_DIR' && source '$VENV_DIR/bin/activate' && $1"
 }
 
+# Retire les fichiers non suivis qui bloquent git pull (copiés à la main sur le VPS).
+clean_untracked_pull_blockers() {
+    local blockers f
+    blockers=$(run_as_app "cd '$REPO_DIR' && git ls-files --others --exclude-standard" || true)
+    [[ -z "$blockers" ]] && return 0
+
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        if run_as_app "cd '$REPO_DIR' && git cat-file -e 'origin/$GIT_BRANCH:$f' 2>/dev/null"; then
+            warn "Doublon local non suivi (remplacé par Git) : $f"
+            run_as_app "cd '$REPO_DIR' && rm -rf '$f'"
+        fi
+    done <<< "$blockers"
+}
+
 # ── En-tête ────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}═══════════════════════════════════════════════════════════${NC}"
@@ -166,6 +181,7 @@ if ! $SKIP_GIT; then
         fi
     fi
 
+    clean_untracked_pull_blockers
     run_as_app "cd '$REPO_DIR' && git fetch origin && git pull origin '$GIT_BRANCH'"
     ok "Code à jour ($(run_as_app "cd '$REPO_DIR' && git rev-parse --short HEAD"))"
 else
