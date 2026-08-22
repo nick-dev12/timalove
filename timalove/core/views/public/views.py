@@ -2,6 +2,7 @@ from urllib.parse import urlparse
 
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 
@@ -136,29 +137,22 @@ def explorer_search(request):
 def messages(request):
     from core.controllers import message_controller
 
-    if request.user.is_authenticated:
-        profile = getattr(request.user, "profile", None)
-        if profile:
-            conversations = message_controller.list_conversations(profile)
-            return render(
-                request,
-                "app/messages.html",
-                {
-                    "title": "Messages",
-                    "conversations": conversations,
-                    "me": profile,
-                    "is_preview": False,
-                },
-            )
-    demo_list = message_controller.demo_conversations()
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('public:explorer')}?gate=1")
+
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return redirect(f"{reverse('public:explorer')}?gate=1")
+
+    conversations = message_controller.list_conversations(profile)
     return render(
         request,
         "app/messages.html",
         {
             "title": "Messages",
-            "conversations": demo_list,
-            "me": None,
-            "is_preview": True,
+            "conversations": conversations,
+            "me": profile,
+            "is_preview": False,
         },
     )
 
@@ -166,6 +160,9 @@ def messages(request):
 @require_GET
 def messages_preview(request, partner_key):
     from core.controllers import explore_controller, message_controller
+
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('public:explorer')}?gate=1")
 
     member = explore_controller.get_public_profile(partner_key)
     if not member:
