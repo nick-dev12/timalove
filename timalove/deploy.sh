@@ -203,6 +203,10 @@ if ! $SKIP_MIGRATE; then
     MIGRATE_OUTPUT=$(django_cmd "python manage.py migrate --noinput" 2>&1) || {
         err "Échec migrate"
         echo "$MIGRATE_OUTPUT"
+        if echo "$MIGRATE_OUTPUT" | grep -q "must be owner of table"; then
+            warn "PostgreSQL : l'utilisateur Django n'est pas propriétaire des tables."
+            warn "Corrigez puis relancez : sudo bash $REPO_DIR/deploy/fix-db-ownership.sh --then-deploy"
+        fi
         exit 1
     }
     echo "$MIGRATE_OUTPUT"

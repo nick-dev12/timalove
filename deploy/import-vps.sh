@@ -81,6 +81,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $DB_USER;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $DB_USER;
 SQL
 
+echo "[import] Propriété des tables → $DB_USER (requis pour migrate)…"
+DB_NAME="$DB_NAME" DB_USER="$DB_USER" bash "$SCRIPT_DIR/fix-db-ownership.sh"
+
 echo "[import] Réécriture des URLs photos CDN → /media/…"
 "$PSQL" -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 <<'SQL'
 UPDATE core_profile
