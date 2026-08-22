@@ -30,8 +30,10 @@
   --shadow-sm: 0 1px 2px rgba(45, 31, 34, 0.06);
   --shadow-md: 0 8px 24px rgba(45, 31, 34, 0.08);
   --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-solid: rgba(255, 255, 255, 0.94);
   --glass-border: rgba(255, 255, 255, 0.88);
   --glass-blur: blur(18px) saturate(1.15);
+  --glass-blur-light: blur(10px) saturate(1.08);
   --glass-shadow: 0 8px 22px rgba(45, 31, 34, 0.06);
   --max-w: 80rem;
 }
@@ -2525,6 +2527,8 @@ body.likes-page {
   height: auto;
   min-height: 100dvh;
   font-family: "Poppins", var(--font-sans);
+  scroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 html:has(body.explorer-page) {
@@ -2630,9 +2634,7 @@ body.explorer-page .explorer {
   z-index: 30;
   flex-shrink: 0;
   overflow: visible;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--glass-bg-solid);
   border-bottom: 1px solid rgba(232, 99, 122, 0.12);
 }
 
@@ -3002,6 +3004,9 @@ body.explorer-page .explorer {
   scroll-snap-stop: always;
   overscroll-behavior-y: contain;
   scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scroll-behavior: auto;
 }
 
 .explorer__slide {
@@ -3015,6 +3020,7 @@ body.explorer-page .explorer {
   box-sizing: border-box;
   display: flex;
   align-items: stretch;
+  contain: layout style paint;
 }
 
 .explorer__card {
@@ -3031,9 +3037,7 @@ body.explorer-page .explorer {
   min-height: 0;
   border-radius: 1.65rem;
   overflow: hidden;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--rose-pale);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
 }
@@ -3045,21 +3049,18 @@ body.explorer-page .explorer {
   align-items: center;
   justify-content: center;
   transition:
-    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.32s ease,
+    transform 0.32s ease;
 }
 
 .explorer__slide:not([data-ready="true"]) .explorer__reveal {
-  opacity: 0.35;
-  filter: blur(18px) saturate(1.05);
-  transform: scale(1.03);
+  opacity: 0.5;
+  transform: scale(1.008);
   pointer-events: none;
 }
 
 .explorer__slide[data-ready="true"] .explorer__reveal {
   opacity: 1;
-  filter: blur(0) saturate(1);
   transform: scale(1);
 }
 
@@ -3083,9 +3084,7 @@ body.explorer-page .explorer {
 .explorer__photos {
   position: absolute;
   inset: 0;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--rose-pale);
   cursor: pointer;
 }
 
@@ -3153,9 +3152,7 @@ body.explorer-page.is-guest .explorer__photo {
   gap: 0.35rem;
   padding: 0.42rem 0.8rem;
   border-radius: 9999px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--glass-bg-solid);
   border: 1px solid var(--glass-border);
   color: var(--rose-primary);
   font-size: 0.78rem;
@@ -3194,9 +3191,7 @@ body.explorer-page.is-guest .explorer__photo {
   gap: 0.35rem;
   padding: 0.38rem 0.75rem;
   border-radius: 9999px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--glass-bg-solid);
   border: 1px solid var(--glass-border);
   color: var(--bordeaux-dark);
   font-size: 0.74rem;
@@ -3569,13 +3564,11 @@ body.explorer-page.is-guest .explorer__photo {
   z-index: 4;
   display: grid;
   place-items: center;
-  background: rgba(255, 240, 243, 0.42);
-  backdrop-filter: blur(22px) saturate(1.15);
-  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  background: rgba(255, 240, 243, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.45);
   transition:
-    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0.55s ease;
+    opacity 0.32s ease,
+    visibility 0.32s ease;
 }
 
 .explorer__slide:not([data-ready="true"]) .explorer__veil {
@@ -3593,17 +3586,15 @@ body.explorer-page.is-guest .explorer__photo {
   text-align: center;
   padding: 1.25rem 1.4rem;
   border-radius: var(--radius-card);
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--glass-bg-solid);
   border: 1px solid rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 8px 24px rgba(232, 99, 122, 0.12);
   min-width: 11rem;
   transform: translateY(0.35rem);
   opacity: 0.96;
   transition:
-    transform 0.45s ease,
-    opacity 0.45s ease;
+    transform 0.32s ease,
+    opacity 0.32s ease;
 }
 
 .explorer__slide.is-loading .explorer__veil-inner {
@@ -3641,7 +3632,7 @@ body.explorer-page.is-guest .explorer__photo {
 .explorer__slide[data-ready="true"] .explorer__match,
 .explorer__slide[data-ready="true"] .explorer__go-profile,
 .explorer__slide[data-ready="true"] .explorer__meta {
-  animation: explorer-soft-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: explorer-soft-in 0.35s ease both;
 }
 
 @keyframes explorer-pulse {
@@ -4964,6 +4955,9 @@ body.visit-profil-page {
   min-height: 100dvh;
   color: var(--text-primary);
   position: relative;
+  overflow-x: hidden;
+  scroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 body.visit-profil-page::before,
@@ -13278,9 +13272,7 @@ body.history-page .explorer__chrome {
   margin-top: 0.45rem;
   padding: 0.75rem 0.7rem
     calc(var(--explorer-dock) + 1.15rem + env(safe-area-inset-bottom, 0px));
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--glass-bg-solid);
   border: 1px solid var(--glass-border);
   border-radius: 1.25rem;
   box-shadow: var(--glass-shadow);
@@ -13328,6 +13320,10 @@ body.history-page .explorer__chrome {
   overflow-x: auto;
   padding: 0.15rem 0.1rem 1.1rem;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-behavior: auto;
+  touch-action: pan-x;
 }
 
 .likes__stories::-webkit-scrollbar {
@@ -13441,26 +13437,30 @@ body.history-page .explorer__chrome {
 }
 
 .likes__featured {
-  display: grid;
-  gap: 0.95rem;
-  padding: 0.85rem;
-  border-radius: 1.45rem;
-  margin-bottom: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 350px;
+  margin-inline: auto;
+  gap: 0.65rem;
+  padding: 0.65rem;
+  border-radius: 1.15rem;
+  box-shadow: var(--glass-shadow);
 }
 
 .likes__featured-photo {
   position: relative;
-  display: block;
-  border-radius: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border-radius: 1rem;
   overflow: hidden;
   aspect-ratio: 3 / 4;
-  max-height: min(46dvh, 22rem);
   background: var(--rose-pale);
 }
 
 .likes__featured-photo img {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -13503,30 +13503,48 @@ body.history-page .explorer__chrome {
 }
 
 .likes__featured-copy h2 {
-  margin: 0.15rem 0 0.3rem;
+  margin: 0.1rem 0 0.2rem;
   font-family: var(--font-serif);
-  font-size: clamp(1.35rem, 4vw, 1.7rem);
+  font-size: clamp(1rem, 3.5vw, 1.35rem);
   color: var(--bordeaux-dark);
+  line-height: 1.15;
 }
 
 .likes__featured-meta {
-  margin: 0 0 0.45rem;
+  margin: 0 0 0.35rem;
   color: var(--text-secondary);
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 
 .likes__featured-text {
-  margin: 0 0 0.9rem;
+  margin: 0 0 0.65rem;
   color: var(--text-secondary);
-  font-size: 0.92rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .likes__featured-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin-top: auto;
+}
+
+.likes__featured-actions .likes__btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.72rem;
+  padding: 0.45rem 0.65rem;
+  min-height: 2.35rem;
+}
+
+.likes__featured-actions .likes__btn--primary {
+  flex: 1 1 100%;
 }
 
 .likes__btn {
@@ -13970,28 +13988,12 @@ body.history-page .explorer__chrome {
   .likes__grid {
     gap: 0.9rem;
   }
-
-  .likes__featured-photo {
-    max-height: min(42dvh, 22rem);
-  }
 }
 
 @media (min-width: 768px) {
-  .likes__featured {
-    grid-template-columns: minmax(11rem, 38%) 1fr;
-    align-items: stretch;
-    gap: 1.1rem;
-  }
-
-  .likes__featured-photo {
-    aspect-ratio: 3 / 4;
-    max-height: none;
-    height: 100%;
-    min-height: 16rem;
-  }
-
   .likes__grid {
-    gap: 1.15rem;
+    grid-template-columns: repeat(3, minmax(0, 350px));
+    gap: 1rem;
   }
 
   .likes__filter {
@@ -15677,15 +15679,13 @@ body.is-msg-invite {
   }
 
   .likes__featured {
-    gap: 0.65rem;
-    padding: 0.65rem;
-    border-radius: 1.1rem;
-    margin-bottom: 0.85rem;
+    gap: 0.55rem;
+    padding: 0.55rem;
+    border-radius: 1rem;
   }
 
   .likes__featured-photo {
-    max-height: min(38dvh, 16.5rem);
-    border-radius: 0.95rem;
+    border-radius: 0.85rem;
   }
 
   .likes__featured-fallback {
@@ -15713,14 +15713,13 @@ body.is-msg-invite {
   }
 
   .likes__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 350px));
     gap: 0.45rem;
     justify-content: center;
   }
 
-  .likes__card {
-    border-radius: 0.95rem;
-    width: 100%;
+  .likes__card,
+  .likes__featured {
     max-width: min(100%, 350px);
     margin-inline: auto;
   }
@@ -15862,16 +15861,17 @@ body.is-msg-invite {
   }
 
   .likes__featured-photo {
-    max-height: min(40dvh, 19rem);
+    border-radius: 0.9rem;
   }
 
   .likes__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 350px));
     gap: 0.6rem;
     justify-content: center;
   }
 
-  .likes__card {
+  .likes__card,
+  .likes__featured {
     max-width: min(100%, 350px);
     margin-inline: auto;
   }
@@ -15899,5 +15899,56 @@ body.is-msg-invite {
 
   .visit-settings-modal__dialog {
     border-radius: 1.4rem;
+  }
+}
+
+/* ── Perf scroll : pages glass sans backdrop-filter coûteux ── */
+body.explorer-page .explorer-hearts,
+body.explorer-page .explorer-rise,
+body.likes-page .explorer-hearts,
+body.history-page .explorer-hearts,
+body.visit-profil-page .explorer-hearts {
+  display: none !important;
+}
+
+body.visit-profil-page .visit-glass,
+body.likes-page .visit-glass,
+body.history-page .visit-glass {
+  background: var(--glass-bg-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body.visit-profil-page .visit {
+  contain: layout style;
+}
+
+body.likes-page,
+body.history-page {
+  scroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.likes__card,
+.likes__featured,
+.history__story,
+.history__grid > * {
+  contain: layout style paint;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.explorer-page .explorer__reveal,
+  body.explorer-page .explorer__veil,
+  body.explorer-page .explorer__veil-inner,
+  body.explorer-page .explorer__slide[data-ready="true"] .explorer__match,
+  body.explorer-page .explorer__slide[data-ready="true"] .explorer__go-profile,
+  body.explorer-page .explorer__slide[data-ready="true"] .explorer__meta {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .explorer-rise__heart,
+  .explorer-heart {
+    animation: none !important;
   }
 }

@@ -237,10 +237,12 @@
 
   if (!feed || !sentinel) return;
 
-  const REVEAL_MS = 1200;
+  const REVEAL_MS = 380;
   let fetching = false;
   let paging = false;
   let gestureLock = 0;
+  let wheelFrame = 0;
+  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
 
   function slideList() {
     return Array.from(feed.querySelectorAll(".explorer__slide"));
@@ -290,14 +292,14 @@
       return;
     }
     paging = true;
-    list[index].scrollIntoView({ behavior: "smooth", block: "start" });
+    list[index].scrollIntoView({ behavior: "auto", block: "start" });
     startReveal(list[index]);
     if (window.timaloveMatchScore) {
       window.timaloveMatchScore.scanVisible(feed);
     }
     window.setTimeout(function () {
       paging = false;
-    }, 560);
+    }, 280);
   }
 
   function goNext(force) {
@@ -314,70 +316,38 @@
 
   function onGesture(direction) {
     const now = Date.now();
-    if (paging || now - gestureLock < 680) return;
+    if (paging || now - gestureLock < 420) return;
     gestureLock = now;
     if (direction > 0) goNext();
     else goPrev();
   }
 
-  feed.addEventListener(
-    "wheel",
-    function (event) {
-      event.preventDefault();
-      if (Math.abs(event.deltaY) < 18) return;
-      onGesture(event.deltaY);
-    },
-    { passive: false }
-  );
+  if (!coarsePointer) {
+    feed.addEventListener(
+      "wheel",
+      function (event) {
+        event.preventDefault();
+        if (wheelFrame || Math.abs(event.deltaY) < 18) return;
+        wheelFrame = window.requestAnimationFrame(function () {
+          wheelFrame = 0;
+          onGesture(event.deltaY);
+        });
+      },
+      { passive: false }
+    );
 
-  let touchY = 0;
-  feed.addEventListener(
-    "touchstart",
-    function (event) {
-      touchY = event.changedTouches[0].clientY;
-    },
-    { passive: true }
-  );
-  feed.addEventListener(
-    "touchmove",
-    function (event) {
-      event.preventDefault();
-    },
-    { passive: false }
-  );
-  feed.addEventListener(
-    "touchend",
-    function (event) {
-      const dy = touchY - event.changedTouches[0].clientY;
-      if (Math.abs(dy) < 46) return;
-      onGesture(dy);
-    },
-    { passive: true }
-  );
-
-  document.addEventListener("keydown", function (event) {
-    if (event.target.closest("input, textarea, [contenteditable]")) return;
-    if (["ArrowDown", "PageDown", " "].indexOf(event.key) !== -1) {
-      event.preventDefault();
-      onGesture(1);
-    }
-    if (["ArrowUp", "PageUp"].indexOf(event.key) !== -1) {
-      event.preventDefault();
-      onGesture(-1);
-    }
-  });
-
-  feed.addEventListener("scroll", function () {
-    if (paging) return;
-    const list = slideList();
-    const i = currentIndex();
-    for (let k = 0; k < i; k += 1) {
-      if (list[k].dataset.ready !== "true") {
-        goTo(k);
-        return;
+    document.addEventListener("keydown", function (event) {
+      if (event.target.closest("input, textarea, [contenteditable]")) return;
+      if (["ArrowDown", "PageDown", " "].indexOf(event.key) !== -1) {
+        event.preventDefault();
+        onGesture(1);
       }
-    }
-  });
+      if (["ArrowUp", "PageUp"].indexOf(event.key) !== -1) {
+        event.preventDefault();
+        onGesture(-1);
+      }
+    });
+  }
 
   function bindPhotoNav(slide) {
     if (slide.dataset.photoBound === "true") return;

@@ -56,7 +56,7 @@
       el.hidden = !text;
       el.textContent = text || "";
       el.classList.toggle("is-error", Boolean(isError));
-      if (text) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      if (text) el.scrollIntoView({ behavior: "auto", block: "nearest" });
     }
 
     function showTab(key) {

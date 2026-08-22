@@ -27,7 +27,8 @@
   {% endfor %}
 </section>
 
-{% if featured %}
+<section class="likes__grid" aria-label="Profils qui vous ont liké">
+  {% if featured %}
 <article class="likes__featured visit-glass{% if featured.is_matched %} is-matched{% endif %}" data-profile-id="{{ featured.id }}" data-filter-item data-super="{{ featured.is_super_like|yesno:'1,0' }}" data-matched="{{ featured.is_matched|yesno:'1,0' }}" data-online="{{ featured.is_online|yesno:'1,0' }}">
   <a class="likes__featured-photo" href="{{ featured.profile_url }}" data-profile-modal="{{ featured.id }}">
     {% if featured.photo_url %}
@@ -67,10 +68,8 @@
     </div>
     {% endif %}
   </div>
-</article>
-{% endif %}
-
-<section class="likes__grid" aria-label="Profils qui vous ont liké">
+  </article>
+  {% endif %}
   {% for item in grid %}
   {% if item.is_locked %}
   <article class="likes__card is-locked">
