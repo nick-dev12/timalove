@@ -199,7 +199,14 @@ RESEND_FROM_EMAIL = env("RESEND_FROM_EMAIL", default="TimaLove <onboarding@resen
 RECAPTCHA_SITE_KEY = env("RECAPTCHA_SITE_KEY", default="")
 RECAPTCHA_SECRET_KEY = env("RECAPTCHA_SECRET_KEY", default="")
 MEDIA_CDN_URL = env("MEDIA_CDN_URL", default="")
-SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
+
+from core.utils.site_url import resolve_public_site_url  # noqa: E402
+
+SITE_URL = resolve_public_site_url(
+    env("SITE_URL", default="http://127.0.0.1:8000"),
+    debug=DEBUG,
+    allowed_hosts=ALLOWED_HOSTS,
+)
 FREE_MESSAGES_LIMIT_DEFAULT = 3
 FREE_SWIPES_PER_DAY_DEFAULT = 20
 FREE_LIKES_PER_DAY_DEFAULT = 10

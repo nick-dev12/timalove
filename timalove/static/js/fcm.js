@@ -5,6 +5,22 @@
   const TOKEN_KEY = "timalove_fcm_token";
   const FIREBASE_VERSION = "12.18.0";
 
+  function normalizeNotifUrl(url) {
+    const fallback = window.location.origin + "/";
+    if (!url) return fallback;
+    try {
+      const parsed = new URL(url, window.location.origin);
+      if (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") {
+        return window.location.origin + parsed.pathname + parsed.search + parsed.hash;
+      }
+      return parsed.href;
+    } catch (_err) {
+      return url.startsWith("/") ? window.location.origin + url : fallback;
+    }
+  }
+
+  window.timaloveNormalizeNotifUrl = normalizeNotifUrl;
+
   function getCookie(name) {
     const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
     return match ? decodeURIComponent(match[1]) : "";
@@ -115,7 +131,7 @@
       const data = (payload && payload.data) || {};
       const title = (payload.notification && payload.notification.title) || data.title || "TimaLove";
       const body = (payload.notification && payload.notification.body) || data.message || "";
-      const url = data.url || "/";
+      const url = normalizeNotifUrl(data.url || "/");
       document.dispatchEvent(
         new CustomEvent("timalove:fcm", {
           detail: {

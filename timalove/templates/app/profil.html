@@ -4,7 +4,7 @@
 {% block body_class %}visit-profil-page{% endblock %}
 {% block head %}
 <script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
-<script src="{% static 'js/own-profile.js' %}?v=20260822s4" defer></script>
+<script src="{% static 'js/own-profile.js' %}?v=20260822s5" defer></script>
 {% endblock %}
 {% block body %}
 <div class="visit visit--own" data-own-profile data-max-photos="{{ max_photos }}">
@@ -659,6 +659,7 @@
               Notifications en temps réel activées
             </p>
             <p class="visit__card-lead">Choisissez les alertes que vous souhaitez recevoir.</p>
+            <p class="visit-form-hint visit-form-hint--boxed visit-notifs__health" data-notifs-health hidden aria-live="polite"></p>
             <form class="visit-form visit-form--checks" data-notifs-form>
               <label class="visit-form__check"><input type="checkbox" name="likes"{% if notif_prefs.likes %} checked{% endif %}> Nouveau like</label>
               <label class="visit-form__check"><input type="checkbox" name="super_likes"{% if notif_prefs.super_likes %} checked{% endif %}> Super like</label>

@@ -211,6 +211,7 @@ def send_test(profile: Profile) -> dict:
     result = push_controller.send_for_notification(str(notification.id), force=True)
     return {
         "notification_id": str(notification.id),
+        "url": push_controller.notification_link(notification),
         **result,
     }
 

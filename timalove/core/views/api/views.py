@@ -417,7 +417,7 @@ def push_test(request):
             },
             status=502,
         )
-    return JsonResponse({"ok": True, "message": "Notification test envoyée.", **result})
+    return JsonResponse({"ok": True, "message": "Notification test envoyée.", "url": result.get("url"), **result})
 
 
 @login_required

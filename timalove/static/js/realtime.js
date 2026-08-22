@@ -109,6 +109,13 @@
 
   window.timaloveRefreshUnreadBadge = fetchUnread;
 
+  function normalizeNotifUrl(url) {
+    if (typeof window.timaloveNormalizeNotifUrl === "function") {
+      return window.timaloveNormalizeNotifUrl(url);
+    }
+    return url || "/";
+  }
+
   function kindMeta(payload) {
     const kind = payload.kind || payload.type || "";
     if (kind === "new_match") {
@@ -178,7 +185,7 @@
     root.querySelector("[data-live-title]").textContent = name;
     root.querySelector("[data-live-text]").textContent = payload.message || "";
     root.querySelector("[data-live-cta]").textContent = meta.cta;
-    root.setAttribute("data-url", payload.url || "/");
+    root.setAttribute("data-url", normalizeNotifUrl(payload.url || "/"));
     root.setAttribute("data-kind", payload.kind || payload.type || "");
     root.hidden = false;
     window.clearTimeout(popupTimer);
@@ -190,7 +197,7 @@
     if (document.visibilityState === "visible") return;
     const title = payload.title || "TimaLove";
     const body = payload.message || "";
-    const url = payload.url || "/";
+    const url = normalizeNotifUrl(payload.url || "/");
     const tag =
       "timalove-" + (payload.kind || payload.type || "notif") + "-" + (payload.related_user_id || payload.id || "");
     if (navigator.serviceWorker) {

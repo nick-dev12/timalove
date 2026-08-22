@@ -378,6 +378,35 @@
       msg.classList.toggle("is-error", Boolean(isError));
     }
 
+    async function refreshNotifsHealth() {
+      const health = root.querySelector("[data-notifs-health]");
+      if (!health) return;
+      try {
+        const res = await fetch("/api/push/status/", { credentials: "same-origin" });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error("status");
+        const issues = [];
+        if (!data.fcm_enabled) issues.push("FCM désactivé côté serveur.");
+        if (!data.credentials_found) issues.push("Fichier Firebase credentials manquant sur le serveur.");
+        if (!data.site_url_public) {
+          issues.push(`URL publique incorrecte (${data.site_url || "?"}). Définissez SITE_URL=https://timalove.goo-bridge.com dans .env.`);
+        }
+        if (data.push_enabled && (data.devices_count || 0) < 1) {
+          issues.push("Aucun appareil enregistré — réactivez les notifications sur cet appareil.");
+        }
+        if (issues.length) {
+          health.textContent = issues.join(" ");
+          health.hidden = false;
+          health.classList.add("is-error");
+        } else {
+          health.hidden = true;
+          health.classList.remove("is-error");
+        }
+      } catch (_err) {
+        health.hidden = true;
+      }
+    }
+
     async function enableNotifications() {
       setNotifEnableMsg("");
       if (typeof window.timaloveEnablePush !== "function") {
@@ -399,6 +428,7 @@
         input.checked = true;
       });
       showNotifActivatingSuccess();
+      await refreshNotifsHealth();
     }
 
     async function disableNotifications() {
@@ -423,6 +453,7 @@
     if (prefsWrap && !prefsWrap.hasAttribute("hidden")) {
       showNotifPrefs();
     }
+    void refreshNotifsHealth();
 
     root.querySelector("[data-notifs-enable]")?.addEventListener("click", async (e) => {
       const btn = e.currentTarget;

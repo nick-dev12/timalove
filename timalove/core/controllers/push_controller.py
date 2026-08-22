@@ -5,10 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from django.conf import settings
-from django.utils import timezone
-
-from core.controllers.firebase_app import get_firebase_app
+from core.utils.site_url import site_url_is_public
 from core.models import Notification, Profile, PushDevice
 
 logger = logging.getLogger(__name__)
@@ -110,6 +107,8 @@ def status_for(profile: Profile) -> dict[str, Any]:
     return {
         "fcm_enabled": _firebase_enabled(),
         "credentials_found": cred_ok,
+        "site_url": settings.SITE_URL.rstrip("/"),
+        "site_url_public": site_url_is_public(settings.SITE_URL, debug=settings.DEBUG),
         "push_enabled": bool(prefs.get("push")),
         "preferences": prefs,
         "devices_count": len(devices),

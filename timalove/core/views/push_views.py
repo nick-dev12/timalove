@@ -49,7 +49,17 @@ messaging.onBackgroundMessage((payload) => {{
 
 self.addEventListener("notificationclick", (event) => {{
   event.notification.close();
-  const target = event.notification.data?.url || "/";
+  let target = event.notification.data?.url || "/";
+  try {{
+    const parsed = new URL(target, self.location.origin);
+    if (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") {{
+      target = self.location.origin + parsed.pathname + parsed.search + parsed.hash;
+    }} else {{
+      target = parsed.href;
+    }}
+  }} catch (_err) {{
+    target = target.startsWith("/") ? self.location.origin + target : self.location.origin + "/";
+  }}
   event.waitUntil((async () => {{
     const all = await clients.matchAll({{ type: "window", includeUncontrolled: true }});
     for (const client of all) {{
