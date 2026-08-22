@@ -18,6 +18,11 @@ MEMBER_PREFIXES = (
 ADMIN_PREFIXES = ("/espace-prive",)
 COMPLETER_PATH = "/completer-profil"
 
+# Chemins publics (pas de redirect profil incomplet / auth)
+PUBLIC_PATHS = (
+    "/firebase-messaging-sw.js",
+)
+
 INCOMPLETE_ALLOWED = (
     COMPLETER_PATH,
     "/connexion",
@@ -47,6 +52,9 @@ class AuthGuardsMiddleware:
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
         path = request.path
+
+        if path in PUBLIC_PATHS:
+            return self.get_response(request)
 
         if path.startswith("/explorer"):
             if request.user.is_authenticated:

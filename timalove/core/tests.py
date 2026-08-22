@@ -786,6 +786,17 @@ class PagesSmokeTests(TestCase):
         resp = self.client.get("/api/health/")
         self.assertEqual(resp.status_code, 200)
 
+    def test_firebase_sw_not_redirected_during_signup(self):
+        profile = make_profile("sw@test.com", Gender.MALE, "SW")
+        profile.onboarding_completed = False
+        profile.registration_status = RegistrationStatus.PENDING
+        profile.save(update_fields=["onboarding_completed", "registration_status", "updated_at"])
+        self.client.force_login(profile.user)
+        resp = self.client.get("/firebase-messaging-sw.js")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("application/javascript", resp["Content-Type"])
+        self.assertNotIn("/connexion/", resp.get("Location", ""))
+
 
 class FreemiumQuotaTests(TestCase):
     def setUp(self):

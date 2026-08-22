@@ -11,6 +11,7 @@ PUBLIC_WHEN_MAINTENANCE = (
     "/espace-prive/",
     "/static/",
     "/media/",
+    "/firebase-messaging-sw.js",
     "/api/health",
 )
 
