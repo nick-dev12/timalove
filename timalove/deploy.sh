@@ -245,6 +245,20 @@ else
     log "Étape 5/5 — Redémarrage services (ignoré)"
 fi
 
+# ── Patch Nginx WebSocket (Webuzo) ─────────────────────────────────────────────
+NGINX_PATCH="$REPO_DIR/deploy/patch-webuzo-nginx.py"
+NGINX_CONF="/usr/local/apps/nginx/etc/conf.d/webuzoVH.conf"
+if [[ -f "$NGINX_PATCH" ]] && [[ -f "$NGINX_CONF" ]]; then
+    log "Patch Nginx WebSocket (proxy wss → Daphne)"
+    if python3 "$NGINX_PATCH"; then
+        ok "Nginx WebSocket proxy → appliqué (v3)"
+    else
+        warn "Patch Nginx WebSocket — échec (lancer : sudo python3 $NGINX_PATCH)"
+    fi
+elif [[ -f "$NGINX_PATCH" ]]; then
+    warn "webuzoVH.conf introuvable — patch Nginx WebSocket ignoré"
+fi
+
 # ── Vérifications finales ──────────────────────────────────────────────────────
 echo ""
 log "Vérifications finales"

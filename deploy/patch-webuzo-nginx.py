@@ -17,12 +17,21 @@ CONF = Path("/usr/local/apps/nginx/etc/conf.d/webuzoVH.conf")
 NGINX_BIN = Path("/usr/local/apps/nginx/sbin/nginx")
 LOCK_PATH = Path("/run/timalove-nginx-patch.lock")
 DOMAIN = "timalove.goo-bridge.com"
-MARKER_BEGIN = "# --- timalove-daphne-begin ---"
-MARKER_END = "# --- timalove-daphne-end ---"
-WS_SIGNATURE = "proxy_pass_header Upgrade"
+PATCH_VERSION = "v3"
+MARKER_BEGIN = f"# --- timalove-daphne-{PATCH_VERSION}-begin ---"
+MARKER_END = f"# --- timalove-daphne-{PATCH_VERSION}-end ---"
+WS_SIGNATURE = "connection_upgrade"
+
+WS_MAP = """
+# --- timalove-ws-map ---
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+# --- timalove-ws-map-end ---
+"""
 
 # modsecurity off : le WAF Webuzo coupe souvent Upgrade: websocket (1006).
-# Sec-WebSocket-Extensions vide : permessage-deflate casse le handshake navigateur.
 PROXY = f"""
         {MARKER_BEGIN}
         location /static/ {{
@@ -41,16 +50,11 @@ PROXY = f"""
             proxy_pass http://127.0.0.1:8001;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
+            proxy_set_header Connection $connection_upgrade;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header Origin $http_origin;
-            proxy_set_header Sec-WebSocket-Extensions "";
-            proxy_pass_header Upgrade;
-            proxy_pass_header Connection;
-            proxy_pass_header Sec-WebSocket-Accept;
             proxy_read_timeout 86400s;
             proxy_send_timeout 86400s;
             proxy_buffering off;
@@ -128,19 +132,35 @@ def comment_location_slash(block: str) -> str:
 
 
 def strip_marked_proxy(block: str) -> str:
-    pattern = re.compile(
-        re.escape(MARKER_BEGIN) + r".*?" + re.escape(MARKER_END),
-        re.DOTALL,
-    )
-    return pattern.sub("", block)
+    patterns = [
+        re.compile(
+            r"# --- timalove-daphne-v\d+-begin ---.*?# --- timalove-daphne-v\d+-end ---",
+            re.DOTALL,
+        ),
+        re.compile(
+            re.escape("# --- timalove-daphne-begin ---")
+            + r".*?"
+            + re.escape("# --- timalove-daphne-end ---"),
+            re.DOTALL,
+        ),
+    ]
+    for pattern in patterns:
+        block = pattern.sub("", block)
+    return block
+
+
+def ensure_ws_map(text: str) -> str:
+    if "timalove-ws-map" in text:
+        return text
+    return WS_MAP.strip() + "\n\n" + text
 
 
 def patch_block(block: str) -> str:
     if MARKER_BEGIN in block and WS_SIGNATURE in block:
         return block
-    if MARKER_BEGIN in block:
-        block = strip_marked_proxy(block)
-    else:
+    had_marker = "timalove-daphne" in block
+    block = strip_marked_proxy(block)
+    if not had_marker:
         block = comment_location_slash(block)
     close = block.rfind("}")
     return block[:close] + PROXY + "\n    }\n"
@@ -182,6 +202,7 @@ def nginx_test_and_reload() -> None:
 
 
 def apply_patch(text: str) -> tuple[str, int, int]:
+    text = ensure_ws_map(text)
     parts: list[str] = []
     last = 0
     timalove_blocks = 0
