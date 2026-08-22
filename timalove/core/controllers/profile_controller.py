@@ -500,13 +500,15 @@ def dob_bounds(age_min: int, age_max: int) -> tuple[date, date]:
 
 
 def apply_discover_filters(qs, viewer: Profile):
+    from django.db.models import Q
+
     filters = filters_for(viewer)
     gender = filters.get("gender") or ""
     if gender in {Gender.MALE, Gender.FEMALE}:
-        qs = qs.filter(gender=gender)
+        qs = qs.filter(Q(gender=gender) | Q(gender=""))
     elif gender != "all" and viewer.gender:
         opposite = Gender.FEMALE if viewer.gender == Gender.MALE else Gender.MALE
-        qs = qs.filter(gender=opposite)
+        qs = qs.filter(Q(gender=opposite) | Q(gender=""))
     if filters.get("religion"):
         qs = qs.filter(religion=filters["religion"])
     if filters.get("country"):

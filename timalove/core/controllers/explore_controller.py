@@ -80,6 +80,19 @@ def _eligible_queryset():
     )
 
 
+def _search_queryset():
+    """Profils trouvables par nom — sans exiger de photo (inscription récente)."""
+    return (
+        Profile.objects.filter(
+            registration_status=RegistrationStatus.APPROVED,
+            is_hidden=False,
+            role=UserRole.MEMBER,
+        )
+        .exclude(banned_at__isnull=False)
+        .exclude(suspended_at__isnull=False)
+    )
+
+
 def serialize_card(
     profile: Profile,
     *,
@@ -225,48 +238,62 @@ def get_public_profile_or_404(profile_id, viewer=None) -> dict:
 
 
 def search_profiles(query: str, *, viewer=None, limit: int = 8) -> list[dict]:
-    """Recherche live : prénom, ville, profession — photo + nom pour l’autocomplete."""
+    """Recherche live : prénom, nom, ville, commune, profession — sans exclusions swipe."""
     q = " ".join((query or "").split())
     if len(q) < 2:
         return []
 
-    qs = _eligible_queryset()
+    qs = _search_queryset()
     if viewer is not None:
         qs = qs.exclude(pk=viewer.pk)
-        from core.controllers.profile_controller import apply_discover_filters
 
-        qs = apply_discover_filters(qs, viewer)
-        qs = swipe_controller.apply_feed_exclusions(qs, viewer)
+    text_q = (
+        Q(first_name__icontains=q)
+        | Q(last_name__icontains=q)
+        | Q(city__icontains=q)
+        | Q(commune__icontains=q)
+        | Q(profession__icontains=q)
+        | Q(country__icontains=q)
+    )
+    if " " in q:
+        parts = [p for p in q.split() if len(p) >= 2]
+        if len(parts) >= 2:
+            text_q = text_q | Q(first_name__icontains=parts[0], last_name__icontains=parts[-1])
+            text_q = text_q | Q(first_name__icontains=parts[-1], last_name__icontains=parts[0])
+    for token in q.split():
+        if len(token) >= 2:
+            text_q = text_q | Q(first_name__icontains=token) | Q(last_name__icontains=token)
 
     qs = (
-        qs.filter(
-            Q(first_name__icontains=q)
-            | Q(city__icontains=q)
-            | Q(profession__icontains=q)
-        )
+        qs.filter(text_q)
         .annotate(
             rank=Case(
                 When(first_name__istartswith=q, then=Value(0)),
-                When(first_name__icontains=q, then=Value(1)),
-                default=Value(2),
+                When(last_name__istartswith=q, then=Value(1)),
+                When(first_name__icontains=q, then=Value(2)),
+                When(last_name__icontains=q, then=Value(3)),
+                default=Value(4),
                 output_field=IntegerField(),
             )
         )
-        .order_by("rank", "first_name")[: max(1, min(limit, 12))]
+        .order_by("rank", "first_name", "last_name")[: max(1, min(limit, 12))]
     )
 
     results = []
     for profile in qs:
-        name = (profile.first_name or "Membre").strip() or "Membre"
+        first = (profile.first_name or "Membre").strip() or "Membre"
+        last = (profile.last_name or "").strip()
+        display = f"{first} {last}".strip() if last else first
+        photo = (profile.primary_photo or "").strip()
         results.append(
             {
                 "id": str(profile.pk),
-                "first_name": name,
+                "first_name": display,
                 "age": None if profile.hide_age else profile.age,
-                "photo_url": profile.primary_photo or "",
+                "photo_url": photo,
                 "city": profile.city or "",
                 "profile_url": f"/explorer/profil/{profile.pk}/",
-                "initial": name[:1].upper(),
+                "initial": first[:1].upper(),
             }
         )
     return results

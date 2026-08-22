@@ -283,6 +283,15 @@ if $RUN_CHECKS; then
         else
             warn "Celery ping a échoué (voir : journalctl -u celery-timalove -n 50)"
         fi
+
+        VERIFY_OUTPUT=$(django_cmd "python '$REPO_DIR/deploy/verify_runtime.py' --site-url '$SITE_URL'" 2>&1) || VERIFY_RC=$?
+        VERIFY_RC=${VERIFY_RC:-0}
+        echo "$VERIFY_OUTPUT"
+        if [[ "$VERIFY_RC" -eq 0 ]]; then
+            ok "Notifications + WebSocket → OK"
+        else
+            warn "Vérifications notifications/WebSocket incomplètes (voir ci-dessus)"
+        fi
     fi
 fi
 

@@ -263,18 +263,13 @@ def feed_context(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> dict:
         locked_count = max(0, total - visible)
 
     unlocked = [item for item in likes_list if not item.get("is_locked")]
-    featured = next(
-        (item for item in unlocked if item.get("is_super_like") and not item.get("is_matched")),
-        next((item for item in unlocked if item.get("is_super_like")), unlocked[0] if unlocked else None),
-    )
-    grid = [item for item in likes_list if featured is None or item["id"] != featured["id"]]
     has_matches = Match.objects.filter(
         models_q_participant(profile), status=MatchStatus.ACTIVE
     ).exists()
     return {
         "likes": likes_list,
-        "featured": featured,
-        "grid": grid,
+        "featured": None,
+        "grid": likes_list,
         "pending_count": total,
         "has_matches": has_matches,
         "has_more": total > len(likes_list) and not quota_controller.is_freemium(profile),

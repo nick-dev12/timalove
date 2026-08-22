@@ -1,10 +1,9 @@
 {% load static %}
 <nav class="explorer__bottom" aria-label="Navigation principale">
   <div class="explorer__dock">
-    <a class="explorer__tab{% if dock_active == 'historique' %} is-active{% endif %}{% if is_freemium %} is-locked{% endif %}" href="{% url 'public:historique' %}"{% if dock_active == 'historique' %} aria-current="page"{% endif %}{% if is_freemium %} aria-label="Historique, réservé aux membres Premium"{% endif %}>
+    <a class="explorer__tab{% if dock_active == 'historique' %} is-active{% endif %}" href="{% url 'public:historique' %}"{% if dock_active == 'historique' %} aria-current="page"{% endif %}>
       <span class="explorer__tab-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M12 7.5V12l3.2 2"/></svg>
-        {% if is_freemium %}<span class="explorer__tab-lock" aria-hidden="true"></span>{% endif %}
       </span>
       <span class="explorer__tab-label">Historique</span>
     </a>

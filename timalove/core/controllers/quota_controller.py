@@ -82,7 +82,7 @@ def daily_like_count(profile: Profile) -> int:
 
 
 def history_locked(profile: Profile | None) -> bool:
-    return is_freemium(profile)
+    return False
 
 
 def check_message(profile: Profile) -> tuple[bool, str]:
@@ -140,7 +140,7 @@ def snapshot(profile: Profile | None) -> dict:
         "swipes_left": max(0, swipes_per_day_limit() - daily_swipe_count(profile)),
         "likes_left": max(0, likes_per_day_limit() - daily_like_count(profile)),
         "messages_left": messages_remaining(profile),
-        "history_locked": True,
+        "history_locked": False,
         "likes_visible": likes_visible_limit(),
         "upgrade_path": UPGRADE_PATH,
     }

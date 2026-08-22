@@ -7,6 +7,7 @@ import json
 import os
 import socket
 import sys
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -49,15 +50,24 @@ async def test_in_process(cookie: bytes) -> bool:
     return True
 
 
-def test_live_daphne(cookie: str, host: str = "127.0.0.1", port: int = 8000) -> bool:
+def test_live_daphne(cookie: str, site_url: str = "http://127.0.0.1:8000") -> bool:
     try:
         from websocket import create_connection
     except ImportError:
         print("SKIP live: pip install websocket-client")
         return False
 
+    parsed = urllib.parse.urlparse(site_url.rstrip("/"))
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    ws_scheme = "wss" if parsed.scheme == "https" else "ws"
+    if parsed.port is None and parsed.scheme == "https":
+        port = 443
+    elif parsed.port is None:
+        port = 80
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1)
+    sock.settimeout(2)
     try:
         sock.connect((host, port))
     except OSError:
@@ -66,16 +76,14 @@ def test_live_daphne(cookie: str, host: str = "127.0.0.1", port: int = 8000) -> 
     finally:
         sock.close()
 
-    ws = create_connection(
-        f"ws://{host}:{port}/ws/notifications/",
-        cookie=cookie,
-        timeout=8,
-    )
+    ws_url = f"{ws_scheme}://{host}:{port}/ws/notifications/"
+    ws = create_connection(ws_url, cookie=cookie, timeout=10)
     ws.close()
     return True
 
 
-def main() -> int:
+def main(site_url: str | None = None) -> int:
+    site = (site_url or os.environ.get("TIMALOVE_SITE_URL") or "http://127.0.0.1:8000").rstrip("/")
     auth = session_cookie_for("teste1@gmail.com")
     if not auth:
         print("FAIL: utilisateur teste1@gmail.com introuvable ou session impossible")
@@ -87,10 +95,10 @@ def main() -> int:
     if not inproc:
         return 2
 
-    live = test_live_daphne(cookie)
-    print("live Daphne (ws://127.0.0.1:8000/ws/notifications/):", "OK" if live else "FAIL")
+    live = test_live_daphne(cookie, site_url=site)
+    print(f"live ({site}/ws/notifications/):", "OK" if live else "FAIL")
 
-    payload = {"status": "ok", "user": email, "live_daphne": live}
+    payload = {"status": "ok", "user": email, "live_daphne": live, "site": site}
     print(json.dumps(payload, ensure_ascii=False))
     return 0 if live else 3
 
