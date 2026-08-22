@@ -39,11 +39,17 @@ def _should_hide_incoming_liker(profile: Profile, swiper_id) -> bool:
     return my_swipe.created_at >= their_like.created_at
 
 
+def _mutual_like_ids(profile: Profile) -> set:
+    """Profils avec like ou super like réciproque (vrai match)."""
+    liked_me = _liked_me_ids(profile)
+    my_likes = set(
+        Swipe.objects.filter(swiper=profile).filter(LIKE_Q).values_list("swiped_id", flat=True)
+    )
+    return liked_me & my_likes
+
+
 def _matched_ids(profile: Profile) -> set:
-    ids: set = set()
-    for match in Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE):
-        ids.add(match.partner_of(profile).id)
-    return ids
+    return _mutual_like_ids(profile)
 
 
 def _liked_me_ids(profile: Profile) -> set:
@@ -104,12 +110,15 @@ def incoming(profile: Profile, limit: int | None = None) -> list[dict]:
     my_likes = set(
         Swipe.objects.filter(swiper=profile).filter(LIKE_Q).values_list("swiped_id", flat=True)
     )
-    matched_ids = _matched_ids(profile)
+    mutual_ids = _mutual_like_ids(profile)
     seen_swiper_ids: set = set()
     match_dates: dict = {}
-    for match in Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE):
+    for match in Match.objects.filter(
+        models_q_participant(profile), status=MatchStatus.ACTIVE, is_one_sided=False
+    ):
         partner_id = match.partner_of(profile).id
-        match_dates[partner_id] = match.updated_at or match.created_at
+        if partner_id in mutual_ids:
+            match_dates[partner_id] = match.updated_at or match.created_at
 
     results = []
     for swipe in liked_me:
@@ -125,13 +134,13 @@ def incoming(profile: Profile, limit: int | None = None) -> list[dict]:
             _incoming_item(
                 swiper,
                 is_super_like=_is_incoming_super_like(swipe),
-                is_matched=swipe.swiper_id in matched_ids,
+                is_matched=swipe.swiper_id in mutual_ids,
                 already_liked_back=swipe.swiper_id in my_likes,
                 created_at=swipe.created_at,
             )
         )
 
-    missing_match_ids = matched_ids - seen_swiper_ids
+    missing_match_ids = mutual_ids - seen_swiper_ids
     if missing_match_ids:
         partners = {p.id: p for p in Profile.objects.filter(pk__in=missing_match_ids)}
         for partner_id in missing_match_ids:
@@ -263,9 +272,7 @@ def feed_context(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> dict:
         locked_count = max(0, total - visible)
 
     unlocked = [item for item in likes_list if not item.get("is_locked")]
-    has_matches = Match.objects.filter(
-        models_q_participant(profile), status=MatchStatus.ACTIVE
-    ).exists()
+    has_matches = bool(_mutual_like_ids(profile))
     return {
         "likes": likes_list,
         "featured": None,

@@ -289,22 +289,40 @@ class LikesMessagingFlowTests(TestCase):
             Message.objects.filter(content="Message via formulaire", sender=self.p1).exists()
         )
 
-    def test_matched_partner_visible_without_incoming_swipe(self):
-        """Match importé ou asymétrique : les deux voient le partenaire sur /likes/."""
-        from core.models import Match, Swipe
+    def test_one_sided_match_shows_no_match_badge_on_likes(self):
+        """Conversation ouverte sans like retour : pas de badge match sur /likes/."""
+        from core.controllers import likes_controller, message_controller, swipe_controller
+        from core.models import Match
         from core.models.choices import MatchStatus
 
-        Match.objects.create(user_1=self.p1, user_2=self.p2, status=MatchStatus.ACTIVE)
-        self.assertFalse(
-            Swipe.objects.filter(swiper=self.p2, swiped=self.p1).filter(
-                Q(is_like=True) | Q(is_super_like=True)
-            ).exists()
-        )
+        swipe_controller.record_swipe(self.p1, self.p2.id, "like")
+        ok, _, match = message_controller.ensure_conversation(self.p1, self.p2.id)
+        self.assertTrue(ok)
+        self.assertTrue(match.is_one_sided)
 
-        self._login(self.u1)
+        self._login(self.u2)
         likes_page = self.client.get("/likes/")
         self.assertEqual(likes_page.status_code, 200)
-        self.assertContains(likes_page, str(self.p2.id))
+        self.assertContains(likes_page, str(self.p1.id))
+        self.assertNotContains(likes_page, "likes__match-badge")
+
+        feed = likes_controller.feed_context(self.p2)
+        card = next(item for item in feed["likes"] if item["id"] == str(self.p1.id))
+        self.assertFalse(card["is_matched"])
+        self.assertFalse(card["already_liked_back"])
+
+    def test_mutual_like_shows_match_badge_on_likes(self):
+        from core.controllers import likes_controller, swipe_controller
+
+        swipe_controller.record_swipe(self.p1, self.p2.id, "like")
+        swipe_controller.record_swipe(self.p2, self.p1.id, "like")
+
+        feed = likes_controller.feed_context(self.p2)
+        card = next(item for item in feed["likes"] if item["id"] == str(self.p1.id))
+        self.assertTrue(card["is_matched"])
+
+        self._login(self.u2)
+        likes_page = self.client.get("/likes/")
         self.assertContains(likes_page, "likes__match-badge")
 
     def test_incoming_visible_after_search_like_despite_earlier_pass(self):
