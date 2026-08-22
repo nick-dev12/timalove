@@ -54,12 +54,14 @@ def _notification_payload(notification: Notification) -> dict:
         "created_at": notification.created_at.isoformat() if notification.created_at else None,
         "unread_messages": 0,
         "likes_count": 0,
+        "unread_notifications": 0,
     }
     if notification.type == NotificationType.PROFILE_APPROVED and notification.title == "Test TimaLove":
         payload["test"] = True
     try:
         payload["unread_messages"] = message_controller.unread_count(notification.user)
         payload["likes_count"] = likes_controller.count_unread_incoming(notification.user)
+        payload["unread_notifications"] = unread_count(notification.user)
     except Exception:
         pass
     return payload

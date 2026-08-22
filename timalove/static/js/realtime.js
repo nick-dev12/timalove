@@ -66,6 +66,24 @@
     renderBadge("[data-unread-messages]", count, "[data-dock-messages]", "Messages");
   }
 
+  function renderUnreadNotifications(count) {
+    const badge = document.querySelector("[data-unread-notifications]");
+    const bell = document.querySelector(".explorer__bell");
+    if (!badge) return;
+    const n = Math.max(0, parseInt(count, 10) || 0);
+    badge.hidden = n < 1;
+    badge.textContent = n > 99 ? "99+" : String(n);
+    if (!bell) return;
+    if (n > 0) {
+      bell.setAttribute(
+        "aria-label",
+        "Notifications, " + n + (n > 1 ? " non lues" : " non lue")
+      );
+    } else {
+      bell.setAttribute("aria-label", "Notifications");
+    }
+  }
+
   function renderLikesCount(count) {
     if (document.body.classList.contains("likes-page")) {
       renderBadge("[data-unread-likes]", 0, "[data-dock-likes]", "Likes");
@@ -76,6 +94,7 @@
 
   window.timaloveRenderUnreadBadge = renderUnreadMessages;
   window.timaloveRenderLikesBadge = renderLikesCount;
+  window.timaloveRenderNotificationsBadge = renderUnreadNotifications;
 
   function fetchUnread() {
     fetch("/api/messages/unread-count/", {
@@ -103,6 +122,21 @@
       })
       .then(function (data) {
         renderLikesCount(data && data.count);
+      })
+      .catch(function () {});
+  }
+
+  function fetchNotificationsCount() {
+    fetch("/api/notifications/unread-count/", {
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error("notifications");
+        return res.json();
+      })
+      .then(function (data) {
+        renderUnreadNotifications(data && data.count);
       })
       .catch(function () {});
   }
@@ -260,6 +294,11 @@
     if (typeof payload.likes_count === "number") {
       renderLikesCount(payload.likes_count);
     }
+    if (typeof payload.unread_notifications === "number") {
+      renderUnreadNotifications(payload.unread_notifications);
+    } else {
+      fetchNotificationsCount();
+    }
 
     const kind = payload.kind || payload.type || "";
     const partnerId = payload.related_user_id || "";
@@ -310,6 +349,7 @@
       startPing();
       fetchUnread();
       fetchLikesCount();
+      fetchNotificationsCount();
     };
 
     ws.onmessage = function (event) {
@@ -356,6 +396,7 @@
       connect();
       fetchUnread();
       fetchLikesCount();
+      fetchNotificationsCount();
       if (document.body.classList.contains("messages-inbox-page")) {
         document.dispatchEvent(new CustomEvent("timalove:inbox-refresh"));
       }
@@ -369,6 +410,7 @@
 
   window.setInterval(function () {
     fetchUnread();
+    fetchNotificationsCount();
   }, POLL_MS);
 
   if (document.readyState === "loading") {

@@ -22,6 +22,7 @@ urlpatterns = [
     path("messages/mark-read/", views.message_mark_read, name="message_mark_read"),
     path("compatibility/<uuid:profile_id>/", views.compatibility_score_api, name="compatibility_score"),
     path("notifications/", views.notifications, name="notifications"),
+    path("notifications/unread-count/", views.unread_notifications_count, name="unread_notifications_count"),
     path("payments/checkout/", views.payments_checkout, name="payments_checkout"),
     path("payments/confirm/", views.payments_confirm, name="payments_confirm"),
     path("payments/cinetpay/notify/", views.cinetpay_notify, name="cinetpay_notify"),

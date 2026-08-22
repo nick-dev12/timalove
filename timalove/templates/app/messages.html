@@ -36,9 +36,7 @@
           </span>
           <span class="explorer__coach-label">Coaching</span>
         </a>
-        <a class="explorer__icon-btn explorer__bell" href="{% url 'app:parametres' %}" aria-label="Notifications">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M6 17h12v-1.2c0-1.4-.7-2.6-1.8-3.4V9.5a4.2 4.2 0 1 0-8.4 0v2.9C6.7 13.2 6 14.4 6 15.8V17zm4.2 1.8a1.8 1.8 0 0 0 3.6 0"/></svg>
-        </a>
+        {% include "partials/explorer_bell.html" %}
       </div>
     </header>
 

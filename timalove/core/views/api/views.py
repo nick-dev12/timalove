@@ -216,6 +216,17 @@ def unread_messages(request):
 
 @login_required
 @require_GET
+def unread_notifications_count(request):
+    from core.controllers import notification_controller
+
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"count": 0})
+    return JsonResponse({"count": notification_controller.unread_count(profile)})
+
+
+@login_required
+@require_GET
 def messages_inbox(request):
     profile = getattr(request.user, "profile", None)
     if not profile:

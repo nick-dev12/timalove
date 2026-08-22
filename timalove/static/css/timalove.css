@@ -2908,6 +2908,10 @@ body.explorer-page .explorer {
   line-height: 1;
 }
 
+.explorer__bell-badge[hidden] {
+  display: none !important;
+}
+
 .explorer__icon-btn {
   width: 2.75rem;
   height: 2.75rem;
