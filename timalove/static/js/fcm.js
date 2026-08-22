@@ -2,6 +2,9 @@
  * TimaLove — enregistrement FCM token (utilisateurs connectés).
  */
 (function () {
+  const TOKEN_KEY = "timalove_fcm_token";
+  const FIREBASE_VERSION = "12.18.0";
+
   function getCookie(name) {
     const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
     return match ? decodeURIComponent(match[1]) : "";
@@ -18,63 +21,178 @@
       body: JSON.stringify({ token, platform: "web" }),
     });
     if (!res.ok) {
-      console.warn("[fcm] enregistrement token échoué", res.status);
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || "Enregistrement du token push impossible.");
     }
+    try {
+      sessionStorage.setItem(TOKEN_KEY, token);
+    } catch (_e) {
+      /* ignore */
+    }
+    return token;
   }
 
-  async function initFCM() {
-    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
-      return;
-    }
-
-    const configRes = await fetch("/api/push/config/");
-    if (!configRes.ok) return;
-
-    const config = await configRes.json();
-    if (!config.enabled || !config.firebase?.apiKey) return;
-
-    const { initializeApp } = await import(
-      "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js"
-    );
-    const { getMessaging, getToken, onMessage, isSupported } = await import(
-      "https://www.gstatic.com/firebasejs/12.17.1/firebase-messaging.js"
-    );
-
-    if (!(await isSupported())) return;
-
-    const app = initializeApp(config.firebase);
-    const messaging = getMessaging(app);
-
-    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-    await navigator.serviceWorker.ready;
-
+  async function requestPermissionAndToken(config) {
     let permission = Notification.permission;
     if (permission === "default") {
       permission = await Notification.requestPermission();
     }
-    if (permission !== "granted") return;
+    if (permission !== "granted") {
+      throw new Error("Autorisation refusée. Activez les notifications dans les paramètres du navigateur.");
+    }
+
+    if (!config.enabled || !config.firebase?.apiKey) {
+      return { permission: "granted", token: null, fcmEnabled: false };
+    }
+
+    const token = await obtainToken(config);
+    return { permission: "granted", token, fcmEnabled: true };
+  }
+
+  async function unregisterStoredToken() {
+    let token = "";
+    try {
+      token = sessionStorage.getItem(TOKEN_KEY) || "";
+    } catch (_e) {
+      /* ignore */
+    }
+    if (!token) return;
+    await fetch("/api/push/unregister/", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+      body: JSON.stringify({ token }),
+    });
+    try {
+      sessionStorage.removeItem(TOKEN_KEY);
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  async function fetchPushConfig() {
+    const configRes = await fetch("/api/push/config/");
+    if (!configRes.ok) {
+      throw new Error("Configuration push indisponible.");
+    }
+    return configRes.json();
+  }
+
+  async function obtainToken(config) {
+    const { initializeApp } = await import(
+      `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`
+    );
+    const { getMessaging, getToken, onMessage, isSupported } = await import(
+      `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-messaging.js`
+    );
+
+    if (!(await isSupported())) {
+      throw new Error("Les notifications push ne sont pas prises en charge sur cet appareil.");
+    }
+
+    const app = initializeApp(config.firebase);
+    const messaging = getMessaging(app);
+
+    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
+      updateViaCache: "none",
+    });
+    await registration.update().catch(function () {});
+    await navigator.serviceWorker.ready;
 
     const token = await getToken(messaging, {
       vapidKey: config.vapidKey,
       serviceWorkerRegistration: registration,
     });
 
-    if (token) {
-      await registerToken(token);
+    if (!token) {
+      throw new Error("Impossible d’obtenir le token de notification.");
     }
 
-    onMessage(messaging, (payload) => {
-      const title = payload.notification?.title || "TimaLove";
-      const body = payload.notification?.body || "";
-      if (document.visibilityState === "visible" && Notification.permission === "granted") {
-        new Notification(title, {
-          body,
-          icon: "/static/images/logo.webp",
-          data: payload.data || {},
-        });
-      }
+    onMessage(messaging, function (payload) {
+      const data = (payload && payload.data) || {};
+      const title = (payload.notification && payload.notification.title) || data.title || "TimaLove";
+      const body = (payload.notification && payload.notification.body) || data.message || "";
+      const url = data.url || "/";
+      document.dispatchEvent(
+        new CustomEvent("timalove:fcm", {
+          detail: {
+            id: data.notification_id || "",
+            type: data.type || "",
+            kind: data.type || "",
+            title: title,
+            message: body,
+            url: url,
+            related_user_id: data.related_user_id || null,
+          },
+        })
+      );
+      if (document.visibilityState === "visible") return;
+      const tag = "timalove-" + (data.type || "notif") + "-" + (data.notification_id || Date.now());
+      registration.showNotification(title, {
+        body: body,
+        icon: "/static/images/logo.webp",
+        tag: tag,
+        renotify: true,
+        data: Object.assign({ url: url }, data),
+      }).catch(function () {});
     });
+
+    return token;
   }
+
+  async function enablePush(options) {
+    const opts = options || {};
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+      throw new Error("Votre navigateur ne prend pas en charge les notifications.");
+    }
+
+    const config = await fetchPushConfig();
+    const result = await requestPermissionAndToken(config);
+
+    if (result.token && opts.register !== false) {
+      try {
+        await registerToken(result.token);
+        result.registered = true;
+      } catch (err) {
+        if (opts.skipRegisterOnFailure) {
+          result.registered = false;
+          result.registerError = err.message;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  async function disablePush() {
+    await unregisterStoredToken();
+  }
+
+  async function initFCM() {
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+      return;
+    }
+    if (Notification.permission !== "granted") {
+      return;
+    }
+
+    try {
+      const config = await fetchPushConfig();
+      if (!config.enabled || !config.firebase?.apiKey) return;
+      const token = await obtainToken(config);
+      if (token) await registerToken(token);
+    } catch (err) {
+      console.warn("[fcm]", err);
+    }
+  }
+
+  window.timaloveEnablePush = enablePush;
+  window.timaloveDisablePush = disablePush;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {

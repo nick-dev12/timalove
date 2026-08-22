@@ -12,7 +12,7 @@ from django.views.decorators.http import require_http_methods
 from core.controllers import auth_controller, email_controller, signup_controller
 from core.controllers.home_controller import ORIGINE_OPTIONS
 from core.data.countries import COUNTRIES_FR
-from core.data.onboarding import INTERESTS, SIGNUP_COPY, TRAITS
+from core.data.onboarding import INTERESTS, SIGNUP_COPY, TRAITS, LIFE_VALUES, LOOKING_FOR
 from core.models.choices import Gender, RelationshipIntent, Religion
 
 
@@ -63,6 +63,8 @@ def _auth_gate_context(request, **extra):
         "countries": COUNTRIES_FR,
         "interests": INTERESTS,
         "traits": TRAITS,
+        "life_values_catalog": LIFE_VALUES,
+        "looking_for_catalog": LOOKING_FOR,
         "signup_copy": SIGNUP_COPY,
         "relationship_intents": RelationshipIntent.choices,
         "religions": [

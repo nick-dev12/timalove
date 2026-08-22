@@ -6,11 +6,18 @@ __pycache__/
 .Python
 *.sqlite3
 
+# Gros projets / archives locales (ne pas versionner)
+poid_lourd/
+
 # Env & secrets
 .env
 timalove/.env
 *.pem
+*.p8
+AuthKey_*.p8
+timalove/AuthKey_38NH6W2B97.p8
 timalove/timalove-ddaa5-*.json
+.cursor/rules/user-connexion.mdc
 
 # Django
 timalove/staticfiles/
@@ -24,6 +31,10 @@ timalove/media/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Runtime VPS (celerybeat, sockets)
+/run/
+deploy/nginx-backup-*/
 
 # Ancien projet Next.js (référence locale uniquement, ne pas versionner)
 tinalove/

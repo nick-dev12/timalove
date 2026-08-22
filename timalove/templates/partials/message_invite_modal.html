@@ -1,0 +1,43 @@
+<div
+  id="message-invite"
+  class="msg-invite"
+  hidden
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="msg-invite-title"
+  {% if user.is_authenticated %}
+  data-me-photo="{{ user.profile.primary_photo|default:'' }}"
+  data-me-name="{{ user.profile.first_name|default:'' }}"
+  {% endif %}
+>
+  <button type="button" class="msg-invite__backdrop" data-msg-invite-close aria-label="Fermer"></button>
+  <div class="msg-invite__panel">
+    <button type="button" class="msg-invite__close" data-msg-invite-close aria-label="Fermer">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
+    </button>
+    <div class="msg-invite__hero">
+      <div class="msg-invite__duo">
+        <div class="msg-invite__face msg-invite__face--me">
+          <img class="msg-invite__avatar" src="" alt="" data-msg-invite-me-photo hidden>
+        </div>
+        <span class="msg-invite__duo-heart" aria-hidden="true">♥</span>
+        <div class="msg-invite__face msg-invite__face--partner">
+          <span class="msg-invite__avatar-fallback msg-invite__avatar-fallback--partner" data-msg-invite-partner-wrap>
+            <img class="msg-invite__avatar-partner" src="" alt="" data-msg-invite-partner-photo hidden>
+            <span data-msg-invite-partner-initial aria-hidden="true"></span>
+          </span>
+        </div>
+      </div>
+    </div>
+    <p class="msg-invite__kicker" data-msg-invite-kicker></p>
+    <h2 id="msg-invite-title" class="msg-invite__title" data-msg-invite-title></h2>
+    <p class="msg-invite__lead" data-msg-invite-lead></p>
+    <p class="msg-invite__error" data-msg-invite-error hidden role="alert"></p>
+    <div class="msg-invite__actions">
+      <button type="button" class="msg-invite__message" data-msg-invite-open-chat>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+        <span>Message</span>
+      </button>
+    </div>
+  </div>
+</div>

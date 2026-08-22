@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion Apple · TimaLove</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: "DM Sans", system-ui, sans-serif;
+      background: #FDF5F0;
+      color: #2D1F22;
+    }
+    p { margin: 0; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <p id="status">Ouverture d’Apple…</p>
+  <script type="module">
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyAekAUds26lHAT_ZnNNG4BsGVpmno_VoJs",
+      authDomain: "timalove-ddaa5.firebaseapp.com",
+      projectId: "timalove-ddaa5",
+      storageBucket: "timalove-ddaa5.firebasestorage.app",
+      messagingSenderId: "251608525332",
+      appId: "1:251608525332:web:b390af68f9bbd131049501",
+    };
+
+    const ALLOWED_ORIGINS = [
+      "http://127.0.0.1:8000",
+      "http://localhost:8000",
+      "https://mytimalove.com",
+      "https://www.mytimalove.com",
+    ];
+
+    const params = new URLSearchParams(window.location.search);
+    const returnOrigin = params.get("origin") || "";
+    const returnPath = params.get("return") || "/connexion/";
+    const statusEl = document.getElementById("status");
+
+    function setStatus(text) {
+      if (statusEl) statusEl.textContent = text;
+    }
+
+    function targetOrigin() {
+      if (ALLOWED_ORIGINS.includes(returnOrigin)) return returnOrigin;
+      return "";
+    }
+
+    function finish(payload) {
+      const origin = targetOrigin();
+      if (window.opener && origin) {
+        window.opener.postMessage(payload, origin);
+        window.close();
+        return;
+      }
+      if (origin && payload.idToken) {
+        const url = new URL(returnPath, origin);
+        url.hash = "tl_apple=" + encodeURIComponent(payload.idToken);
+        window.location.replace(url.toString());
+        return;
+      }
+      setStatus("Connexion Apple réussie. Vous pouvez fermer cette fenêtre.");
+    }
+
+    async function main() {
+      const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js");
+      const {
+        getAuth,
+        OAuthProvider,
+        signInWithRedirect,
+        getRedirectResult,
+      } = await import("https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js");
+
+      const app = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+      const auth = getAuth(app);
+
+      const redirected = await getRedirectResult(auth);
+      if (redirected?.user) {
+        setStatus("Connexion en cours…");
+        const idToken = await redirected.user.getIdToken();
+        finish({
+          type: "timalove-apple",
+          idToken,
+          email: redirected.user.email || "",
+          displayName: redirected.user.displayName || "",
+        });
+        return;
+      }
+
+      const provider = new OAuthProvider("apple.com");
+      provider.addScope("email");
+      provider.addScope("name");
+      provider.setCustomParameters({ locale: "fr" });
+      await signInWithRedirect(auth, provider);
+    }
+
+    main().catch(function (err) {
+      setStatus(err.message || "Connexion Apple impossible.");
+      const origin = targetOrigin();
+      if (window.opener && origin) {
+        window.opener.postMessage(
+          { type: "timalove-apple", error: err.message || "Connexion Apple impossible." },
+          origin
+        );
+      }
+    });
+  </script>
+</body>
+</html>

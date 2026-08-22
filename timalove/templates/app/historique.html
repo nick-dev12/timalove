@@ -5,9 +5,11 @@
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="{% static 'js/explorer-search.js' %}?v=20260815s1" defer></script>
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260815h3" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260822h6" defer></script>
+<script src="{% static 'js/explorer-like-burst.js' %}?v=20260821b4" defer></script>
 {% if user.is_authenticated %}
-<script src="{% static 'js/explorer-swipe.js' %}?v=20260815h2" defer></script>
+<script src="{% static 'js/message-invite.js' %}?v=20260821m5" defer></script>
+<script src="{% static 'js/explorer-swipe.js' %}?v=20260822s6" defer></script>
 {% endif %}
 {% endblock %}
 {% block body %}
@@ -59,6 +61,14 @@
   </header>
 
   <main class="history">
+    {% if history_locked %}
+    <section class="history__paywall" aria-labelledby="history-paywall-title">
+      <p class="history__kicker">Offre Premium</p>
+      <h1 id="history-paywall-title">L’historique est réservé aux membres Premium</h1>
+      <p>Retrouvez tous les profils que vous avez likés, et reprenez au bon moment.</p>
+      <a class="history__cta" href="{% url 'app:parametres' %}">Découvrir Premium</a>
+    </section>
+    {% else %}
     {% if stories %}
     <section class="history__stories" aria-label="Profils récents">
       {% for item in stories %}
@@ -107,6 +117,7 @@
       <a class="history__cta" href="{% url 'public:explorer' %}">Découvrir des profils</a>
     </section>
     {% endif %}
+    {% endif %}
   </main>
 
   {% include "partials/explorer_dock.html" with dock_active="historique" %}
@@ -114,5 +125,6 @@
 {% if user.is_authenticated %}
 <form hidden aria-hidden="true">{% csrf_token %}</form>
 {% endif %}
+{% include "partials/message_invite_modal.html" %}
 {% include "partials/profile_modal.html" %}
 {% endblock %}

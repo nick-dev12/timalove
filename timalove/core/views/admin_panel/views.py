@@ -169,6 +169,15 @@ def parametres(request):
             "free_messages_limit", int(request.POST.get("free_messages_limit") or 3)
         )
         site_settings_controller.set_value(
+            "free_swipes_per_day", int(request.POST.get("free_swipes_per_day") or 20)
+        )
+        site_settings_controller.set_value(
+            "free_likes_per_day", int(request.POST.get("free_likes_per_day") or 10)
+        )
+        site_settings_controller.set_value(
+            "free_likes_visible", int(request.POST.get("free_likes_visible") or 1)
+        )
+        site_settings_controller.set_value(
             "whatsapp_number", request.POST.get("whatsapp_number", "")
         )
         site_settings_controller.set_value(

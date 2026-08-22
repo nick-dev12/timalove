@@ -5,49 +5,179 @@ from __future__ import annotations
 from django.db.models import Case, IntegerField, Q, Value, When
 
 from core.models import Match, Profile, Swipe
-from core.models.choices import MatchStatus
+from core.models.choices import MatchStatus, SwipeAction
 from core.controllers.swipe_controller import models_q_participant
 
-LIKE_Q = Q(is_like=True) | Q(is_super_like=True)
+LIKE_Q = (
+    Q(is_like=True)
+    | Q(is_super_like=True)
+    | Q(action=SwipeAction.LIKE)
+    | Q(action=SwipeAction.SUPER_LIKE)
+)
+INCOMING_PAGE_SIZE = 60
 
 
-def incoming(profile: Profile) -> list[dict]:
-    liked_me = (
-        Swipe.objects.filter(swiped=profile)
+def _is_incoming_super_like(swipe: Swipe) -> bool:
+    return bool(swipe.is_super_like or swipe.action == SwipeAction.SUPER_LIKE)
+
+
+def _should_hide_incoming_liker(profile: Profile, swiper_id) -> bool:
+    """Masquer uniquement si l'utilisateur a passé après avoir reçu le like."""
+    their_like = (
+        Swipe.objects.filter(swiper_id=swiper_id, swiped=profile)
         .filter(LIKE_Q)
-        .select_related("swiper")
         .order_by("-created_at")
+        .first()
     )
+    if not their_like:
+        return False
+    my_swipe = Swipe.objects.filter(swiper=profile, swiped_id=swiper_id).first()
+    if not my_swipe or my_swipe.is_like or my_swipe.is_super_like:
+        return False
+    if my_swipe.action != SwipeAction.PASS:
+        return False
+    return my_swipe.created_at >= their_like.created_at
+
+
+def _matched_ids(profile: Profile) -> set:
+    ids: set = set()
+    for match in Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE):
+        ids.add(match.partner_of(profile).id)
+    return ids
+
+
+def _liked_me_ids(profile: Profile) -> set:
+    return set(
+        Swipe.objects.filter(swiped=profile).filter(LIKE_Q).values_list("swiper_id", flat=True)
+    )
+
+
+def _they_liked_me(profile: Profile, partner_id) -> bool:
+    return partner_id in _liked_me_ids(profile)
+
+
+def _match_with_partner(profile: Profile, partner_id) -> Match | None:
+    try:
+        partner = Profile.objects.get(pk=partner_id)
+    except Profile.DoesNotExist:
+        return None
+    return (
+        Match.objects.filter(models_q_participant(profile), models_q_participant(partner))
+        .filter(status=MatchStatus.ACTIVE)
+        .first()
+    )
+
+
+def _should_include_match_on_incoming(profile: Profile, partner_id) -> bool:
+    """Exclut les conversations ouvertes sans like retour."""
+    if _they_liked_me(profile, partner_id):
+        return True
+    match = _match_with_partner(profile, partner_id)
+    if match and match.is_one_sided:
+        return False
+    return True
+
+
+def _is_visible_partner(partner: Profile) -> bool:
+    return not getattr(partner, "banned_at", None) and not getattr(partner, "suspended_at", None)
+
+
+def _incoming_item(
+    partner: Profile,
+    *,
+    is_super_like: bool,
+    is_matched: bool,
+    already_liked_back: bool,
+    created_at,
+) -> dict:
+    return {
+        "profile": partner,
+        "is_super_like": is_super_like,
+        "is_matched": is_matched,
+        "already_liked_back": already_liked_back,
+        "created_at": created_at,
+    }
+
+
+def incoming(profile: Profile, limit: int | None = None) -> list[dict]:
+    liked_me = Swipe.objects.filter(swiped=profile).filter(LIKE_Q).select_related("swiper")
     my_likes = set(
         Swipe.objects.filter(swiper=profile).filter(LIKE_Q).values_list("swiped_id", flat=True)
     )
-    matched_ids = set()
-    for m in Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE):
-        matched_ids.add(m.partner_of(profile).id)
+    matched_ids = _matched_ids(profile)
+    seen_swiper_ids: set = set()
+    match_dates: dict = {}
+    for match in Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE):
+        partner_id = match.partner_of(profile).id
+        match_dates[partner_id] = match.updated_at or match.created_at
 
     results = []
     for swipe in liked_me:
-        if swipe.swiper_id in matched_ids:
+        if swipe.swiper_id in seen_swiper_ids:
             continue
+        if _should_hide_incoming_liker(profile, swipe.swiper_id):
+            continue
+        swiper = swipe.swiper
+        if not _is_visible_partner(swiper):
+            continue
+        seen_swiper_ids.add(swipe.swiper_id)
         results.append(
-            {
-                "profile": swipe.swiper,
-                "is_super_like": swipe.is_super_like,
-                "already_liked_back": swipe.swiper_id in my_likes,
-                "created_at": swipe.created_at,
-            }
+            _incoming_item(
+                swiper,
+                is_super_like=_is_incoming_super_like(swipe),
+                is_matched=swipe.swiper_id in matched_ids,
+                already_liked_back=swipe.swiper_id in my_likes,
+                created_at=swipe.created_at,
+            )
         )
+
+    missing_match_ids = matched_ids - seen_swiper_ids
+    if missing_match_ids:
+        partners = {p.id: p for p in Profile.objects.filter(pk__in=missing_match_ids)}
+        for partner_id in missing_match_ids:
+            if not _should_include_match_on_incoming(profile, partner_id):
+                continue
+            if _should_hide_incoming_liker(profile, partner_id):
+                continue
+            partner = partners.get(partner_id)
+            if not partner or not _is_visible_partner(partner):
+                continue
+            seen_swiper_ids.add(partner_id)
+            results.append(
+                _incoming_item(
+                    partner,
+                    is_super_like=False,
+                    is_matched=True,
+                    already_liked_back=partner_id in my_likes,
+                    created_at=match_dates.get(partner_id),
+                )
+            )
+
+    results.sort(
+        key=lambda item: (
+            -int(item["is_super_like"]),
+            -(item["created_at"].timestamp() if item["created_at"] else 0),
+        )
+    )
+    if limit:
+        results = results[:limit]
     return results
 
 
 def count_incoming(profile: Profile) -> int:
-    return len(incoming(profile))
+    items = incoming(profile)
+    if not items:
+        return 0
+    ids = [item["profile"].pk for item in items]
+    return Profile.objects.filter(
+        pk__in=ids, banned_at__isnull=True, suspended_at__isnull=True
+    ).count()
 
 
-def incoming_cards(profile: Profile) -> list[dict]:
+def incoming_cards(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> list[dict]:
     """Likes reçus, format fiche pour la page Likes."""
     cards = []
-    for item in incoming(profile):
+    for item in incoming(profile, limit=limit):
         other = item["profile"]
         created = item.get("created_at")
         when = ""
@@ -66,19 +196,68 @@ def incoming_cards(profile: Profile) -> list[dict]:
                 "profile_url": f"/explorer/profil/{other.pk}/",
                 "profession": (getattr(other, "profession", None) or "").strip(),
                 "is_super_like": bool(item.get("is_super_like")),
+                "is_matched": bool(item.get("is_matched")),
+                "already_liked_back": bool(item.get("already_liked_back")),
+                "message_url": f"/discussions/{other.pk}/",
                 "is_online": bool(getattr(other, "is_online", False)),
                 "is_new": True,
                 "when": when,
+                "is_locked": False,
             }
         )
     return cards
 
 
-def _matched_ids(profile: Profile) -> set:
-    ids: set = set()
-    for match in Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE):
-        ids.add(match.partner_of(profile).id)
-    return ids
+def _lock_incoming_card(item: dict) -> dict:
+    from core.controllers import quota_controller
+
+    return {
+        **item,
+        "is_locked": True,
+        "first_name": "Membre",
+        "age": None,
+        "city": "",
+        "profession": "",
+        "profile_url": quota_controller.upgrade_path(),
+        "message_url": "",
+        "already_liked_back": False,
+        "is_matched": False,
+        "is_online": False,
+    }
+
+
+def feed_context(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> dict:
+    """Contexte partagé page Likes + fragment live."""
+    from core.controllers import quota_controller
+
+    likes_list = incoming_cards(profile, limit=limit)
+    total = count_incoming(profile)
+    locked_count = 0
+    if quota_controller.is_freemium(profile):
+        visible = quota_controller.likes_visible_limit()
+        extra = likes_list[visible:]
+        likes_list = likes_list[:visible] + [_lock_incoming_card(item) for item in extra]
+        locked_count = max(0, total - visible)
+
+    unlocked = [item for item in likes_list if not item.get("is_locked")]
+    featured = next(
+        (item for item in unlocked if item.get("is_super_like") and not item.get("is_matched")),
+        next((item for item in unlocked if item.get("is_super_like")), unlocked[0] if unlocked else None),
+    )
+    grid = [item for item in likes_list if featured is None or item["id"] != featured["id"]]
+    has_matches = Match.objects.filter(
+        models_q_participant(profile), status=MatchStatus.ACTIVE
+    ).exists()
+    return {
+        "likes": likes_list,
+        "featured": featured,
+        "grid": grid,
+        "pending_count": total,
+        "has_matches": has_matches,
+        "has_more": total > len(likes_list) and not quota_controller.is_freemium(profile),
+        "locked_count": locked_count,
+        "likes_restricted": quota_controller.is_freemium(profile),
+    }
 
 
 def has_liked(profile: Profile, other_id) -> bool:
@@ -105,6 +284,7 @@ def _serialize_outgoing(swipe: Swipe, matched_ids: set) -> dict:
         "liked": bool(swipe.is_like),
         "liked_at": swipe.created_at,
         "profile_url": f"/explorer/profil/{other.pk}/",
+        "message_url": f"/discussions/{other.pk}/" if other.id in matched_ids else "",
     }
 
 

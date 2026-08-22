@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import uuid
 
-from django.conf import settings
-
 from core.controllers import site_settings_controller
 from core.models import CoachingRequest, Profile, Transaction
 from core.models.choices import CoachingStatus, TransactionStatus, TransactionType
@@ -30,6 +28,8 @@ def create_request(data: dict, user: Profile | None = None) -> CoachingRequest:
 
 
 def checkout(coaching: CoachingRequest) -> dict:
+    from core.controllers import payment_controller
+
     order_id = f"coach_{uuid.uuid4().hex[:16]}"
     tx = Transaction.objects.create(
         user=coaching.user,
@@ -38,11 +38,17 @@ def checkout(coaching: CoachingRequest) -> dict:
         type=TransactionType.COACHING,
         status=TransactionStatus.PENDING,
         coaching_request=coaching,
+        payment_details={"provider": "cinetpay"},
     )
-    # user nullable for anonymous coaching — Transaction.user is required FK
-    # If anonymous, we need a workaround - skip if no user
-    checkout_url = f"{settings.SITE_URL}/api/payments/confirm/?order_id={order_id}&simulate=1"
-    return {"ok": True, "order_id": order_id, "checkout_url": checkout_url, "transaction_id": str(tx.id)}
+    extra = {
+        "first_name": coaching.first_name,
+        "last_name": coaching.last_name,
+        "email": coaching.email,
+        "phone": coaching.phone,
+    }
+    return payment_controller.checkout_transaction(
+        tx, coaching.user, "TimaLove — Coaching", extra=extra
+    )
 
 
 def list_all(status: str | None = None):

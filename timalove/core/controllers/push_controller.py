@@ -14,9 +14,13 @@ from core.models import Notification, Profile, PushDevice
 logger = logging.getLogger(__name__)
 
 NOTIFICATION_PREF_MAP = {
-    "new_like": "likes",
     "new_match": "matches",
     "new_message": "messages",
+    "profile_approved": "status",
+    "profile_rejected": "status",
+    "subscription_activated": "status",
+    "subscription_expired": "status",
+    "boost_activated": "status",
 }
 
 INVALID_TOKEN_ERRORS = {
@@ -24,6 +28,23 @@ INVALID_TOKEN_ERRORS = {
     "invalid-registration-token",
     "invalid-argument",
 }
+
+
+def _is_https_url(url: str) -> bool:
+    return (url or "").lower().startswith("https://")
+
+
+def _webpush_config(notification: Notification, link: str) -> "messaging.WebpushConfig":
+    from firebase_admin import messaging
+
+    # Data-only : le SW / onMessage affichent la notif. Un payload `notification`
+    # est avalé par Chrome dès qu’un onglet du site est ouvert (aucun push OS).
+    config_kwargs: dict = {
+        "headers": {"Urgency": "high", "TTL": "86400"},
+    }
+    if _is_https_url(link):
+        config_kwargs["fcm_options"] = messaging.WebpushFCMOptions(link=link)
+    return messaging.WebpushConfig(**config_kwargs)
 
 
 def _firebase_enabled() -> bool:
@@ -80,10 +101,41 @@ def unregister_device(profile: Profile, *, token: str) -> bool:
     return deleted > 0
 
 
-def user_allows_push(profile: Profile, notification_type: str) -> bool:
+def status_for(profile: Profile) -> dict[str, Any]:
+    from core.controllers.profile_controller import notification_prefs_for
+
+    prefs = notification_prefs_for(profile)
+    devices = list(PushDevice.objects.filter(profile=profile).order_by("-last_used_at"))
+    cred_ok = bool(settings.FIREBASE_CREDENTIALS_PATH.exists())
+    return {
+        "fcm_enabled": _firebase_enabled(),
+        "credentials_found": cred_ok,
+        "push_enabled": bool(prefs.get("push")),
+        "preferences": prefs,
+        "devices_count": len(devices),
+        "devices": [
+            {
+                "id": str(device.id),
+                "platform": device.platform,
+                "last_used_at": device.last_used_at.isoformat() if device.last_used_at else None,
+            }
+            for device in devices
+        ],
+    }
+
+
+def user_allows_push(profile: Profile, notification: Notification) -> bool:
     prefs = profile.notification_preferences or {}
     if prefs.get("push") is False:
         return False
+
+    notification_type = notification.type
+    if notification_type == "new_like":
+        title = (notification.title or "").strip().lower()
+        if title == "super like":
+            return prefs.get("super_likes", True) is not False
+        return prefs.get("likes", True) is not False
+
     pref_key = NOTIFICATION_PREF_MAP.get(notification_type)
     if pref_key and prefs.get(pref_key) is False:
         return False
@@ -91,19 +143,26 @@ def user_allows_push(profile: Profile, notification_type: str) -> bool:
 
 
 def _notification_link(notification: Notification) -> str:
+    return notification_link(notification)
+
+
+def notification_link(notification: Notification) -> str:
     site = settings.SITE_URL.rstrip("/")
     if notification.type == "new_message" and notification.related_match_id:
         partner_id = notification.related_user_id
         if partner_id:
             return f"{site}/discussions/{partner_id}/"
     if notification.type == "new_match":
-        return f"{site}/rencontres/"
+        partner_id = notification.related_user_id
+        if partner_id:
+            return f"{site}/discussions/{partner_id}/"
+        return f"{site}/likes/"
     if notification.type == "new_like":
         return f"{site}/likes/"
     return f"{site}/profil/?tab=settings"
 
 
-def send_for_notification(notification_id: str) -> dict[str, int]:
+def send_for_notification(notification_id: str, *, force: bool = False) -> dict[str, int]:
     """Envoie la push FCM pour une notification in-app existante."""
     if not _firebase_enabled():
         return {"sent": 0, "failed": 0, "skipped": 1}
@@ -116,7 +175,7 @@ def send_for_notification(notification_id: str) -> dict[str, int]:
         logger.warning("[fcm] notification introuvable : %s", notification_id)
         return {"sent": 0, "failed": 0, "skipped": 1}
 
-    if not user_allows_push(notification.user, notification.type):
+    if not force and not user_allows_push(notification.user, notification):
         return {"sent": 0, "failed": 0, "skipped": 1}
 
     devices = list(PushDevice.objects.filter(profile=notification.user))
@@ -129,7 +188,7 @@ def send_for_notification(notification_id: str) -> dict[str, int]:
 
     from firebase_admin import messaging
 
-    link = _notification_link(notification)
+    link = notification_link(notification)
     data = {
         "notification_id": str(notification.id),
         "type": notification.type,
@@ -145,23 +204,13 @@ def send_for_notification(notification_id: str) -> dict[str, int]:
     sent = 0
     failed = 0
     stale_tokens: list[str] = []
+    errors: list[str] = []
 
     for device in devices:
         message = messaging.Message(
             token=device.token,
-            notification=messaging.Notification(
-                title=notification.title,
-                body=notification.message[:240],
-            ),
             data={k: str(v) for k, v in data.items()},
-            webpush=messaging.WebpushConfig(
-                notification=messaging.WebpushNotification(
-                    title=notification.title,
-                    body=notification.message[:240],
-                    icon=f"{settings.SITE_URL.rstrip('/')}/static/images/logo.webp",
-                ),
-                fcm_options=messaging.WebpushFCMOptions(link=link),
-            ),
+            webpush=_webpush_config(notification, link),
         )
         try:
             messaging.send(message, app=app)
@@ -169,7 +218,9 @@ def send_for_notification(notification_id: str) -> dict[str, int]:
             PushDevice.objects.filter(pk=device.pk).update(last_used_at=timezone.now())
         except Exception as exc:
             failed += 1
-            code = getattr(exc, "code", "") or str(exc)
+            err_msg = getattr(exc, "message", None) or str(exc)
+            errors.append(err_msg)
+            code = getattr(exc, "code", "") or err_msg
             if any(marker in code for marker in INVALID_TOKEN_ERRORS):
                 stale_tokens.append(device.token)
             logger.warning("[fcm] envoi échoué token=%s… : %s", device.token[:12], code)
@@ -177,4 +228,4 @@ def send_for_notification(notification_id: str) -> dict[str, int]:
     if stale_tokens:
         PushDevice.objects.filter(token__in=stale_tokens).delete()
 
-    return {"sent": sent, "failed": failed, "skipped": 0}
+    return {"sent": sent, "failed": failed, "skipped": 0, "errors": errors}

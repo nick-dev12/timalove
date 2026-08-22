@@ -6,6 +6,7 @@ Architecture MVC : models / controllers / views / middleware dans l'app `core`.
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -19,6 +20,8 @@ environ.Env.read_env(BASE_DIR / ".env")
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+if DEBUG:
+    ALLOWED_HOSTS = list(dict.fromkeys([*ALLOWED_HOSTS, "testserver"]))
 
 INSTALLED_APPS = [
     "daphne",
@@ -106,8 +109,15 @@ STORAGES = {
     "staticfiles": {"BACKEND": _static_backend},
 }
 
-MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Médias : dossier local du projet (VPS). Pas de S3 / R2 pour l’instant.
+_media_root = (env("MEDIA_ROOT", default="") or "").strip()
+MEDIA_ROOT = Path(_media_root) if _media_root else BASE_DIR / "media"
+_media_url = env("MEDIA_URL", default="/media/")
+if not _media_url.startswith("/"):
+    _media_url = "/" + _media_url
+if not _media_url.endswith("/"):
+    _media_url += "/"
+MEDIA_URL = _media_url
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -122,6 +132,19 @@ CSRF_TRUSTED_ORIGINS = env.list(
     default=["http://127.0.0.1:8000", "http://localhost:8000"],
 )
 
+# Derrière Nginx (Webuzo) : faire confiance au proto HTTPS transmis.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = env.bool("USE_X_FORWARDED_HOST", default=not DEBUG)
+if not DEBUG:
+    SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
+    CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
+    SESSION_COOKIE_HTTPONLY = True
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=False)
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False)
+    SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
+    SECURE_REFERRER_POLICY = "same-origin"
+
 REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379/0")
 CHANNEL_LAYERS = {
     "default": {
@@ -129,10 +152,22 @@ CHANNEL_LAYERS = {
     }
 }
 if env.bool("USE_REDIS_CHANNELS", default=False):
+    # socket_timeout doit dépasser brpop_timeout (5 s) de channels_redis,
+    # sinon Memurai/Redis lève TimeoutError et le WS chat se ferme en 1011.
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {"hosts": [REDIS_URL]},
+            "CONFIG": {
+                "hosts": [
+                    {
+                        "address": REDIS_URL,
+                        "socket_timeout": 20,
+                        "socket_connect_timeout": 5,
+                        "retry_on_timeout": True,
+                        "health_check_interval": 30,
+                    }
+                ],
+            },
         }
     }
 
@@ -142,18 +177,33 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "expire-subscriptions-and-boosts": {
+        "task": "core.tasks.expire_subscriptions_and_boosts",
+        "schedule": crontab(minute="*/15"),
+    },
+}
 
 # Intégrations
-NABOO_API_KEY = env("NABOO_API_KEY", default="")
-NABOO_WEBHOOK_SECRET = env("NABOO_WEBHOOK_SECRET", default="")
-NABOO_API_BASE = env("NABOO_API_BASE", default="https://api.naboopay.com")
+# Paiement CinetPay (https://app.cinetpay.com)
+CINETPAY_APIKEY = env("CINETPAY_APIKEY", default="")
+CINETPAY_SITE_ID = env("CINETPAY_SITE_ID", default="")
+CINETPAY_SECRET_KEY = env("CINETPAY_SECRET_KEY", default="")
+CINETPAY_CURRENCY = env("CINETPAY_CURRENCY", default="XOF")
+CINETPAY_CHANNELS = env("CINETPAY_CHANNELS", default="ALL")
+CINETPAY_BASE_URL = env("CINETPAY_BASE_URL", default="https://api-checkout.cinetpay.com/v2")
+# Checkout factice uniquement en local si CinetPay est injoignable
+PAYMENT_SIMULATION = env.bool("PAYMENT_SIMULATION", default=DEBUG)
 RESEND_API_KEY = env("RESEND_API_KEY", default="")
 RESEND_FROM_EMAIL = env("RESEND_FROM_EMAIL", default="TimaLove <onboarding@resend.dev>")
 RECAPTCHA_SITE_KEY = env("RECAPTCHA_SITE_KEY", default="")
 RECAPTCHA_SECRET_KEY = env("RECAPTCHA_SECRET_KEY", default="")
-MEDIA_CDN_URL = env("MEDIA_CDN_URL", default="https://media.mytimalove.com")
+MEDIA_CDN_URL = env("MEDIA_CDN_URL", default="")
 SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
 FREE_MESSAGES_LIMIT_DEFAULT = 3
+FREE_SWIPES_PER_DAY_DEFAULT = 20
+FREE_LIKES_PER_DAY_DEFAULT = 10
+FREE_LIKES_VISIBLE_DEFAULT = 1
 
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND",

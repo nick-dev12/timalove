@@ -30,6 +30,12 @@ INCOMPLETE_ALLOWED = (
     "/api/push",
     "/api/health",
     "/api/site-config",
+    "/api/swipes",
+    "/api/likes",
+    "/api/messages",
+    "/api/matches",
+    "/api/payments",
+    "/api/compatibility",
     "/espace-prive",
     "/admin",
 )

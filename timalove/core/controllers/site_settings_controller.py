@@ -9,11 +9,18 @@ from django.conf import settings
 DEFAULTS: dict[str, Any] = {
     "registrations_enabled": True,
     "free_messages_limit": getattr(settings, "FREE_MESSAGES_LIMIT_DEFAULT", 3),
+    "free_swipes_per_day": getattr(settings, "FREE_SWIPES_PER_DAY_DEFAULT", 20),
+    "free_likes_per_day": getattr(settings, "FREE_LIKES_PER_DAY_DEFAULT", 10),
+    "free_likes_visible": getattr(settings, "FREE_LIKES_VISIBLE_DEFAULT", 1),
     "subscription_prices": {
+        "journee_amoureuse": 1000,
+        "pass_amour": 4500,
+        "eternite": 29900,
+        "vip_1m": 12000,
+        "pass_femme": 2500,
         "premium_10d": 6000,
         "premium_1m": 10000,
         "premium_2m": 18000,
-        "vip_1m": 25000,
         "vip_2m": 32800,
         "vip_femme_1w": 5000,
     },
@@ -48,16 +55,36 @@ def _as_bool(value: Any, default: bool = False) -> bool:
     return bool(value)
 
 
+def _merged_subscription_prices(stored: Any) -> dict[str, int]:
+    """Complète les clés manquantes (ex. import ancien) avec les tarifs par défaut."""
+    merged: dict[str, int] = {}
+    for key, value in (DEFAULTS.get("subscription_prices") or {}).items():
+        try:
+            merged[str(key)] = int(value)
+        except (TypeError, ValueError):
+            continue
+    if isinstance(stored, dict):
+        for key, value in stored.items():
+            if value in (None, ""):
+                continue
+            try:
+                merged[str(key)] = int(value)
+            except (TypeError, ValueError):
+                continue
+    return merged
+
+
 def get(key: str, default: Any = None) -> Any:
     from core.models import SiteSetting
 
     try:
         row = SiteSetting.objects.filter(key=key).first()
-        if row is None:
-            return DEFAULTS.get(key, default)
-        return row.value
+        value = DEFAULTS.get(key, default) if row is None else row.value
     except Exception:
-        return DEFAULTS.get(key, default)
+        value = DEFAULTS.get(key, default)
+    if key == "subscription_prices":
+        return _merged_subscription_prices(value if isinstance(value, dict) else {})
+    return value
 
 
 def set_value(key: str, value: Any) -> None:
@@ -71,7 +98,11 @@ def get_all() -> dict[str, Any]:
     from core.models import SiteSetting
 
     for row in SiteSetting.objects.all():
-        data[row.key] = row.value
+        if row.key == "subscription_prices":
+            data[row.key] = _merged_subscription_prices(row.value)
+        else:
+            data[row.key] = row.value
+    data["subscription_prices"] = _merged_subscription_prices(data.get("subscription_prices"))
     return data
 
 
@@ -111,6 +142,11 @@ def seed_defaults() -> int:
         if row is not None and not isinstance(row.value, bool):
             row.value = _as_bool(row.value, DEFAULTS.get(key, False))
             row.save(update_fields=["value", "updated_at"])
+    prices_row = SiteSetting.objects.filter(key="subscription_prices").first()
+    stored = prices_row.value if prices_row is not None else {}
+    merged = _merged_subscription_prices(stored)
+    if merged != stored:
+        set_value("subscription_prices", merged)
     return created
 
 

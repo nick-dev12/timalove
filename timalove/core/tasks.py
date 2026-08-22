@@ -20,7 +20,7 @@ def send_email_task(to: str, subject: str, html: str):
 
 
 @shared_task
-def send_push_notification(notification_id: str):
+def send_push_notification(notification_id: str, force: bool = False):
     from core.controllers import push_controller
 
-    return push_controller.send_for_notification(notification_id)
+    return push_controller.send_for_notification(notification_id, force=force)

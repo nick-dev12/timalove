@@ -1,7 +1,9 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
 
 from core.controllers import (
@@ -14,8 +16,8 @@ from core.controllers import (
     profile_controller,
 )
 from core.data.countries import COUNTRIES_FR
-from core.data.onboarding import INTERESTS, TRAITS
-from core.models.choices import Gender, RelationshipIntent, Religion
+from core.data.onboarding import INTERESTS, TRAITS, LIFE_VALUES, LOOKING_FOR
+from core.models.choices import Gender, RelationshipIntent, Religion, ReportReason
 
 
 def _profile(request):
@@ -63,23 +65,25 @@ def swipe(request):
     return redirect("app:decouvrir")
 
 
+@ensure_csrf_cookie
 def likes(request):
-    likes = likes_controller.preview_incoming()
-    featured = next((item for item in likes if item.get("is_super_like")), None)
-    grid = [item for item in likes if featured is None or item["id"] != featured["id"]]
-    return render(
-        request,
-        "app/likes.html",
+    ctx = likes_controller.feed_context(_profile(request))
+    ctx.update(
         {
             "title": "Likes",
-            "likes": likes,
-            "featured": featured,
-            "grid": grid,
-            "is_preview": True,
-            "new_count": sum(1 for item in likes if item.get("is_new")),
-            "super_count": sum(1 for item in likes if item.get("is_super_like")),
-        },
+            "is_preview": False,
+            "new_count": ctx["pending_count"],
+            "super_count": sum(1 for item in ctx["likes"] if item.get("is_super_like")),
+        }
     )
+    return render(request, "app/likes.html", ctx)
+
+
+@ensure_csrf_cookie
+def likes_feed(request):
+    """Fragment HTML — rafraîchissement live des likes reçus."""
+    ctx = likes_controller.feed_context(_profile(request))
+    return render(request, "partials/likes_feed.html", ctx)
 
 
 def historique(request):
@@ -89,6 +93,10 @@ def historique(request):
 @login_required
 @require_POST
 def historique_like(request, profile_id):
+    from core.controllers import quota_controller
+
+    if quota_controller.history_locked(_profile(request)):
+        return HttpResponse("", status=403)
     result = likes_controller.toggle_outgoing(_profile(request), profile_id)
     if not result["visible"]:
         return HttpResponse("")
@@ -101,6 +109,10 @@ def historique_like(request, profile_id):
 @login_required
 @require_POST
 def historique_superlike(request, profile_id):
+    from core.controllers import quota_controller
+
+    if quota_controller.history_locked(_profile(request)):
+        return HttpResponse("", status=403)
     result = likes_controller.toggle_outgoing_super(_profile(request), profile_id)
     if not result["visible"]:
         return HttpResponse("")
@@ -149,8 +161,36 @@ def discussion_detail(request, partner_id):
             "partner_id": partner_id,
             "inbox_back": inbox_back,
             "payment_status": payment_controller.payment_status(profile),
+            "blocked_by_me": thread.get("blocked_by_me", False),
+            "blocked_me": thread.get("blocked_me", False),
+            "can_send": thread.get("can_send", True),
+            "quota_locked": thread.get("quota_locked", False),
+            "quota_message": thread.get("quota_message", ""),
+            "messages_remaining": thread.get("messages_remaining"),
+            "report_reasons": ReportReason.choices,
         },
     )
+
+
+@login_required
+@require_POST
+def discussion_media(request, partner_id):
+    profile = _profile(request)
+    try:
+        duration = int(request.POST.get("duration") or 0)
+    except (TypeError, ValueError):
+        duration = 0
+    ok, msg, message = message_controller.send_media(
+        profile,
+        partner_id,
+        request.POST.get("kind", ""),
+        request.FILES.get("file"),
+        duration,
+    )
+    if not ok:
+        return JsonResponse({"ok": False, "error": msg}, status=400)
+    item = message_controller._serialize_message(message, profile)
+    return JsonResponse({"ok": True, "item": item})
 
 
 @require_http_methods(["GET", "POST"])
@@ -189,7 +229,10 @@ def profil(request):
         "countries": COUNTRIES_FR,
         "interests": INTERESTS,
         "traits": TRAITS,
+        "life_values_catalog": LIFE_VALUES,
+        "looking_for_catalog": LOOKING_FOR,
         "max_photos": profile_controller.MAX_GALLERY_PHOTOS,
+        "show_dev_tools": settings.DEBUG,
     }
     ctx.update(profile_controller.settings_context(profile))
     return render(request, "app/profil.html", ctx)

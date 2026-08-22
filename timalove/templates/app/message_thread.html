@@ -4,13 +4,14 @@
 {% block body_class %}messages-page{% if is_preview %} is-guest{% endif %}{% endblock %}
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="{% static 'js/messages-thread.js' %}?v=20260815m2" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260822h6" defer></script>
+<script src="{% static 'js/messages-thread.js' %}?v=20260822m14" defer></script>
 {% endblock %}
 {% block body %}
 {% include "partials/explorer_atmosphere.html" %}
 
 <div class="explorer">
-  <section class="msg" aria-label="Conversation">
+  <section class="msg" aria-label="Conversation" data-partner-id="{{ partner_id }}" data-blocked-by-me="{% if blocked_by_me %}1{% else %}0{% endif %}">
     <header class="msg__top">
       <a class="msg__icon-btn" href="{% if inbox_back %}{% url 'public:messages' %}{% else %}{% url 'public:explorer' %}{% endif %}" aria-label="Retour">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M15 6 9 12l6 6"/></svg>
@@ -19,10 +20,26 @@
         <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
         <span>TimaLove</span>
       </a>
-      <button type="button" class="msg__icon-btn" aria-label="Options" data-msg-more>
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 12.75a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5zm6 0a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5zm6 0a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5z"/></svg>
-      </button>
+      <div class="msg__more-wrap">
+        <button type="button" class="msg__icon-btn" aria-label="Options" aria-expanded="false" aria-haspopup="true" data-msg-more>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 12.75a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5zm6 0a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5zm6 0a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5z"/></svg>
+        </button>
+        <div class="msg__more-menu" data-msg-more-menu hidden role="menu">
+          {% if not blocked_by_me %}
+          <button type="button" class="msg__more-item" role="menuitem" data-msg-block>Bloquer le profil</button>
+          {% else %}
+          <button type="button" class="msg__more-item" role="menuitem" data-msg-unblock>Débloquer le profil</button>
+          {% endif %}
+          <button type="button" class="msg__more-item msg__more-item--warn" role="menuitem" data-msg-report-open>Signaler</button>
+        </div>
+      </div>
     </header>
+
+    {% if blocked_by_me %}
+    <p class="msg__blocked-banner" role="status">Vous avez bloqué ce profil. Vous ne recevrez plus ses messages.</p>
+    {% elif blocked_me %}
+    <p class="msg__blocked-banner" role="status">Cette conversation n'est plus disponible.</p>
+    {% endif %}
 
     <div class="msg__pair">
       <div class="msg__person">
@@ -54,9 +71,9 @@
       </div>
     </div>
 
-    <div class="msg__thread" data-msg-thread>
+    <div class="msg__thread" data-msg-thread data-me-id="{{ me.id }}" data-me-photo="{{ me.photo_url }}" data-me-initial="{{ me.initial }}" data-partner-photo="{{ partner.photo_url }}" data-partner-initial="{{ partner.initial }}">
       {% for item in thread_items %}
-      <article class="msg__row{% if item.mine %} is-mine{% endif %}">
+      <article class="msg__row{% if item.mine %} is-mine{% endif %}"{% if item.id %} data-msg-id="{{ item.id }}"{% endif %}>
         <span class="msg__bubble-avatar" aria-hidden="true">
           {% if item.photo_url %}
           <img src="{{ item.photo_url }}" alt="">
@@ -64,18 +81,37 @@
           <span>{{ item.initial }}</span>
           {% endif %}
         </span>
-        <div class="msg__bubble">
-          {% if item.is_voice %}
-          <p class="msg__voice">Vocal · {{ item.voice_duration }}s</p>
+        <div class="msg__bubble{% if item.is_image %} is-photo{% elif item.is_voice %} is-voice{% endif %}">
+          {% if item.is_image and item.image_url %}
+          <button type="button" class="msg__photo-btn" data-msg-photo="{{ item.image_url }}">
+            <img class="msg__photo" src="{{ item.image_url }}" alt="Photo" loading="lazy">
+          </button>
+          {% elif item.is_voice %}
+          <div class="msg__voice-card" data-voice-player data-src="{{ item.voice_url }}" data-duration="{{ item.voice_duration }}">
+            <button type="button" class="msg__voice-play" data-voice-play aria-label="Lire le vocal">
+              <svg class="msg__voice-ico msg__voice-ico--play" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 5.5v13l11-6.5L8 5.5z"/></svg>
+              <svg class="msg__voice-ico msg__voice-ico--pause" viewBox="0 0 24 24" width="16" height="16" hidden aria-hidden="true"><path fill="currentColor" d="M7 5h4v14H7V5zm6 0h4v14h-4V5z"/></svg>
+            </button>
+            <span class="msg__voice-wave" data-voice-wave aria-hidden="true"></span>
+            <span class="msg__voice-time" data-voice-time>{{ item.voice_label|default:"0:00" }}</span>
+          </div>
           {% else %}
           <p>{{ item.content|linebreaksbr }}</p>
           {% endif %}
           <footer>
             <time>{{ item.time }}</time>
             {% if item.mine %}
-            <span class="msg__checks{% if item.read %} is-read{% endif %}" aria-hidden="true">
-              <svg viewBox="0 0 16 12" width="16" height="12"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M1 6.2 4.2 9.5 10.8 2.2M5.2 6.2 8.4 9.5 15 2.2"/></svg>
+            <span class="msg__checks{% if item.read %} is-read{% endif %}" aria-hidden="true"{% if item.read %} aria-label="Lu"{% else %} aria-label="Envoyé"{% endif %}>
+              <svg viewBox="0 0 16 12" width="16" height="12">
+                <path class="msg__check msg__check--1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M1 6.2 4.2 9.5 10.8 2.2"/>
+                <path class="msg__check msg__check--2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M5.2 6.2 8.4 9.5 15 2.2"/>
+              </svg>
             </span>
+            {% endif %}
+            {% if item.mine and item.id and not is_preview %}
+            <button type="button" class="msg__delete" data-msg-delete aria-label="Supprimer le message">
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-1 12H8a2 2 0 0 1-2-2V7h12v10a2 2 0 0 1-2 2h-4z"/></svg>
+            </button>
             {% endif %}
           </footer>
         </div>
@@ -91,20 +127,17 @@
     {% endfor %}
     {% endif %}
 
-    {% if not is_preview and payment_status and not payment_status.has_active_subscription and request.user.profile.gender == 'male' %}
-    <p class="msg__limit">Messages gratuits limités. <a href="{% url 'app:parametres' %}">Passer Premium</a></p>
+    {% if not is_preview and quota_locked %}
+    <p class="msg__limit" role="status">{{ quota_message }} <a href="{% url 'app:parametres' %}">Passer Premium</a></p>
+    {% elif not is_preview and messages_remaining != None %}
+    <p class="msg__limit" role="status">Il vous reste {{ messages_remaining }} message{{ messages_remaining|pluralize }} gratuit{{ messages_remaining|pluralize }}. <a href="{% url 'app:parametres' %}">Passer Premium</a></p>
     {% endif %}
 
     {% if is_preview %}
     <form class="msg__composer" action="{% url 'auth:inscription' %}" method="get">
-    {% else %}
-    <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}">
-      {% csrf_token %}
-    {% endif %}
-      <label class="msg__field">
+      <label class="msg__field" data-msg-compose>
         <span class="visually-hidden">Message</span>
-        <textarea name="content" rows="1" placeholder="Écrire un message…" autocomplete="off" data-msg-input {% if not is_preview %}required{% endif %}></textarea>
-        {% if is_preview %}
+        <textarea name="content" rows="1" placeholder="Écrire un message…" autocomplete="off" data-msg-input></textarea>
         <a class="msg__tool-ico" href="{% url 'auth:inscription' %}" aria-label="Vocal">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 15.5a3.2 3.2 0 0 0 3.2-3.2V7.2a3.2 3.2 0 1 0-6.4 0v5.1A3.2 3.2 0 0 0 12 15.5z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6.4 12.4a5.6 5.6 0 0 0 11.2 0M12 18.2v2.2"/></svg>
         </a>
@@ -114,21 +147,58 @@
         <a class="msg__send" href="{% url 'auth:inscription' %}" aria-label="Envoyer">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3.4 11.2 20.2 3.6c.7-.3 1.4.4 1.1 1.1L13.8 21.6c-.3.8-1.5.8-1.8 0l-2.6-7.2-7.2-2.6c-.8-.3-.8-1.5 0-1.8z"/></svg>
         </a>
-        {% else %}
+      </label>
+    </form>
+    {% elif quota_locked %}
+    <div class="msg__composer msg__composer--disabled" aria-disabled="true">
+      <p class="msg__composer-lock">Vos messages gratuits sont utilisés. <a href="{% url 'app:parametres' %}">Passez Premium</a> pour écrire sans limite.</p>
+    </div>
+    {% elif not can_send %}
+    <div class="msg__composer msg__composer--disabled" aria-disabled="true">
+      <p class="msg__composer-lock">Messagerie désactivée pour cette conversation.</p>
+    </div>
+    {% else %}
+    <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}" data-partner-id="{{ partner_id }}" data-media-url="{% url 'app:discussion_media' partner_id %}">
+      {% csrf_token %}
+      <div class="msg__record" data-msg-record hidden>
+        <button class="msg__tool-ico" type="button" data-msg-record-cancel aria-label="Annuler">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+        </button>
+        <span class="msg__record-dot" aria-hidden="true"></span>
+        <span class="msg__record-time" data-msg-record-time>0:00</span>
+        <span class="msg__record-wave" aria-hidden="true"></span>
+        <button class="msg__send" type="button" data-msg-record-send aria-label="Envoyer le vocal">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3.4 11.2 20.2 3.6c.7-.3 1.4.4 1.1 1.1L13.8 21.6c-.3.8-1.5.8-1.8 0l-2.6-7.2-7.2-2.6c-.8-.3-.8-1.5 0-1.8z"/></svg>
+        </button>
+      </div>
+      <label class="msg__field" data-msg-compose>
+        <span class="visually-hidden">Message</span>
+        <textarea name="content" rows="1" placeholder="Écrire un message…" autocomplete="off" data-msg-input></textarea>
         <button class="msg__tool-ico" type="button" data-msg-tool="voice" aria-label="Vocal">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 15.5a3.2 3.2 0 0 0 3.2-3.2V7.2a3.2 3.2 0 1 0-6.4 0v5.1A3.2 3.2 0 0 0 12 15.5z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6.4 12.4a5.6 5.6 0 0 0 11.2 0M12 18.2v2.2"/></svg>
         </button>
         <button class="msg__tool-ico" type="button" data-msg-tool="photos" aria-label="Photos">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" d="m3.8 16.2 4.4-4.6 3.2 3.3 2.4-2.5 6.2 6.2"/><circle cx="8.2" cy="9.2" r="1.15" fill="currentColor"/></svg>
         </button>
+        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden data-msg-photo-input>
         <button class="msg__send" type="submit" aria-label="Envoyer">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3.4 11.2 20.2 3.6c.7-.3 1.4.4 1.1 1.1L13.8 21.6c-.3.8-1.5.8-1.8 0l-2.6-7.2-7.2-2.6c-.8-.3-.8-1.5 0-1.8z"/></svg>
         </button>
-        {% endif %}
       </label>
     </form>
+    {% endif %}
   </section>
 
   {% include "partials/explorer_dock.html" with dock_active="messages" %}
 </div>
+{% if not is_preview %}
+<div id="photo-lightbox" class="photo-lightbox" hidden>
+  <button type="button" class="photo-lightbox__close" data-lightbox-close aria-label="Fermer">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+  </button>
+  <img class="photo-lightbox__img" alt="">
+</div>
+{% include "partials/message_report_modal.html" %}
+{% include "partials/message_delete_modal.html" %}
+{% endif %}
 {% endblock %}

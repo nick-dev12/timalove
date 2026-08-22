@@ -121,10 +121,12 @@ class Profile(models.Model):
     def save(self, *args, **kwargs):
         if not self.notification_preferences:
             self.notification_preferences = {
+                "push": False,
                 "likes": True,
+                "super_likes": True,
                 "matches": True,
                 "messages": True,
-                "push": True,
+                "status": True,
             }
         super().save(*args, **kwargs)
 

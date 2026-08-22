@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
 from core.controllers import notification_controller
 from core.models import Match, Profile, Swipe
-from core.models.choices import MatchStatus, NotificationType, SwipeAction
+from core.models.choices import MatchStatus, SwipeAction
+
+PASS_COOLDOWN_DAYS = 14
+LIKE_Q = Q(is_like=True) | Q(is_super_like=True)
 
 
 def _ordered_pair(a: Profile, b: Profile) -> tuple[Profile, Profile]:
@@ -31,8 +36,41 @@ def _stored_action(is_like: bool, is_super_like: bool) -> str:
     return SwipeAction.PASS
 
 
+def pass_cooldown_cutoff():
+    return timezone.now() - timedelta(days=PASS_COOLDOWN_DAYS)
+
+
+def excluded_swiped_ids(viewer: Profile) -> set:
+    """Profils masqués du feed : likes permanents, pass actif (< 14 jours)."""
+    cutoff = pass_cooldown_cutoff()
+    return set(
+        Swipe.objects.filter(swiper=viewer)
+        .filter(LIKE_Q | Q(is_like=False, is_super_like=False, created_at__gte=cutoff))
+        .values_list("swiped_id", flat=True)
+    )
+
+
+def apply_feed_exclusions(qs, viewer: Profile):
+    """Exclut du queryset les profils déjà likés ou passés récemment."""
+    cutoff = pass_cooldown_cutoff()
+    active_pass = Swipe.objects.filter(
+        swiper=viewer,
+        swiped_id=OuterRef("pk"),
+        is_like=False,
+        is_super_like=False,
+        created_at__gte=cutoff,
+    )
+    already_liked = Swipe.objects.filter(swiper=viewer, swiped_id=OuterRef("pk")).filter(LIKE_Q)
+    return qs.annotate(
+        _hide_active_pass=Exists(active_pass),
+        _hide_liked=Exists(already_liked),
+    ).filter(_hide_active_pass=False, _hide_liked=False)
+
+
 @transaction.atomic
 def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool) -> dict:
+    from core.controllers import quota_controller
+
     try:
         swiped = Profile.objects.select_for_update().get(pk=swiped_id)
     except Profile.DoesNotExist:
@@ -44,6 +82,14 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
     is_like = bool(is_like)
     is_super_like = bool(is_super_like)
     action = _stored_action(is_like, is_super_like)
+    ok, err, code = quota_controller.check_swipe(swiper, swiped_id, action)
+    if not ok:
+        return {
+            "ok": False,
+            "error": err,
+            "code": code,
+            "quota": quota_controller.snapshot(swiper),
+        }
     counts = _counts_as_like(is_like, is_super_like)
 
     existing = Swipe.objects.filter(swiper=swiper, swiped=swiped).first()
@@ -59,9 +105,9 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
             "is_super_like": is_super_like,
         },
     )
-    if counts:
-        Swipe.objects.filter(pk=swipe.pk).update(created_at=timezone.now())
-        swipe.refresh_from_db(fields=["created_at"])
+    # Horodater chaque décision (like, super like, pass) — cooldown pass 14 jours.
+    Swipe.objects.filter(pk=swipe.pk).update(created_at=timezone.now())
+    swipe.refresh_from_db(fields=["created_at"])
 
     match = None
     matched = False
@@ -72,48 +118,31 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
     swiped.save(update_fields=["likes_received_count", "updated_at"])
 
     if counts:
-        if is_super_like and not was_super:
-            notification_controller.create(
-                user=swiped,
-                type=NotificationType.NEW_LIKE,
-                title="Super like",
-                message=f"{swiper.first_name} vous a envoyé un Super like.",
-                related_user=swiper,
-            )
-        elif is_like and not was_like:
-            notification_controller.create(
-                user=swiped,
-                type=NotificationType.NEW_LIKE,
-                title="Nouveau like",
-                message=f"{swiper.first_name} a aimé votre profil.",
-                related_user=swiper,
-            )
-
         reciprocal = Swipe.objects.filter(swiper=swiped, swiped=swiper).filter(like_q).first()
         if reciprocal:
             u1, u2 = _ordered_pair(swiper, swiped)
             match, _ = Match.objects.get_or_create(
                 user_1=u1,
                 user_2=u2,
-                defaults={"status": MatchStatus.ACTIVE},
+                defaults={"status": MatchStatus.ACTIVE, "is_one_sided": False},
             )
-            if match.status != MatchStatus.ACTIVE:
+            if match.status != MatchStatus.ACTIVE or match.is_one_sided:
                 match.status = MatchStatus.ACTIVE
-                match.save(update_fields=["status", "updated_at"])
+                match.is_one_sided = False
+                match.save(update_fields=["status", "is_one_sided", "updated_at"])
             matched = True
             for p in (swiper, swiped):
                 p.matches_count = Match.objects.filter(
                     status=MatchStatus.ACTIVE
                 ).filter(models_q_participant(p)).count()
                 p.save(update_fields=["matches_count", "updated_at"])
-                notification_controller.create(
-                    user=p,
-                    type=NotificationType.NEW_MATCH,
-                    title="Nouveau match",
-                    message="Vous avez un nouveau match !",
-                    related_user=swiped if p.pk == swiper.pk else swiper,
-                    related_match=match,
-                )
+                partner = swiped if p.pk == swiper.pk else swiper
+                notification_controller.notify_match(profile=p, partner=partner, match=match)
+        else:
+            if is_super_like and not was_super:
+                notification_controller.notify_like(recipient=swiped, sender=swiper, is_super_like=True)
+            elif is_like and not was_like:
+                notification_controller.notify_like(recipient=swiped, sender=swiper, is_super_like=False)
 
     return {
         "ok": True,
@@ -123,7 +152,10 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
         "created": created,
         "is_like": is_like,
         "is_super_like": is_super_like,
+        "partner_name": swiped.first_name or "Membre",
+        "partner_photo": swiped.primary_photo or "",
         "at": timezone.now().isoformat(),
+        "quota": quota_controller.snapshot(swiper),
     }
 
 

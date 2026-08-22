@@ -1,0 +1,22 @@
+[Unit]
+Description=TimaLove Celery beat
+After=network.target redis.service redis-server.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=colobanes
+Group=colobanes
+WorkingDirectory=/home/colobanes/timalove.goo-bridge.com/timalove
+Environment=DJANGO_SETTINGS_MODULE=config.settings
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/colobanes/timalove.goo-bridge.com/timalove/.env
+ExecStart=/home/colobanes/timalove.goo-bridge.com/venv/bin/celery \
+    -A config beat \
+    --loglevel=info \
+    --schedule=/home/colobanes/timalove.goo-bridge.com/run/celerybeat-schedule
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

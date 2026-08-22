@@ -6,6 +6,7 @@
   const EMAIL_STEPS = ["email", "password", "identity", "socio", "interests", "bios", "projet", "photos", "geo", "notif"];
   const PHONE_STEPS = ["phone", "password", "identity", "socio", "interests", "bios", "projet", "photos", "geo", "notif"];
   const OAUTH_STEPS = ["identity", "socio", "interests", "bios", "projet", "photos", "geo", "notif"];
+  const SKIP_HIDDEN_STEPS = ["email", "phone", "password", "identity", "socio", "photos"];
   const CTAS = {
     email: "Continuer",
     phone: "Continuer",
@@ -119,31 +120,13 @@
   }
 
   async function getFcmToken() {
-    if (!("Notification" in window) || !("serviceWorker" in navigator)) return "";
-    const configRes = await fetch("/api/push/config/");
-    if (!configRes.ok) return "";
-    const config = await configRes.json();
-    if (!config.enabled || !config.firebase?.apiKey) return "";
-    const { initializeApp, getApps } = await import(
-      "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js"
-    );
-    const { getMessaging, getToken, isSupported } = await import(
-      "https://www.gstatic.com/firebasejs/12.17.1/firebase-messaging.js"
-    );
-    if (!(await isSupported())) return "";
-    const app = getApps().length ? getApps()[0] : initializeApp(config.firebase);
-    const messaging = getMessaging(app);
-    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-    await navigator.serviceWorker.ready;
-    let permission = Notification.permission;
-    if (permission === "default") permission = await Notification.requestPermission();
-    if (permission !== "granted") return "";
-    return (
-      (await getToken(messaging, {
-        vapidKey: config.vapidKey,
-        serviceWorkerRegistration: registration,
-      })) || ""
-    );
+    if (typeof window.timaloveEnablePush !== "function") return "";
+    try {
+      const result = await window.timaloveEnablePush({ skipRegisterOnFailure: true });
+      return result.token || "";
+    } catch {
+      return "";
+    }
   }
 
   const api = {
@@ -164,6 +147,7 @@
     const heart = wizard.querySelector("[data-signup-heart]");
     const progress = wizard.querySelector("[data-signup-progress]");
     const nextBtn = wizard.querySelector("[data-signup-next]");
+    const skipBtn = wizard.querySelector("[data-signup-skip]");
     const views = {
       login: panel.querySelector('[data-auth-view="login"]'),
       choice: panel.querySelector('[data-auth-view="choice"]'),
@@ -207,6 +191,7 @@
       hearts?.style.setProperty("--beat", String(beat));
       if (progress) progress.textContent = `${index + 1}/${steps.length}`;
       if (nextBtn) nextBtn.textContent = CTAS[currentStep()] || "Continuer";
+      if (skipBtn) skipBtn.hidden = SKIP_HIDDEN_STEPS.includes(currentStep());
     }
 
     function clearErrors(scope) {
@@ -280,14 +265,14 @@
       if (step === "interests") {
         draft.interests = selected("[data-interests]", "data-interest");
         draft.personality_traits = selected("[data-traits]", "data-trait");
-        draft.life_values = [...wizard.querySelectorAll("[data-value-chip]")].map((el) => el.getAttribute("data-value-chip")).filter(Boolean);
+        draft.life_values = selected("[data-values]", "data-value");
       }
       if (step === "bios") {
         draft.bio = (slide.querySelector("[data-field='bio']")?.value || "").trim();
-        draft.looking_for = (slide.querySelector("[data-field='looking_for']")?.value || "").trim();
+        draft.looking_for = selected("[data-looking-for]", "data-looking");
+        draft.relationship_intent = wizard.querySelector("[data-intents] .is-on")?.getAttribute("data-intent") || "";
       }
       if (step === "projet") {
-        draft.relationship_intent = wizard.querySelector("[data-intents] .is-on")?.getAttribute("data-intent") || "";
         draft.life_project = (slide.querySelector("[data-field='life_project']")?.value || "").trim();
       }
       if (step === "geo") {
@@ -315,7 +300,6 @@
       setVal("[data-field='gender']", draft.gender);
       setVal("[data-field='religion']", draft.religion);
       setVal("[data-field='bio']", draft.bio);
-      setVal("[data-field='looking_for']", draft.looking_for);
       setVal("[data-field='life_project']", draft.life_project);
       setVal("[data-field='city']", draft.city);
       setVal("[data-field='geo_country']", draft.geo_country || draft.residence_country);
@@ -328,20 +312,28 @@
       }
       if (phoneIti && draft.phone && step === "phone") phoneIti.setNumber(draft.phone);
       if (identityIti && draft.phone && step === "identity") identityIti.setNumber(draft.phone);
+      function syncPressed(btn, on) {
+        btn.classList.toggle("is-on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      }
       wizard.querySelectorAll("[data-interest]").forEach((btn) => {
-        btn.classList.toggle("is-on", (draft.interests || []).includes(btn.getAttribute("data-interest")));
+        syncPressed(btn, (draft.interests || []).includes(btn.getAttribute("data-interest")));
       });
       wizard.querySelectorAll("[data-trait]").forEach((btn) => {
-        btn.classList.toggle("is-on", (draft.personality_traits || []).includes(btn.getAttribute("data-trait")));
+        syncPressed(btn, (draft.personality_traits || []).includes(btn.getAttribute("data-trait")));
+      });
+      wizard.querySelectorAll("[data-value]").forEach((btn) => {
+        const id = btn.getAttribute("data-value");
+        const values = draft.life_values || [];
+        syncPressed(btn, values.includes(id) || values.includes(btn.textContent.trim()));
+      });
+      const lookingIds = Array.isArray(draft.looking_for) ? draft.looking_for : [];
+      wizard.querySelectorAll("[data-looking]").forEach((btn) => {
+        syncPressed(btn, lookingIds.includes(btn.getAttribute("data-looking")));
       });
       wizard.querySelectorAll("[data-intent]").forEach((btn) => {
         btn.classList.toggle("is-on", draft.relationship_intent === btn.getAttribute("data-intent"));
       });
-      const list = wizard.querySelector("[data-value-list]");
-      if (list && step === "interests") {
-        list.innerHTML = "";
-        (draft.life_values || []).forEach(addValueChip);
-      }
       renderPhoto(1, draft.photo_data_url || draft.photo_url);
       renderPhoto(2, draft.photo_data_url_2 || draft.photo_url_2);
       if ((draft.city || draft.commune) && step === "geo") {
@@ -359,16 +351,6 @@
         img.hidden = false;
         if (placeholder) placeholder.hidden = true;
       }
-    }
-
-    function addValueChip(label) {
-      const list = wizard.querySelector("[data-value-list]");
-      if (!list || !label) return;
-      const chip = document.createElement("span");
-      chip.className = "signup-values__chip";
-      chip.setAttribute("data-value-chip", label);
-      chip.innerHTML = `${label} <button type="button" data-value-remove aria-label="Retirer">×</button>`;
-      list.appendChild(chip);
     }
 
     function toggleIdentityFields() {
@@ -632,8 +614,11 @@
       });
     });
 
-    wizard.querySelectorAll("[data-interest], [data-trait]").forEach((btn) => {
-      btn.addEventListener("click", () => btn.classList.toggle("is-on"));
+    wizard.querySelectorAll("[data-interest], [data-trait], [data-value], [data-looking]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const on = btn.classList.toggle("is-on");
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
     });
     wizard.querySelectorAll("[data-intent]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -642,35 +627,24 @@
       });
     });
 
-    wizard.querySelector("[data-value-add]")?.addEventListener("click", () => {
-      const input = wizard.querySelector("[data-value-input]");
-      const label = (input?.value || "").trim();
-      if (!label) return;
-      addValueChip(label);
-      if (input) input.value = "";
-    });
-    wizard.querySelector("[data-value-input]")?.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") return;
-      event.preventDefault();
-      wizard.querySelector("[data-value-add]")?.click();
-    });
-    wizard.querySelector("[data-value-list]")?.addEventListener("click", (event) => {
-      const btn = event.target.closest("[data-value-remove]");
-      if (!btn) return;
-      btn.closest("[data-value-chip]")?.remove();
-    });
-
     const combo = wizard.querySelector("[data-combo]");
     if (combo) {
       const input = combo.querySelector("[data-combo-input]");
       const hidden = combo.querySelector("[data-combo-value]");
       const list = combo.querySelector("[data-combo-list]");
       const items = [...list.querySelectorAll("[data-combo-item]")];
+      function fold(value) {
+        return (value || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .trim();
+      }
       function filter() {
-        const q = input.value.trim().toLowerCase();
+        const q = fold(input.value);
         let visible = 0;
         items.forEach((btn) => {
-          const ok = !q || btn.textContent.toLowerCase().includes(q);
+          const ok = !q || fold(btn.textContent).includes(q);
           btn.parentElement.hidden = !ok;
           if (ok) visible += 1;
         });
@@ -758,22 +732,40 @@
     });
 
     wizard.querySelector("[data-notif-enable]")?.addEventListener("click", async () => {
+      const btn = wizard.querySelector("[data-notif-enable]");
       const state = wizard.querySelector("[data-notif-state]");
+      if (btn) btn.disabled = true;
+      if (state) state.textContent = "";
       try {
-        const token = await getFcmToken();
-        draft.fcm_token = token;
+        if (typeof window.timaloveEnablePush !== "function") {
+          throw new Error("Module notifications indisponible.");
+        }
+        const result = await window.timaloveEnablePush({ skipRegisterOnFailure: true });
+        if (result.permission !== "granted") {
+          throw new Error("Autorisation refusée.");
+        }
+        draft.fcm_token = result.token || "";
+        draft.notifications_push = true;
         saveDraft(draft);
-        if (state) state.textContent = token ? "Notifications activées. Belle attention." : "Permission refusée. Vous pourrez les activer plus tard.";
-        if (draft.channel === "oauth" && token) {
+        if (state) state.textContent = "Notifications activées.";
+        window.timaloveNotifPopup?.showSuccess(
+          "Vous recevrez les likes, matchs et messages en temps réel.",
+        );
+        if (draft.channel === "oauth" && result.token) {
           await fetch("/api/push/register/", {
             method: "POST",
             credentials: "same-origin",
             headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
-            body: JSON.stringify({ token, platform: "web" }),
-          });
+            body: JSON.stringify({ token: result.token, platform: "web" }),
+          }).catch(() => {});
         }
-      } catch {
-        if (state) state.textContent = "Les notifications seront proposées plus tard.";
+      } catch (err) {
+        if (state) state.textContent = err.message || "Activation impossible pour le moment.";
+        window.timaloveNotifPopup?.showError(
+          err.message || "Activez les notifications dans les paramètres du navigateur.",
+        );
+      } finally {
+        if (btn) btn.disabled = false;
       }
     });
 

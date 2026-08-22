@@ -1,15 +1,17 @@
-"""Paiements Naboo — checkout / webhook / boost."""
+"""Paiements CinetPay — checkout / webhook / boost."""
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
+from django.urls import reverse
 from django.utils import timezone
 
-from core.controllers import notification_controller, site_settings_controller
+from core.controllers import cinetpay_controller, notification_controller, site_settings_controller
 from core.models import Profile, Subscription, Transaction
 from core.models.choices import (
     NotificationType,
@@ -19,11 +21,17 @@ from core.models.choices import (
     TransactionType,
 )
 
+logger = logging.getLogger(__name__)
+
 TIER_DURATIONS = {
+    SubscriptionTier.JOURNEE_AMOUREUSE: timedelta(days=1),
+    SubscriptionTier.PASS_AMOUR: timedelta(days=30),
+    SubscriptionTier.ETERNITE: timedelta(days=36500),
+    SubscriptionTier.VIP_1M: timedelta(days=30),
+    SubscriptionTier.PASS_FEMME: timedelta(days=15),
     SubscriptionTier.PREMIUM_10D: timedelta(days=10),
     SubscriptionTier.PREMIUM_1M: timedelta(days=30),
     SubscriptionTier.PREMIUM_2M: timedelta(days=60),
-    SubscriptionTier.VIP_1M: timedelta(days=30),
     SubscriptionTier.VIP_2M: timedelta(days=60),
     SubscriptionTier.VIP_FEMME_1W: timedelta(days=7),
 }
@@ -34,10 +42,114 @@ def price_for_tier(tier: str) -> int:
     return int(prices.get(tier, 0))
 
 
+def _site_url() -> str:
+    return (getattr(settings, "SITE_URL", "") or "http://127.0.0.1:8000").rstrip("/")
+
+
+def _notify_url() -> str:
+    return f"{_site_url()}{reverse('api:cinetpay_notify')}"
+
+
+def _return_url(order_id: str) -> str:
+    return f"{_site_url()}{reverse('api:payments_confirm')}?order_id={order_id}"
+
+
+def _simulate_url(order_id: str) -> str:
+    return f"{_return_url(order_id)}&simulate=1"
+
+
+def _can_simulate() -> bool:
+    return bool(getattr(settings, "PAYMENT_SIMULATION", False)) and not cinetpay_controller.is_configured()
+
+
+def _is_local_site() -> bool:
+    site = (getattr(settings, "SITE_URL", "") or "").lower()
+    return any(token in site for token in ("127.0.0.1", "localhost", "[::1]"))
+
+
+def _allow_local_simulation() -> bool:
+    return _is_local_site() and bool(
+        getattr(settings, "PAYMENT_SIMULATION", False) or getattr(settings, "DEBUG", False)
+    )
+
+
+def _simulated_checkout(tx: Transaction, details: dict, *, reason: str) -> dict:
+    details["mode"] = "simulate"
+    details["fallback"] = reason
+    tx.status = TransactionStatus.PENDING
+    tx.payment_details = details
+    tx.save(update_fields=["status", "payment_details", "updated_at"])
+    return {
+        "ok": True,
+        "order_id": tx.order_id,
+        "amount": tx.amount,
+        "checkout_url": _simulate_url(tx.order_id),
+        "transaction_id": str(tx.id),
+        "simulated": True,
+    }
+
+
+def _order_marked_simulated(order_id: str) -> bool:
+    details = Transaction.objects.filter(order_id=order_id).values_list("payment_details", flat=True).first()
+    return bool(isinstance(details, dict) and details.get("mode") == "simulate")
+
+
+def _start_provider_checkout(tx: Transaction, profile: Profile | None, description: str, extra: dict | None = None) -> dict:
+    details = dict(tx.payment_details or {})
+    details["provider"] = "cinetpay"
+    if _can_simulate():
+        return _simulated_checkout(tx, details, reason="no_provider_keys")
+    if not cinetpay_controller.is_configured():
+        return {"ok": False, "error": "Paiement indisponible pour le moment.", "message": "Paiement indisponible pour le moment."}
+
+    result = cinetpay_controller.initialize(
+        transaction_id=tx.order_id,
+        amount=tx.amount,
+        description=description,
+        notify_url=_notify_url(),
+        return_url=_return_url(tx.order_id),
+        profile=profile,
+        extra=extra,
+    )
+    if not result.get("ok"):
+        if result.get("network") and _allow_local_simulation():
+            logger.warning("[cinetpay] API injoignable — simulation locale pour %s.", tx.order_id)
+            return _simulated_checkout(tx, details, reason="network")
+        tx.status = TransactionStatus.FAILED
+        details["error"] = result.get("error")
+        tx.payment_details = details
+        tx.save(update_fields=["status", "payment_details", "updated_at"])
+        err = result.get("error") or "Impossible d’ouvrir le paiement."
+        return {"ok": False, "error": err, "message": err}
+
+    charged = int(result.get("amount") or tx.amount)
+    if charged != tx.amount:
+        tx.amount = charged
+    details.update(
+        {
+            "payment_token": result.get("payment_token"),
+            "payment_url": result.get("payment_url"),
+            "currency": cinetpay_controller.currency(),
+        }
+    )
+    tx.payment_details = details
+    tx.save(update_fields=["amount", "payment_details", "updated_at"])
+    return {
+        "ok": True,
+        "order_id": tx.order_id,
+        "amount": tx.amount,
+        "checkout_url": result["payment_url"],
+        "transaction_id": str(tx.id),
+        "simulated": False,
+    }
+
+
 def create_checkout(profile: Profile, tier: str, payment_method: str | None = None) -> dict:
     if tier not in SubscriptionTier.values or tier == SubscriptionTier.FREE:
-        return {"ok": False, "error": "Offre invalide."}
+        return {"ok": False, "error": "Offre invalide.", "message": "Offre invalide."}
     amount = price_for_tier(tier)
+    if amount <= 0:
+        return {"ok": False, "error": "Tarif introuvable.", "message": "Tarif introuvable."}
     order_id = f"sub_{uuid.uuid4().hex[:16]}"
     tx = Transaction.objects.create(
         user=profile,
@@ -47,19 +159,10 @@ def create_checkout(profile: Profile, tier: str, payment_method: str | None = No
         type=TransactionType.SUBSCRIPTION,
         status=TransactionStatus.PENDING,
         plan_tier=tier,
-        payment_details={"provider": "naboo"},
+        payment_details={"provider": "cinetpay", "tier": tier},
     )
-    # En local sans clé Naboo : URL factice de confirmation
-    checkout_url = f"{settings.SITE_URL}/api/payments/confirm/?order_id={order_id}&simulate=1"
-    if settings.NABOO_API_KEY:
-        checkout_url = f"{settings.NABOO_API_BASE}/checkout/{order_id}"
-    return {
-        "ok": True,
-        "order_id": order_id,
-        "amount": amount,
-        "checkout_url": checkout_url,
-        "transaction_id": str(tx.id),
-    }
+    label = dict(SubscriptionTier.choices).get(tier, "Abonnement TimaLove")
+    return _start_provider_checkout(tx, profile, f"TimaLove — {label}")
 
 
 def create_boost_checkout(profile: Profile, days: int = 7) -> dict:
@@ -71,14 +174,45 @@ def create_boost_checkout(profile: Profile, days: int = 7) -> dict:
         amount=amount,
         type=TransactionType.BOOST,
         status=TransactionStatus.PENDING,
-        payment_details={"days": days},
+        payment_details={"provider": "cinetpay", "days": days},
     )
-    checkout_url = f"{settings.SITE_URL}/api/payments/confirm/?order_id={order_id}&simulate=1"
-    return {"ok": True, "order_id": order_id, "amount": amount, "checkout_url": checkout_url, "transaction_id": str(tx.id)}
+    return _start_provider_checkout(tx, profile, f"TimaLove — Boost {days} jours")
+
+
+def checkout_transaction(tx: Transaction, profile: Profile | None, description: str, extra: dict | None = None) -> dict:
+    return _start_provider_checkout(tx, profile, description, extra=extra)
+
+
+def confirm_order(order_id: str, *, simulate: bool = False) -> tuple[bool, str]:
+    if not order_id:
+        return False, "Transaction introuvable."
+    if simulate:
+        if not (_can_simulate() or _order_marked_simulated(order_id)):
+            return False, "Simulation de paiement refusée."
+        return fulfill_order(order_id, provider_ref="simulate")
+
+    check = cinetpay_controller.check(order_id)
+    if not check.get("accepted"):
+        return False, str(check.get("error") or "Paiement non confirmé.")
+    return fulfill_order(
+        order_id,
+        provider_ref=check.get("operator_id") or order_id,
+        extra={"check": check.get("raw"), "payment_method": check.get("payment_method")},
+    )
+
+
+def handle_notify(payload: dict, x_token: str | None = None) -> tuple[bool, str]:
+    order_id = (payload.get("cpm_trans_id") or payload.get("transaction_id") or "").strip()
+    if not order_id:
+        return False, "Identifiant de transaction manquant."
+    secret = (getattr(settings, "CINETPAY_SECRET_KEY", "") or "").strip()
+    if secret and x_token and not cinetpay_controller.hmac_matches(payload, x_token):
+        logger.warning("[cinetpay] HMAC invalide pour %s — vérification API quand même.", order_id)
+    return confirm_order(order_id, simulate=False)
 
 
 @transaction.atomic
-def fulfill_order(order_id: str, naboo_transaction_id: str | None = None) -> tuple[bool, str]:
+def fulfill_order(order_id: str, provider_ref: str | None = None, extra: dict | None = None) -> tuple[bool, str]:
     try:
         tx = Transaction.objects.select_for_update().get(order_id=order_id)
     except Transaction.DoesNotExist:
@@ -88,8 +222,12 @@ def fulfill_order(order_id: str, naboo_transaction_id: str | None = None) -> tup
 
     tx.status = TransactionStatus.PAID
     tx.paid_at = timezone.now()
-    if naboo_transaction_id:
-        tx.naboo_transaction_id = naboo_transaction_id
+    if provider_ref:
+        tx.naboo_transaction_id = provider_ref
+    details = dict(tx.payment_details or {})
+    if extra:
+        details.update(extra)
+    tx.payment_details = details
     profile = tx.user
 
     if tx.type == TransactionType.SUBSCRIPTION and tx.plan_tier:
@@ -112,11 +250,17 @@ def fulfill_order(order_id: str, naboo_transaction_id: str | None = None) -> tup
         profile.subscription_tier = tx.plan_tier
         profile.subscription_status = SubscriptionStatus.ACTIVE
         profile.subscription_end_date = ends
+        boost_fields: list[str] = []
+        if tx.plan_tier == SubscriptionTier.PASS_FEMME:
+            profile.is_boosted = True
+            profile.boost_end_date = ends
+            boost_fields = ["is_boosted", "boost_end_date"]
         profile.save(
             update_fields=[
                 "subscription_tier",
                 "subscription_status",
                 "subscription_end_date",
+                *boost_fields,
                 "updated_at",
             ]
         )

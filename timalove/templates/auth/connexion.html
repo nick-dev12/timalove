@@ -1,4 +1,4 @@
-﻿{% extends "layouts/base.html" %}
+{% extends "layouts/base.html" %}
 {% load static %}
 {% block title %}Connexion{% endblock %}
 {% block body_class %}auth-gate-page{% endblock %}
@@ -7,8 +7,10 @@
 <script type="application/json" id="firebase-web-config">{{ firebase_config|safe }}</script>
 <script type="application/json" id="signup-prefill">{{ signup_prefill|safe }}</script>
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.6.0/build/js/intlTelInput.min.js"></script>
-<script src="{% static 'js/auth-signup.js' %}?v=20260815su3" defer></script>
-<script src="{% static 'js/auth-google.js' %}?v=20260815h1" defer></script>
+<script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
+<script src="{% static 'js/fcm.js' %}?v=20260821fcm3" defer></script>
+<script src="{% static 'js/auth-signup.js' %}?v=20260821su2" defer></script>
+<script src="{% static 'js/auth-google.js' %}?v=20260822a6" defer></script>
 <script src="{% static 'js/commencer-transit.js' %}?v=20260815su2" defer></script>
 {% endblock %}
 {% block body %}
@@ -275,7 +277,7 @@
           <p class="form-label">Centres d’intérêt <span class="signup-optional">optionnel</span></p>
           <div class="signup-pills" data-interests>
             {% for item in interests %}
-            <button type="button" class="signup-pill" data-interest="{{ item.id }}">
+            <button type="button" class="signup-pill" data-interest="{{ item.id }}" aria-pressed="false">
               <span class="signup-pill__icon" data-icon="{{ item.icon }}"></span>
               <span>{{ item.label }}</span>
             </button>
@@ -285,7 +287,7 @@
           <p class="form-label">Caractère <span class="signup-optional">optionnel</span></p>
           <div class="signup-pills" data-traits>
             {% for item in traits %}
-            <button type="button" class="signup-pill" data-trait="{{ item.id }}">
+            <button type="button" class="signup-pill" data-trait="{{ item.id }}" aria-pressed="false">
               <span class="signup-pill__icon" data-icon="{{ item.icon }}"></span>
               <span>{{ item.label }}</span>
             </button>
@@ -293,13 +295,15 @@
           </div>
           <p class="form-error" data-error-for="personality_traits" hidden></p>
           <p class="form-label">Valeurs <span class="signup-optional">optionnel</span></p>
-          <div class="signup-values" data-values>
-            <div class="signup-values__row">
-              <input class="form-input" type="text" maxlength="40" placeholder="Ex. : respect, famille…" data-value-input autocomplete="off">
-              <button type="button" class="signup-values__add" data-value-add>Ajouter</button>
-            </div>
-            <div class="signup-values__list" data-value-list></div>
+          <div class="signup-pills" data-values>
+            {% for item in life_values_catalog %}
+            <button type="button" class="signup-pill" data-value="{{ item.id }}" aria-pressed="false">
+              <span class="signup-pill__icon" data-icon="{{ item.icon }}"></span>
+              <span>{{ item.label }}</span>
+            </button>
+            {% endfor %}
           </div>
+          <p class="form-error" data-error-for="life_values" hidden></p>
         </section>
 
         <section class="signup-slide" data-signup-slide="bios">
@@ -310,16 +314,15 @@
             <label class="form-label" for="signup-bio">À propos de vous <span class="signup-optional">optionnel</span></label>
             <textarea class="form-textarea" id="signup-bio" data-field="bio" rows="4" maxlength="800" placeholder="Ce qui vous tient à cœur…"></textarea>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="signup-looking">Le profil recherché <span class="signup-optional">optionnel</span></label>
-            <textarea class="form-textarea" id="signup-looking" data-field="looking_for" rows="3" maxlength="500" placeholder="Sérieux, bienveillant, prêt pour une union sincère…"></textarea>
+          <p class="form-label">Le profil recherché <span class="signup-optional">optionnel</span></p>
+          <div class="signup-pills" data-looking-for>
+            {% for item in looking_for_catalog %}
+            <button type="button" class="signup-pill" data-looking="{{ item.id }}" aria-pressed="false">
+              <span class="signup-pill__icon" data-icon="{{ item.icon }}"></span>
+              <span>{{ item.label }}</span>
+            </button>
+            {% endfor %}
           </div>
-        </section>
-
-        <section class="signup-slide" data-signup-slide="projet">
-          <p class="signup-kicker">{{ signup_copy.projet.kicker }}</p>
-          <h2 class="signup-title">{{ signup_copy.projet.title }}</h2>
-          <p class="signup-lead">{{ signup_copy.projet.lead }}</p>
           <p class="form-label">Votre intention <span class="signup-optional">optionnel</span></p>
           <div class="signup-intents" data-intents>
             <button type="button" class="signup-intent" data-intent="mariage">
@@ -345,6 +348,12 @@
             </button>
           </div>
           <p class="form-error" data-error-for="relationship_intent" hidden></p>
+        </section>
+
+        <section class="signup-slide" data-signup-slide="projet">
+          <p class="signup-kicker">{{ signup_copy.projet.kicker }}</p>
+          <h2 class="signup-title">{{ signup_copy.projet.title }}</h2>
+          <p class="signup-lead">{{ signup_copy.projet.lead }}</p>
           <div class="form-group">
             <label class="form-label" for="signup-project">Votre projet de vie <span class="signup-optional">optionnel</span></label>
             <textarea class="form-textarea" id="signup-project" data-field="life_project" rows="3" maxlength="400" placeholder="Famille, foi, installation, ce que vous construisez…"></textarea>

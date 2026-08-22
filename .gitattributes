@@ -1,0 +1,5 @@
+# Scripts shell Linux : toujours LF (sinon bash échoue sur le VPS)
+*.sh text eol=lf
+deploy/*.service text eol=lf
+deploy/*.conf text eol=lf
+deploy/*.example text eol=lf

@@ -1,49 +1,68 @@
-<article class="history__card{% if item.is_super_like %} is-super{% endif %}{% if item.liked %} is-liked{% endif %}">
-  <a class="history__media" href="{{ item.profile_url }}" data-profile-modal="{{ item.id }}">
-    {% if item.photo_url %}
-    <img src="{{ item.photo_url }}" alt="{{ item.first_name }}" loading="lazy">
-    {% else %}
-    <span class="history__fallback">{{ item.first_name|first|upper }}</span>
-    {% endif %}
-    <span class="history__bar">
-      <span class="history__name">{{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}</span>
-    </span>
-  </a>
-  <div class="history__reacts">
-    {% if is_preview %}
-    {% if item.is_super_like %}
-    <a class="history__star-btn is-on" href="{% url 'auth:connexion' %}" aria-label="Super like">
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
-    </a>
-    {% endif %}
-    <a class="history__heart{% if item.liked %} is-on{% endif %}" href="{% url 'auth:connexion' %}" aria-label="Like">
-      <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true"><path d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
-    </a>
-    {% else %}
-    {% if item.is_super_like %}
-    <button
-      type="button"
-      class="history__star-btn is-on"
-      hx-post="{% url 'app:historique_superlike' item.id %}"
-      hx-target="closest .history__card"
-      hx-swap="outerHTML"
-      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-      aria-label="Retirer le super like"
-    >
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
-    </button>
-    {% endif %}
-    <button
-      type="button"
-      class="history__heart{% if item.liked %} is-on{% endif %}"
-      hx-post="{% url 'app:historique_like' item.id %}"
-      hx-target="closest .history__card"
-      hx-swap="outerHTML"
-      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-      aria-label="{% if item.liked %}Retirer le like{% else %}Liker{% endif %}"
-    >
-      <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true"><path d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
-    </button>
-    {% endif %}
-  </div>
-</article>
+<article class="history__card{% if item.is_super_like %} is-super{% endif %}{% if item.liked %} is-liked{% endif %}">
+  <a class="history__media" href="{{ item.profile_url }}" data-profile-modal="{{ item.id }}">
+    {% if item.photo_url %}
+    <img src="{{ item.photo_url }}" alt="{{ item.first_name }}" loading="lazy">
+    {% else %}
+    <span class="history__fallback">{{ item.first_name|first|upper }}</span>
+    {% endif %}
+    {% if item.is_super_like %}
+    <span class="history__star" aria-label="Super like">
+      <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+    </span>
+    {% endif %}
+  </a>
+  <div class="history__bar">
+    <span class="history__name">{{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}</span>
+    {% if not is_preview %}
+    <div class="history__actions">
+      {% if item.liked %}
+      <button
+        type="button"
+        class="history__msg"
+        data-msg-open
+        data-profile-id="{{ item.id }}"
+        aria-label="Message à {{ item.first_name }}"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+        <span>Message</span>
+      </button>
+      {% endif %}
+      {% if item.is_super_like %}
+      <button
+        type="button"
+        class="history__star-btn is-on"
+        hx-post="{% url 'app:historique_superlike' item.id %}"
+        hx-target="closest .history__card"
+        hx-swap="outerHTML"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        aria-label="Retirer le super like"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+      </button>
+      {% endif %}
+      <button
+        type="button"
+        class="history__heart{% if item.liked %} is-on{% endif %}"
+        hx-post="{% url 'app:historique_like' item.id %}"
+        hx-target="closest .history__card"
+        hx-swap="outerHTML"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        aria-label="{% if item.liked %}Retirer le like{% else %}Liker{% endif %}"
+      >
+        <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true"><path d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+      </button>
+    </div>
+    {% else %}
+    <div class="history__actions">
+      {% if item.is_super_like %}
+      <a class="history__star-btn is-on" href="{% url 'auth:connexion' %}" aria-label="Super like">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+      </a>
+      {% endif %}
+      <a class="history__heart{% if item.liked %} is-on{% endif %}" href="{% url 'auth:connexion' %}" aria-label="Like">
+        <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true"><path d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</article>

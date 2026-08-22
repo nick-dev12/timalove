@@ -11,33 +11,33 @@
     </button>
   </header>
 
-  <div class="visit__media">
-    <div class="visit__photo-stage">
-      <section class="visit__hero" aria-label="Photo principale">
-        {% if member.photo_url %}
-        <img class="visit__hero-img" src="{{ member.photo_url }}" alt="{{ member.first_name }}" width="800" height="1000">
-        {% else %}
-        <div class="visit__hero-fallback">{{ member.first_name|first|upper }}</div>
+  <div class="visit__intro">
+    <div class="visit__media">
+      <div class="visit__photo-stage">
+        <section class="visit__hero" aria-label="Photo principale">
+          {% if member.photo_url %}
+          <img class="visit__hero-img" src="{{ member.photo_url }}" alt="{{ member.first_name }}" width="800" height="1000">
+          {% else %}
+          <div class="visit__hero-fallback">{{ member.first_name|first|upper }}</div>
+          {% endif %}
+        </section>
+      </div>
+      <div class="visit__hero-chips">
+        {% if member.is_online %}
+        <span class="visit__chip visit__chip--live"><span class="visit__dot"></span> En ligne</span>
         {% endif %}
-      </section>
+        {% if member.is_verified %}
+        <span class="visit__chip visit__chip--ok">Vérifié</span>
+        {% endif %}
+        {% if member.is_boosted %}
+        <span class="visit__chip visit__chip--vip">Mis en avant</span>
+        {% endif %}
+        {% if member.relationship_intent_label %}
+        <span class="visit__chip">Intention : {{ member.relationship_intent_label|lower }}</span>
+        {% endif %}
+      </div>
     </div>
-    <div class="visit__hero-chips">
-      {% if member.is_online %}
-      <span class="visit__chip visit__chip--live"><span class="visit__dot"></span> En ligne</span>
-      {% endif %}
-      {% if member.is_verified %}
-      <span class="visit__chip visit__chip--ok">Vérifié</span>
-      {% endif %}
-      {% if member.is_boosted %}
-      <span class="visit__chip visit__chip--vip">Mis en avant</span>
-      {% endif %}
-      {% if member.relationship_intent_label %}
-      <span class="visit__chip">Intention : {{ member.relationship_intent_label|lower }}</span>
-      {% endif %}
-    </div>
-  </div>
 
-  <main class="visit__sheet">
     <section class="visit__identity visit-glass">
       <div class="visit__identity-top">
         <div class="visit__who">
@@ -56,10 +56,16 @@
 
       <div class="visit__actions">
         {% if user.is_authenticated %}
-        <a class="visit__action visit__action--msg" href="{% url 'app:likes' %}">
+        <button
+          type="button"
+          class="visit__action visit__action--msg"
+          data-msg-open
+          data-profile-id="{{ member.id }}"
+          aria-label="Message à {{ member.first_name }}"
+        >
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
           Message
-        </a>
+        </button>
         {% else %}
         <a class="visit__action visit__action--msg" href="{% url 'auth:connexion' %}">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
@@ -78,7 +84,9 @@
         </div>
       </div>
     </section>
+  </div>
 
+  <main class="visit__sheet">
     <section class="visit__trust visit-glass" aria-label="Signaux de confiance">
       <div class="visit__trust-item">
         <span class="visit__trust-ico" aria-hidden="true">✓</span>
@@ -139,9 +147,8 @@
           {% endif %}
           {% if member.life_project %}
           <li><span>Projet de vie</span><strong>{{ member.life_project }}</strong></li>
-          {% endif %}
-          {% if member.looking_for %}
-          <li><span>Recherche</span><strong>{{ member.looking_for }}</strong></li>
+          {% else %}
+          <li><span>Projet de vie</span><strong>Encore en silence — le cœur parlera.</strong></li>
           {% endif %}
           {% if member.commune %}
           <li><span>Commune</span><strong>{{ member.commune }}</strong></li>
@@ -183,7 +190,7 @@
         </div>
         {% endif %}
         {% if not member.interest_labels and not member.trait_labels %}
-        <p class="visit__about-text visit__about-text--muted">{{ member.first_name }} n’a pas encore défini ses intérêts et son caractère.</p>
+        <p class="visit__about-text visit__about-text--muted">{{ member.first_name }} n’a pas encore défini ses intérêts et son caractère. Un premier échange peut déjà tout dire.</p>
         {% endif %}
       </article>
 
@@ -192,24 +199,39 @@
           <p class="visit__kicker">Ce qui compte</p>
           <h2 class="visit__card-title">Valeurs</h2>
         </div>
-        {% if member.life_values %}
+        {% if member.life_value_labels %}
         <div class="visit__pills">
-          {% for value in member.life_values %}
-          <span>{{ value }}</span>
+          {% for value in member.life_value_labels %}
+          <span class="is-on">{{ value }}</span>
           {% endfor %}
         </div>
         {% else %}
-        <p class="visit__about-text visit__about-text--muted">{{ member.first_name }} n’a pas encore partagé ses valeurs.</p>
+        <p class="visit__about-text visit__about-text--muted">{{ member.first_name }} n’a pas encore partagé ses valeurs. La rencontre les révélera, en douceur.</p>
         {% endif %}
       </article>
 
-      <article class="visit-glass visit__card visit__prompt">
-        <p class="visit__prompt-label">Icebreaker</p>
-        <h2 class="visit__card-title">« Mon dimanche idéal… »</h2>
-        <p class="visit__prompt-answer">
-          Un brunch calme, une marche près de l’eau, puis une conversation vraie sans montre.
-        </p>
-        <p class="visit__prompt-note">Réponse illustrative — les vrais prompts arriveront bientôt.</p>
+      <article class="visit-glass visit__card">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Vers l’autre</p>
+          <h2 class="visit__card-title">Le profil recherché</h2>
+        </div>
+        {% if member.looking_for_labels %}
+        <div class="visit__pills">
+          {% for label in member.looking_for_labels %}
+          <span class="is-on">{{ label }}</span>
+          {% endfor %}
+        </div>
+        {% elif member.looking_for_text %}
+        <p class="visit__about-text">{{ member.looking_for_text }}</p>
+        {% else %}
+        <p class="visit__about-text visit__about-text--muted">{{ member.first_name }} n’a pas encore précisé le profil recherché. Un regard sincère suffit souvent.</p>
+        {% endif %}
+        {% if member.relationship_intent_label %}
+        <p class="visit__label">Intention</p>
+        <div class="visit__pills">
+          <span class="is-on">{{ member.relationship_intent_label }}</span>
+        </div>
+        {% endif %}
       </article>
     </section>
 
@@ -247,37 +269,40 @@
             <span class="visit__affinity-score">—</span>
             <div>
               <strong>Intention de vie</strong>
-              <p>{% if member.relationship_intent_label %}{{ member.first_name }} vise {{ member.relationship_intent_label|lower }}.{% else %}L’intention n’est pas encore précisée.{% endif %}{% if member.life_project %} {{ member.life_project }}{% endif %}</p>
+              <p>{% if member.relationship_intent_label %}{{ member.first_name }} vise {{ member.relationship_intent_label|lower }}.{% else %}L’intention n’est pas encore précisée — le dialogue l’éclairera.{% endif %}{% if member.life_project %} {{ member.life_project }}{% endif %}</p>
             </div>
           </li>
           <li>
-            <span class="visit__affinity-score">88%</span>
+            <span class="visit__affinity-score">{% if member.looking_for_labels %}{{ member.looking_for_labels|length }}{% else %}—{% endif %}</span>
             <div>
-              <strong>Rythme de vie</strong>
-              <p>Équilibre entre ambition, famille et présence.</p>
+              <strong>Profil recherché</strong>
+              <p>{% if member.looking_for_labels %}{{ member.looking_for_labels|join:", " }}.{% elif member.looking_for_text %}{{ member.looking_for_text }}{% else %}Pas encore précisé, avec beaucoup de cœur.{% endif %}</p>
             </div>
           </li>
         </ul>
       </article>
 
       <article class="visit-glass visit__card">
-        <h2 class="visit__card-title">Langages d’amour</h2>
-        <div class="visit__bars" aria-hidden="true">
-          <div class="visit__bar"><span>Temps de qualité</span><i style="--w:86%"></i></div>
-          <div class="visit__bar"><span>Paroles valorisantes</span><i style="--w:74%"></i></div>
-          <div class="visit__bar"><span>Gestes attentionnés</span><i style="--w:68%"></i></div>
+        <h2 class="visit__card-title">Valeurs partagées</h2>
+        {% if member.life_value_labels %}
+        <div class="visit__pills">
+          {% for value in member.life_value_labels %}
+          <span class="is-on">{{ value }}</span>
+          {% endfor %}
         </div>
-        <p class="visit__prompt-note">Données fictives pour prévisualiser l’expérience.</p>
+        {% else %}
+        <p class="visit__about-text visit__about-text--muted">Les valeurs se diront au fil de la conversation.</p>
+        {% endif %}
       </article>
     </section>
   </main>
 
   <footer class="visit__dock">
     {% if user.is_authenticated %}
-    <button type="button" class="visit__dock-btn visit__dock-btn--ghost{% if super_liked %} is-on{% endif %}" data-swipe="super_like" aria-label="Super like">
+    <button type="button" class="visit__dock-btn visit__dock-btn--ghost{% if super_liked %} is-on{% endif %}" data-swipe="super_like" data-profile-id="{{ member.id }}" aria-label="Super like">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
     </button>
-    <button type="button" class="visit__dock-btn visit__dock-btn--primary{% if liked %} is-on{% endif %}" data-swipe="like" aria-label="{% if liked %}Aimé{% else %}Like{% endif %}">
+    <button type="button" class="visit__dock-btn visit__dock-btn--primary{% if liked %} is-on{% endif %}" data-swipe="like" data-profile-id="{{ member.id }}" aria-label="{% if liked %}Aimé{% else %}Like{% endif %}">
       <svg viewBox="0 0 24 22" width="22" height="20" aria-hidden="true"><path d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
     </button>
     {% else %}

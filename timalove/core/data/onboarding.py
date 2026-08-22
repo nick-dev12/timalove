@@ -1,5 +1,9 @@
 """Contenu onboarding — intérêts, caractère, copies."""
 
+from __future__ import annotations
+
+import json
+
 INTERESTS = [
     {"id": "voyage", "label": "Voyage", "icon": "plane"},
     {"id": "lecture", "label": "Lecture", "icon": "book"},
@@ -25,6 +29,89 @@ TRAITS = [
     {"id": "genereux", "label": "Généreux", "icon": "gift"},
     {"id": "drole", "label": "Enjoué", "icon": "smile"},
 ]
+
+LIFE_VALUES = [
+    {"id": "famille", "label": "Famille", "icon": "heart"},
+    {"id": "foi", "label": "Foi", "icon": "spark"},
+    {"id": "sincerite", "label": "Sincérité", "icon": "ring"},
+    {"id": "respect", "label": "Respect", "icon": "wave"},
+    {"id": "fidelite", "label": "Fidélité", "icon": "ring"},
+    {"id": "humilite", "label": "Humilité", "icon": "leaf"},
+    {"id": "travail", "label": "Travail", "icon": "mountain"},
+    {"id": "education", "label": "Éducation", "icon": "book"},
+    {"id": "entourage", "label": "Entourage", "icon": "gift"},
+    {"id": "equilibre", "label": "Équilibre", "icon": "wave"},
+]
+
+LOOKING_FOR = [
+    {"id": "serieux", "label": "Sincère", "icon": "heart"},
+    {"id": "croyant", "label": "Croyant", "icon": "spark"},
+    {"id": "familial", "label": "Familial", "icon": "gift"},
+    {"id": "calme", "label": "Calme", "icon": "wave"},
+    {"id": "ambitieux", "label": "Ambitieux", "icon": "mountain"},
+    {"id": "sociable", "label": "Sociable", "icon": "smile"},
+    {"id": "spirituel", "label": "Spirituel", "icon": "spark"},
+    {"id": "projet_famille", "label": "Projet de famille", "icon": "heart"},
+    {"id": "meme_culture", "label": "Même culture", "icon": "ring"},
+    {"id": "international", "label": "International", "icon": "plane"},
+]
+
+_LOOKING_FOR_IDS = {item["id"] for item in LOOKING_FOR}
+_LOOKING_FOR_LABELS = {item["id"]: item["label"] for item in LOOKING_FOR}
+_LIFE_VALUE_LABELS = {item["id"]: item["label"] for item in LIFE_VALUES}
+
+
+def looking_for_ids(raw) -> list[str]:
+    items: list[str] = []
+    if isinstance(raw, list):
+        items = [str(x).strip() for x in raw if str(x).strip()]
+    else:
+        text = str(raw or "").strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except (TypeError, ValueError):
+            return []
+        if isinstance(parsed, list):
+            items = [str(x).strip() for x in parsed if str(x).strip()]
+    return [item for item in items if item in _LOOKING_FOR_IDS]
+
+
+def looking_for_labels(raw) -> list[str]:
+    return [_LOOKING_FOR_LABELS[item] for item in looking_for_ids(raw)]
+
+
+def looking_for_free_text(raw) -> str:
+    if looking_for_ids(raw):
+        return ""
+    if isinstance(raw, list):
+        return ""
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    try:
+        json.loads(text)
+        return ""
+    except (TypeError, ValueError):
+        return text
+
+
+def encode_looking_for(value) -> str:
+    ids = looking_for_ids(value)
+    if ids:
+        return json.dumps(ids, ensure_ascii=False)
+    return looking_for_free_text(value)[:800]
+
+
+def life_value_labels(values) -> list[str]:
+    out: list[str] = []
+    for item in values or []:
+        key = str(item).strip()
+        if key:
+            out.append(_LIFE_VALUE_LABELS.get(key, key))
+    return out
+
 
 STEP_COPY = {
     "1": {
@@ -108,9 +195,9 @@ SIGNUP_COPY = {
         "cta": "Continuer",
     },
     "projet": {
-        "kicker": "Intention",
-        "title": "Vers où vous allez.",
-        "lead": "Mariage, relation sérieuse, ou encore à préciser. Dites-le si vous le sentez.",
+        "kicker": "Projet",
+        "title": "Ce que vous construisez.",
+        "lead": "Famille, foi, installation : dites-le si vous le sentez. Cette étape reste libre.",
         "cta": "Continuer",
     },
     "photos": {

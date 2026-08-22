@@ -8,7 +8,7 @@
   }
 
   function csrf() {
-    return cookie("csrftoken");
+    return cookie("csrftoken") || document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
   }
 
   const ICONS = {
@@ -56,6 +56,7 @@
       el.hidden = !text;
       el.textContent = text || "";
       el.classList.toggle("is-error", Boolean(isError));
+      if (text) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
     function showTab(key) {
@@ -69,10 +70,46 @@
         if (panels[k]) panels[k].hidden = k !== key;
       });
       const url = new URL(window.location.href);
-      if (key === "about") url.searchParams.delete("tab");
-      else url.searchParams.set("tab", key);
+      if (key === "about") {
+        url.searchParams.delete("tab");
+        url.searchParams.delete("section");
+      } else {
+        url.searchParams.set("tab", key);
+        if (key !== "settings") url.searchParams.delete("section");
+      }
+      history.replaceState({}, "", url);
+      if (key === "settings") showSettingsSection(getSettingsSectionFromUrl());
+    }
+
+    const settingsTabs = [...root.querySelectorAll("[data-settings-tab]")];
+    const settingsPanels = [...root.querySelectorAll("[data-settings-panel]")];
+    const settingsSectionKeys = settingsPanels.map((p) => p.getAttribute("data-settings-panel"));
+
+    function getSettingsSectionFromUrl() {
+      const section = new URLSearchParams(window.location.search).get("section");
+      return settingsSectionKeys.includes(section) ? section : "profile";
+    }
+
+    function showSettingsSection(key) {
+      if (!settingsSectionKeys.includes(key)) key = "profile";
+      settingsTabs.forEach((tab) => {
+        const on = tab.getAttribute("data-settings-tab") === key;
+        tab.classList.toggle("is-active", on);
+        tab.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      settingsPanels.forEach((panel) => {
+        const on = panel.getAttribute("data-settings-panel") === key;
+        panel.hidden = !on;
+      });
+      const url = new URL(window.location.href);
+      if (key === "profile") url.searchParams.delete("section");
+      else url.searchParams.set("section", key);
       history.replaceState({}, "", url);
     }
+
+    settingsTabs.forEach((tab) => {
+      tab.addEventListener("click", () => showSettingsSection(tab.getAttribute("data-settings-tab")));
+    });
 
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => showTab(tab.getAttribute("data-tab")));
@@ -87,8 +124,14 @@
         headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.message || "Erreur");
+      const text = await res.text();
+      let data = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(res.ok ? "Réponse invalide." : "Impossible de contacter le serveur.");
+      }
+      if (!res.ok || !data.ok) throw new Error(data.message || data.error || "Erreur");
       return data;
     }
 
@@ -107,8 +150,17 @@
       return data;
     }
 
-    root.querySelectorAll("[data-interest], [data-trait]").forEach((btn) => {
-      btn.addEventListener("click", () => btn.classList.toggle("is-on"));
+    root.querySelectorAll("[data-interest], [data-trait], [data-value], [data-looking]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const on = btn.classList.toggle("is-on");
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    });
+    root.querySelectorAll("[data-intent]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        root.querySelectorAll("[data-intent]").forEach((other) => other.classList.remove("is-on"));
+        btn.classList.add("is-on");
+      });
     });
 
     function selected(selector, attr) {
@@ -148,11 +200,8 @@
         country: fd.get("country"),
         residence_country: fd.get("residence_country"),
         religion: fd.get("religion"),
-        relationship_intent: fd.get("relationship_intent"),
         life_project: fd.get("life_project"),
-        phone: fd.get("phone"),
         bio: fd.get("bio"),
-        looking_for: fd.get("looking_for"),
       });
       const name = fd.get("first_name") || "";
       const age = fd.get("age");
@@ -174,64 +223,16 @@
       });
     }
 
-    const valueInput = root.querySelector("[data-value-input]");
-    const valueList = root.querySelector("[data-value-list]");
-    const MAX_VALUES = 12;
-
-    function currentValues() {
-      return [...root.querySelectorAll("[data-value-chip]")]
-        .map((el) => (el.dataset.valueChip || "").trim())
-        .filter(Boolean);
-    }
-
-    function addValueChip(label) {
-      if (!valueList) return;
-      const chip = document.createElement("span");
-      chip.className = "visit-values__chip";
-      chip.dataset.valueChip = label;
-      chip.appendChild(document.createTextNode(label + " "));
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.setAttribute("data-value-remove", "");
-      btn.setAttribute("aria-label", "Retirer");
-      btn.textContent = "×";
-      chip.appendChild(btn);
-      valueList.appendChild(chip);
-    }
-
-    function tryAddValue() {
-      const label = (valueInput?.value || "").trim().slice(0, 40);
-      if (!label) return;
-      const existing = currentValues().map((v) => v.toLowerCase());
-      if (existing.includes(label.toLowerCase())) {
-        valueInput.value = "";
-        return;
-      }
-      if (existing.length >= MAX_VALUES) {
-        setMsg("values", "Vous pouvez ajouter jusqu’à " + MAX_VALUES + " valeurs.", true);
-        return;
-      }
-      addValueChip(label);
-      valueInput.value = "";
-      setMsg("values", "", false);
-    }
-
-    root.querySelector("[data-value-add]")?.addEventListener("click", tryAddValue);
-    valueInput?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        tryAddValue();
-      }
-    });
-    valueList?.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-value-remove]");
-      if (!btn) return;
-      btn.closest("[data-value-chip]")?.remove();
-    });
-
     async function saveValues() {
       await postJSON("/api/profile/update/", {
-        life_values: currentValues(),
+        life_values: selected("[data-value]", "data-value"),
+      });
+    }
+
+    async function saveLooking() {
+      await postJSON("/api/profile/update/", {
+        looking_for: selected("[data-looking]", "data-looking"),
+        relationship_intent: root.querySelector("[data-intents] .is-on")?.getAttribute("data-intent") || "",
       });
     }
 
@@ -269,22 +270,410 @@
       const fd = new FormData(form);
       await postJSON("/api/profile/update/", {
         notification_preferences: {
-          push: fd.get("push") === "on",
+          push: true,
           likes: fd.get("likes") === "on",
+          super_likes: fd.get("super_likes") === "on",
           matches: fd.get("matches") === "on",
           messages: fd.get("messages") === "on",
+          status: fd.get("status") === "on",
         },
       });
     }
 
+    function showNotifPrefs() {
+      const enableWrap = root.querySelector("[data-notifs-enable-wrap]");
+      const enableBtn = root.querySelector("[data-notifs-enable]");
+      const activeBadge = root.querySelector("[data-notifs-active-badge]");
+      const enableLead = root.querySelector("[data-notifs-enable-lead]");
+      enableWrap?.setAttribute("hidden", "");
+      enableBtn?.setAttribute("hidden", "");
+      activeBadge?.setAttribute("hidden", "");
+      enableLead?.setAttribute("hidden", "");
+      root.querySelector("[data-notifs-prefs-wrap]")?.removeAttribute("hidden");
+    }
+
+    function showNotifEnable() {
+      const enableWrap = root.querySelector("[data-notifs-enable-wrap]");
+      const enableBtn = root.querySelector("[data-notifs-enable]");
+      const activeBadge = root.querySelector("[data-notifs-active-badge]");
+      const enableLead = root.querySelector("[data-notifs-enable-lead]");
+      root.querySelector("[data-notifs-prefs-wrap]")?.setAttribute("hidden", "");
+      enableWrap?.removeAttribute("hidden");
+      enableBtn?.removeAttribute("hidden");
+      activeBadge?.setAttribute("hidden", "");
+      enableLead?.removeAttribute("hidden");
+    }
+
+    function showNotifActivatingSuccess() {
+      const enableWrap = root.querySelector("[data-notifs-enable-wrap]");
+      const enableBtn = root.querySelector("[data-notifs-enable]");
+      const activeBadge = root.querySelector("[data-notifs-active-badge]");
+      const enableLead = root.querySelector("[data-notifs-enable-lead]");
+      enableWrap?.removeAttribute("hidden");
+      enableBtn?.setAttribute("hidden", "");
+      activeBadge?.removeAttribute("hidden");
+      enableLead?.setAttribute("hidden", "");
+      window.setTimeout(showNotifPrefs, 900);
+    }
+
+    function setNotifEnableMsg(text, isError) {
+      const msg = root.querySelector("[data-notifs-enable-msg]");
+      if (!msg) return;
+      msg.textContent = text || "";
+      msg.hidden = !text;
+      msg.classList.toggle("is-error", Boolean(isError));
+    }
+
+    async function enableNotifications() {
+      setNotifEnableMsg("");
+      if (typeof window.timaloveEnablePush !== "function") {
+        throw new Error("Module notifications indisponible.");
+      }
+      await window.timaloveEnablePush();
+      await postJSON("/api/profile/update/", {
+        notification_preferences: {
+          push: true,
+          likes: true,
+          super_likes: true,
+          matches: true,
+          messages: true,
+          status: true,
+        },
+      });
+      const form = root.querySelector("[data-notifs-form]");
+      form?.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = true;
+      });
+      showNotifActivatingSuccess();
+    }
+
+    async function disableNotifications() {
+      if (typeof window.timaloveDisablePush === "function") {
+        await window.timaloveDisablePush().catch(() => {});
+      }
+      await postJSON("/api/profile/update/", {
+        notification_preferences: {
+          push: false,
+          likes: false,
+          super_likes: false,
+          matches: false,
+          messages: false,
+          status: false,
+        },
+      });
+      showNotifEnable();
+      setNotifEnableMsg("");
+    }
+
+    const prefsWrap = root.querySelector("[data-notifs-prefs-wrap]");
+    if (prefsWrap && !prefsWrap.hasAttribute("hidden")) {
+      showNotifPrefs();
+    }
+
+    root.querySelector("[data-notifs-enable]")?.addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      setNotifEnableMsg("");
+      try {
+        await enableNotifications();
+      window.timaloveNotifPopup?.showSuccess(
+        "Vous recevrez les likes, matchs et messages en temps réel.",
+      );
+      } catch (err) {
+        setNotifEnableMsg(err.message || "Activation impossible.", true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    root.querySelector("[data-notifs-disable]")?.addEventListener("click", (e) => {
+      if (!window.confirm("Désactiver toutes les notifications push ?")) return;
+      void withButton(e.currentTarget, "notifications", disableNotifications, "Notifications désactivées.");
+    });
+
+    root.querySelector("[data-notifs-test]")?.addEventListener("click", (e) => {
+      void withButton(e.currentTarget, "notifications", async () => {
+        const data = await postJSON("/api/push/test/", {});
+        window.timaloveNotifPopup?.showSuccess(
+          data.message || "Notification test envoyée. Vérifiez votre appareil.",
+        );
+      }, "Envoi du test…");
+    });
+
+    const wsTestBtn = root.querySelector("[data-ws-test]");
+    const wsTestMsg = root.querySelector("[data-ws-test-msg]");
+    const wsTestUrl = root.querySelector("[data-ws-test-url]");
+
+    function setWsTestMsg(text, isError) {
+      if (!wsTestMsg) return;
+      wsTestMsg.textContent = text || "";
+      wsTestMsg.hidden = !text;
+      wsTestMsg.classList.toggle("is-error", Boolean(isError));
+    }
+
+    function wsNotificationsUrl() {
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${proto}//${window.location.host}/ws/notifications/`;
+    }
+
+    if (wsTestUrl) {
+      wsTestUrl.textContent = `Endpoint : ${wsNotificationsUrl()}`;
+    }
+
+    wsTestBtn?.addEventListener("click", () => {
+      if (wsTestBtn.disabled) return;
+      const url = wsNotificationsUrl();
+      setWsTestMsg("Connexion en cours…", false);
+      wsTestBtn.disabled = true;
+      console.info("[TimaLove WS test] Démarrage", url);
+
+      let settled = false;
+      let ws;
+      const finish = (text, isError) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(wsTestBtn._wsTimer);
+        wsTestBtn.disabled = false;
+        setWsTestMsg(text, isError);
+      };
+
+      try {
+        ws = new WebSocket(url);
+      } catch (err) {
+        console.error("[TimaLove WS test] Impossible d'ouvrir la connexion", err);
+        finish(err.message || "Connexion impossible.", true);
+        return;
+      }
+
+      wsTestBtn._wsTimer = window.setTimeout(() => {
+        console.warn("[TimaLove WS test] Délai dépassé (8 s)");
+        try {
+          ws.close();
+        } catch (_) {
+          /* ignore */
+        }
+        finish("Délai dépassé — vérifiez que Daphne tourne.", true);
+      }, 8000);
+
+      ws.onopen = () => {
+        console.log("[TimaLove WS test] WS OK — connexion ouverte");
+        finish("WS OK — connexion WebSocket réussie. Voir la console (F12).", false);
+        window.setTimeout(() => {
+          try {
+            ws.close();
+          } catch (_) {
+            /* ignore */
+          }
+        }, 1200);
+      };
+
+      ws.onmessage = (event) => {
+        console.log("[TimaLove WS test] Notif reçue:", event.data);
+      };
+
+      ws.onerror = () => {
+        console.error("[TimaLove WS test] Erreur WebSocket");
+        finish("Erreur WebSocket — consultez la console (F12).", true);
+      };
+
+      ws.onclose = (event) => {
+        console.log("[TimaLove WS test] Fermé", event.code, event.reason || "");
+        if (!settled && event.code !== 1000) {
+          const hint =
+            event.code === 1006
+              ? "Connexion refusée — lancez Daphne et vérifiez que vous êtes connecté."
+              : `Connexion fermée (code ${event.code}).`;
+          finish(hint, true);
+        }
+      };
+    });
+
     root.querySelector('[data-save="identity"]')?.addEventListener("click", (e) => {
       void withButton(e.currentTarget, "identity", saveIdentity, "Profil enregistré.");
+    });
+
+    const emailView = root.querySelector("[data-email-view]");
+    const emailForm = root.querySelector("[data-email-form]");
+    const emailDisplay = root.querySelector("[data-email-display]");
+    const emailInput = root.querySelector("[data-email-input]");
+
+    function closeEmailEditor() {
+      if (!emailForm || !emailView) return;
+      emailForm.hidden = true;
+      emailView.hidden = false;
+      const pwd = emailForm.querySelector("[data-email-password]");
+      if (pwd) pwd.value = "";
+      if (emailInput && emailDisplay) emailInput.value = emailDisplay.value || "";
+    }
+
+    root.querySelector("[data-email-edit]")?.addEventListener("click", () => {
+      if (!emailForm || !emailView) return;
+      emailView.hidden = true;
+      emailForm.hidden = false;
+      emailForm.querySelector("[data-email-input]")?.focus();
+    });
+
+    root.querySelector("[data-email-cancel]")?.addEventListener("click", closeEmailEditor);
+
+    async function saveEmail() {
+      if (!emailForm) return;
+      const email = (emailInput?.value || "").trim();
+      const password = (emailForm.querySelector("[data-email-password]")?.value || "").trim();
+      if (!email) throw new Error("Saisissez une adresse email.");
+      if (!password) throw new Error("Confirmez avec votre mot de passe actuel.");
+      const data = await postJSON("/api/profile/email/", { email, current_password: password });
+      if (emailDisplay) emailDisplay.value = data.email || email;
+      if (emailInput) emailInput.value = data.email || email;
+      closeEmailEditor();
+    }
+
+    root.querySelector('[data-save="email"]')?.addEventListener("click", (e) => {
+      void withButton(e.currentTarget, "email", saveEmail, "Email mis à jour.");
+    });
+
+    const phoneView = root.querySelector("[data-phone-view]");
+    const phoneForm = root.querySelector("[data-phone-form]");
+    const phoneDisplay = root.querySelector("[data-phone-display]");
+    const phoneInput = root.querySelector("[data-phone-input]");
+
+    function closePhoneEditor() {
+      if (!phoneForm || !phoneView) return;
+      phoneForm.hidden = true;
+      phoneView.hidden = false;
+      if (phoneInput && phoneDisplay) phoneInput.value = phoneDisplay.value || "";
+    }
+
+    root.querySelector("[data-phone-edit]")?.addEventListener("click", () => {
+      if (!phoneForm || !phoneView) return;
+      phoneView.hidden = true;
+      phoneForm.hidden = false;
+      phoneInput?.focus();
+    });
+
+    root.querySelector("[data-phone-cancel]")?.addEventListener("click", closePhoneEditor);
+
+    async function savePhone() {
+      if (!phoneForm) return;
+      const phone = (phoneInput?.value || "").trim();
+      if (!phone) throw new Error("Saisissez un numéro de téléphone.");
+      await postJSON("/api/profile/update/", { phone });
+      if (phoneDisplay) phoneDisplay.value = phone;
+      closePhoneEditor();
+    }
+
+    root.querySelector('[data-save="phone"]')?.addEventListener("click", (e) => {
+      void withButton(e.currentTarget, "phone", savePhone, "Téléphone mis à jour.");
+    });
+
+    async function savePassword() {
+      const block = root.querySelector("[data-password-form]");
+      if (!block) return;
+      const current = (block.querySelector("[data-password-current]")?.value || "").trim();
+      const next = (block.querySelector("[data-password-new]")?.value || "").trim();
+      const confirm = (block.querySelector("[data-password-confirm]")?.value || "").trim();
+      if (!current || !next || !confirm) throw new Error("Complétez tous les champs du mot de passe.");
+      if (next.length < 8) throw new Error("Le nouveau mot de passe doit contenir au moins 8 caractères.");
+      await postJSON("/api/profile/password/", {
+        current_password: current,
+        new_password: next,
+        confirm_password: confirm,
+      });
+      block.querySelectorAll("input[type='password']").forEach((input) => {
+        input.value = "";
+      });
+    }
+
+    root.querySelector('[data-save="password"]')?.addEventListener("click", (e) => {
+      void withButton(e.currentTarget, "password", savePassword, "Mot de passe mis à jour.");
+    });
+
+    root.querySelectorAll("[data-password-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const name = btn.getAttribute("data-password-toggle");
+        const input = root.querySelector('[name="' + name + '"]');
+        if (!input) return;
+        const reveal = input.type === "password";
+        input.type = reveal ? "text" : "password";
+        btn.setAttribute("aria-label", reveal ? "Masquer le mot de passe" : "Afficher le mot de passe");
+      });
+    });
+
+    function setSelectByLabel(select, label) {
+      if (!select || !label) return false;
+      const target = String(label).trim().toLowerCase();
+      for (const option of select.options) {
+        if (option.value.trim().toLowerCase() === target) {
+          select.value = option.value;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    root.querySelector("[data-geo-locate]")?.addEventListener("click", (e) => {
+      const btn = e.currentTarget;
+      const statusEl = root.querySelector("[data-geo-status]");
+      if (!navigator.geolocation) {
+        setMsg("location", "La géolocalisation n’est pas disponible sur cet appareil.", true);
+        return;
+      }
+      btn.disabled = true;
+      if (statusEl) {
+        statusEl.hidden = false;
+        statusEl.textContent = "Recherche de votre position…";
+        statusEl.classList.remove("is-error");
+      }
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const data = await postJSON("/api/auth/signup/location/", {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+            });
+            if (!data.ok) throw new Error(data.message || "Position impossible.");
+            const cityInput = profileForm?.querySelector("[data-geo-city]");
+            const communeInput = profileForm?.querySelector("[data-geo-commune]");
+            const residenceSelect = profileForm?.querySelector("[data-geo-residence]");
+            if (cityInput && data.city) cityInput.value = data.city;
+            if (communeInput && data.commune) communeInput.value = data.commune;
+            if (residenceSelect && data.country) setSelectByLabel(residenceSelect, data.country);
+            const loc = [communeInput?.value || "", cityInput?.value || "", residenceSelect?.value || ""].filter(Boolean).join(", ");
+            const locEl = root.querySelector("[data-display-location]");
+            if (locEl && loc) locEl.textContent = loc;
+            if (statusEl) {
+              statusEl.textContent = data.display || "Position détectée — vérifiez puis enregistrez le profil.";
+            }
+            setMsg("location", "Localisation détectée. Enregistrez pour confirmer.", false);
+          } catch (err) {
+            if (statusEl) {
+              statusEl.textContent = err.message;
+              statusEl.classList.add("is-error");
+            }
+            setMsg("location", err.message, true);
+          } finally {
+            btn.disabled = false;
+          }
+        },
+        () => {
+          if (statusEl) {
+            statusEl.hidden = false;
+            statusEl.textContent = "Autorisez la localisation dans votre navigateur.";
+            statusEl.classList.add("is-error");
+          }
+          setMsg("location", "Autorisez la localisation pour continuer.", true);
+          btn.disabled = false;
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+      );
     });
     root.querySelector('[data-save="interests"]')?.addEventListener("click", (e) => {
       void withButton(e.currentTarget, "interests", saveInterests, "Intérêts enregistrés.");
     });
     root.querySelector('[data-save="values"]')?.addEventListener("click", (e) => {
       void withButton(e.currentTarget, "values", saveValues, "Valeurs enregistrées.");
+    });
+    root.querySelector('[data-save="looking"]')?.addEventListener("click", (e) => {
+      void withButton(e.currentTarget, "looking", saveLooking, "Profil recherché enregistré.");
     });
     root.querySelector('[data-save="filters"]')?.addEventListener("click", (e) => {
       void withButton(e.currentTarget, "filters", saveFilters, "Filtres enregistrés.");
@@ -296,20 +685,23 @@
       void withButton(e.currentTarget, "notifications", saveNotifications, "Notifications enregistrées.");
     });
 
-    root.querySelectorAll("[data-checkout]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        void withButton(btn, "subscription", async () => {
+    root.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-checkout]");
+      if (!btn || !root.contains(btn) || btn.disabled) return;
+      const original = btn.textContent;
+      void withButton(
+        btn,
+        "subscription",
+        async () => {
+          btn.textContent = "Ouverture du paiement…";
           const data = await postJSON("/api/payments/checkout/", { tier: btn.getAttribute("data-checkout") });
-          if (data.checkout_url) window.location.href = data.checkout_url;
-        }, "Redirection vers le paiement…");
+          if (!data.checkout_url) throw new Error(data.message || "Lien de paiement indisponible.");
+          window.location.href = data.checkout_url;
+        },
+        "Redirection vers le paiement…"
+      ).finally(() => {
+        if (document.body.contains(btn)) btn.textContent = original;
       });
-    });
-
-    root.querySelector("[data-boost]")?.addEventListener("click", (e) => {
-      void withButton(e.currentTarget, "subscription", async () => {
-        const data = await postJSON("/api/payments/checkout/", { kind: "boost" });
-        if (data.checkout_url) window.location.href = data.checkout_url;
-      }, "Redirection vers le paiement…");
     });
 
     root.querySelector("[data-delete-account]")?.addEventListener("click", (e) => {

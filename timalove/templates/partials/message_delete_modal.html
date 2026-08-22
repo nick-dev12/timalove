@@ -1,0 +1,14 @@
+<div class="msg-delete" id="msg-delete-modal" hidden>
+  <div class="msg-delete__backdrop" data-msg-delete-close tabindex="-1"></div>
+  <div class="msg-delete__card" role="dialog" aria-modal="true" aria-labelledby="msg-delete-title">
+    <header class="msg-delete__head">
+      <p class="msg-delete__kicker">Discussion</p>
+      <h2 class="msg-delete__title" id="msg-delete-title">Supprimer ce message ?</h2>
+      <p class="msg-delete__lead">Cette action est définitive. Le message disparaîtra de la conversation.</p>
+    </header>
+    <div class="msg-delete__actions">
+      <button type="button" class="msg-delete__btn msg-delete__btn--ghost" data-msg-delete-close>Annuler</button>
+      <button type="button" class="msg-delete__btn msg-delete__btn--danger" data-msg-delete-confirm>Supprimer</button>
+    </div>
+  </div>
+</div>

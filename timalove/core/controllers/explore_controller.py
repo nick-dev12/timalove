@@ -8,7 +8,8 @@ import uuid
 from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import Http404
 
-from core.data.onboarding import INTERESTS, TRAITS
+from core.controllers import matching_controller, swipe_controller
+from core.data.onboarding import INTERESTS, TRAITS, looking_for_free_text, looking_for_ids, looking_for_labels, life_value_labels
 from core.models import Profile, Swipe
 from core.models.choices import RegistrationStatus, UserRole
 
@@ -54,10 +55,9 @@ def collect_photos(profile: Profile, limit: int = PHOTOS_PER_CARD) -> list[str]:
     return urls[:limit]
 
 
-def compatibility_score(profile: Profile) -> int:
-    """Score affiché stable par profil (pas de matching réel encore)."""
-    seed = abs(hash(str(profile.pk))) % 18
-    return 82 + seed
+def compatibility_score(profile: Profile, viewer: Profile | None = None) -> int:
+    """Score affiché — compatibilité réelle si viewer connecté."""
+    return matching_controller.compatibility_percent(viewer, profile)
 
 
 def _eligible_queryset():
@@ -73,7 +73,13 @@ def _eligible_queryset():
     )
 
 
-def serialize_card(profile: Profile, *, liked: bool = False, super_liked: bool = False) -> dict:
+def serialize_card(
+    profile: Profile,
+    *,
+    liked: bool = False,
+    super_liked: bool = False,
+    viewer=None,
+) -> dict:
     location_parts = [p for p in (profile.city, profile.country) if p]
     photos = collect_photos(profile)
     return {
@@ -86,7 +92,6 @@ def serialize_card(profile: Profile, *, liked: bool = False, super_liked: bool =
         "photo_url": photos[0] if photos else profile.primary_photo,
         "photos": photos,
         "is_verified": bool(profile.is_verified),
-        "compatibility": compatibility_score(profile),
         "bio": (profile.bio or "")[:140],
         "profession": (profile.profession or "").strip(),
         "profile_url": f"/explorer/profil/{profile.pk}/",
@@ -105,6 +110,7 @@ def public_feed(*, offset: int = 0, limit: int = PAGE_SIZE, seed: str | None = N
         from core.controllers.profile_controller import apply_discover_filters
 
         qs = apply_discover_filters(qs, viewer)
+        qs = swipe_controller.apply_feed_exclusions(qs, viewer)
     ids = list(qs.values_list("pk", flat=True))
     rng = random.Random(seed or "timalove")
     rng.shuffle(ids)
@@ -127,11 +133,12 @@ def public_feed(*, offset: int = 0, limit: int = PAGE_SIZE, seed: str | None = N
             if is_super:
                 super_ids.add(swiped_id)
     return [
-        serialize_card(p, liked=p.pk in liked_ids, super_liked=p.pk in super_ids) for p in profiles
+        serialize_card(p, liked=p.pk in liked_ids, super_liked=p.pk in super_ids, viewer=viewer)
+        for p in profiles
     ], has_more
 
 
-def get_public_profile(profile_id) -> dict | None:
+def get_public_profile(profile_id, viewer=None) -> dict | None:
     """Détail public d'un profil visitable depuis l'explorer."""
     try:
         uid = uuid.UUID(str(profile_id))
@@ -167,9 +174,12 @@ def get_public_profile(profile_id) -> dict | None:
         "photo_url": profile.primary_photo,
         "photos": photos or ([profile.primary_photo] if profile.primary_photo else []),
         "is_verified": bool(profile.is_verified),
-        "compatibility": compatibility_score(profile),
+        "compatibility": compatibility_score(profile, viewer),
         "bio": (profile.bio or "").strip(),
         "looking_for": (profile.looking_for or "").strip(),
+        "looking_for_ids": looking_for_ids(profile.looking_for),
+        "looking_for_labels": looking_for_labels(profile.looking_for),
+        "looking_for_text": looking_for_free_text(profile.looking_for),
         "profession": (profile.profession or "").strip(),
         "religion": religion_label,
         "gender": profile.gender or "",
@@ -192,11 +202,12 @@ def get_public_profile(profile_id) -> dict | None:
         "interest_chips": _chip_catalog(INTERESTS, profile.interests),
         "trait_chips": _chip_catalog(TRAITS, profile.personality_traits),
         "life_values": [str(v).strip() for v in (profile.life_values or []) if str(v).strip()],
+        "life_value_labels": life_value_labels(profile.life_values),
     }
 
 
-def get_public_profile_or_404(profile_id) -> dict:
-    data = get_public_profile(profile_id)
+def get_public_profile_or_404(profile_id, viewer=None) -> dict:
+    data = get_public_profile(profile_id, viewer=viewer)
     if not data:
         raise Http404("Profil introuvable")
     return data
@@ -214,6 +225,7 @@ def search_profiles(query: str, *, viewer=None, limit: int = 8) -> list[dict]:
         from core.controllers.profile_controller import apply_discover_filters
 
         qs = apply_discover_filters(qs, viewer)
+        qs = swipe_controller.apply_feed_exclusions(qs, viewer)
 
     qs = (
         qs.filter(

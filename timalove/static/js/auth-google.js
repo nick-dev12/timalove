@@ -24,6 +24,16 @@
     el.classList.toggle("is-error", Boolean(isError));
   }
 
+  function appleProfileHints(user, credentialResult) {
+    const hints = {};
+    const profile = credentialResult?.additionalUserInfo?.profile;
+    if (profile?.givenName) hints.given_name = profile.givenName;
+    if (profile?.familyName) hints.family_name = profile.familyName;
+    if (user?.displayName && !hints.given_name) hints.display_name = user.displayName;
+    if (user?.email) hints.email = user.email;
+    return hints;
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     const panel = document.querySelector("[data-auth-panel]");
     const form = document.querySelector("[data-auth-form]");
@@ -138,8 +148,9 @@
       }
     });
 
-    async function sendToken(idToken, provider) {
+    async function sendToken(idToken, provider, hints) {
       const endpoint = provider === "apple" ? "/api/auth/apple/" : "/api/auth/google/";
+      const body = Object.assign({ idToken, next: nextUrl }, hints || {});
       const res = await fetch(endpoint, {
         method: "POST",
         credentials: "same-origin",
@@ -147,7 +158,7 @@
           "Content-Type": "application/json",
           "X-CSRFToken": getCookie("csrftoken"),
         },
-        body: JSON.stringify({ idToken, next: nextUrl }),
+        body: JSON.stringify(body),
       });
       let data = {};
       try {
@@ -193,10 +204,116 @@
       });
     }
 
-    async function finishWithUser(user, provider) {
+    function appleErrorMessage(code) {
+      if (code === "auth/popup-blocked") {
+        return "Autorisez les pop-ups pour ce site, puis réessayez Apple.";
+      }
+      if (code === "auth/invalid-oauth-client-id") {
+        return "Services ID Apple incorrect dans Firebase (com.mytimalove.timalove).";
+      }
+      if (code === "auth/unauthorized-domain") {
+        return "Ajoutez ce domaine dans Firebase → Authentication → Authorized domains.";
+      }
+      return "";
+    }
+
+    function appleBridgeUrl() {
+      const config = readConfig();
+      const authDomain = config?.authDomain || "timalove-ddaa5.firebaseapp.com";
+      const url = new URL("https://" + authDomain + "/apple-signin.html");
+      url.searchParams.set("origin", window.location.origin);
+      url.searchParams.set("return", window.location.pathname + window.location.search);
+      return url.toString();
+    }
+
+    function isLocalHttpOrigin() {
+      const host = window.location.hostname;
+      return (
+        window.location.protocol === "http:" &&
+        (host === "127.0.0.1" || host === "localhost")
+      );
+    }
+
+    async function signInWithApplePopup() {
+      const { auth, OAuthProvider, signInWithPopup } = await loadFirebase();
+      const provider = new OAuthProvider("apple.com");
+      provider.addScope("email");
+      provider.addScope("name");
+      provider.setCustomParameters({ locale: "fr" });
+      const result = await signInWithPopup(auth, provider);
+      if (!result.user) throw new Error("Compte Apple introuvable.");
+      await finishWithUser(result.user, "apple", result);
+    }
+
+    async function signInWithAppleBridge() {
+      const bridge = appleBridgeUrl();
+      const popup = window.open(bridge, "timalove-apple", "width=520,height=740");
+      if (!popup) {
+        window.location.href = bridge;
+        return;
+      }
+
+      const onMessage = async function (event) {
+        const authDomain = "https://" + ((readConfig() || {}).authDomain || "timalove-ddaa5.firebaseapp.com");
+        if (event.origin !== authDomain) return;
+        const data = event.data || {};
+        if (data.type !== "timalove-apple") return;
+        window.removeEventListener("message", onMessage);
+        window.clearInterval(watchClose);
+        if (data.error) {
+          setStatus(statusEl, data.error, true);
+          setSocialBusy(false);
+          return;
+        }
+        if (!data.idToken) {
+          setStatus(statusEl, "Connexion Apple interrompue.", true);
+          setSocialBusy(false);
+          return;
+        }
+        try {
+          await sendToken(data.idToken, "apple", {
+            email: data.email || "",
+            display_name: data.displayName || "",
+          });
+        } catch (err) {
+          setStatus(statusEl, err.message || "Connexion Apple refusée.", true);
+          setSocialBusy(false);
+        }
+      };
+      window.addEventListener("message", onMessage);
+
+      const watchClose = window.setInterval(function () {
+        if (popup.closed) {
+          window.clearInterval(watchClose);
+          window.removeEventListener("message", onMessage);
+          if (busy) {
+            setStatus(statusEl, "", false);
+            setSocialBusy(false);
+          }
+        }
+      }, 400);
+    }
+
+    async function recoverAppleHash() {
+      const hash = window.location.hash || "";
+      if (!hash.startsWith("#tl_apple=")) return;
+      const idToken = decodeURIComponent(hash.slice("#tl_apple=".length));
+      history.replaceState({}, "", window.location.pathname + window.location.search);
+      if (!idToken) return;
+      setSocialBusy(true);
+      try {
+        await sendToken(idToken, "apple");
+      } catch (err) {
+        setStatus(statusEl, err.message || "Connexion Apple refusée.", true);
+        setSocialBusy(false);
+      }
+    }
+
+    async function finishWithUser(user, provider, credentialResult) {
       setStatus(statusEl, "Connexion en cours…", false);
       const idToken = await user.getIdToken();
-      await sendToken(idToken, provider);
+      const hints = provider === "apple" ? appleProfileHints(user, credentialResult) : {};
+      await sendToken(idToken, provider, hints);
     }
 
     async function signInWithProvider(kind) {
@@ -215,17 +332,27 @@
           signInWithPopup,
           signInWithRedirect,
         } = await loadFirebase();
-        const provider = isApple ? new OAuthProvider("apple.com") : new GoogleAuthProvider();
-        provider.addScope("email");
-        if (isApple) provider.addScope("name");
-        else {
-          provider.addScope("profile");
-          provider.setCustomParameters({ prompt: "select_account" });
+
+        let provider;
+        if (isApple) {
+          // Comme poid_lourd : popup Firebase depuis un domaine HTTPS enregistré chez Apple.
+          // En local HTTP, Apple refuse context_uri=127.0.0.1 → passer par firebaseapp.com.
+          if (isLocalHttpOrigin()) {
+            await signInWithAppleBridge();
+            return;
+          }
+          await signInWithApplePopup();
+          return;
         }
+
+        provider = new GoogleAuthProvider();
+        provider.addScope("email");
+        provider.addScope("profile");
+        provider.setCustomParameters({ prompt: "select_account" });
 
         try {
           const result = await signInWithPopup(auth, provider);
-          await finishWithUser(result.user, kind);
+          await finishWithUser(result.user, kind, result);
           return;
         } catch (popupErr) {
           const code = popupErr?.code || "";
@@ -249,7 +376,10 @@
         }
       } catch (err) {
         const code = err?.code || "";
-        if (code === "auth/unauthorized-domain") {
+        const appleHint = isApple ? appleErrorMessage(code) : "";
+        if (appleHint) {
+          setStatus(statusEl, appleHint, true);
+        } else if (code === "auth/unauthorized-domain") {
           setStatus(
             statusEl,
             "Ajoutez 127.0.0.1 dans Firebase → Authentication → Settings → Authorized domains.",
@@ -270,7 +400,7 @@
         const kind = sessionStorage.getItem("tl_oauth_provider") || "google";
         sessionStorage.removeItem("tl_oauth_provider");
         setSocialBusy(true);
-        await finishWithUser(result.user, kind);
+        await finishWithUser(result.user, kind, result);
       } catch (err) {
         setStatus(statusEl, err.message || "Connexion sociale interrompue.", true);
         setSocialBusy(false);
@@ -290,6 +420,7 @@
       }
     });
 
+    void recoverAppleHash();
     void recoverRedirect().then(() => {
       if (params.get("via") === "google") void signInWithProvider("google");
       if (params.get("via") === "apple") void signInWithProvider("apple");

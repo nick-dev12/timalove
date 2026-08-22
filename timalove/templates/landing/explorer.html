@@ -4,11 +4,15 @@
 {% block body_class %}explorer-page{% if not user.is_authenticated %} is-guest{% endif %}{% endblock %}
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="{% static 'js/explorer-like-burst.js' %}?v=20260815b4" defer></script>
+<script src="{% static 'js/explorer-like-burst.js' %}?v=20260821b4" defer></script>
 <script src="{% static 'js/explorer-search.js' %}?v=20260815s1" defer></script>
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260815h3" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260822h6" defer></script>
 {% if user.is_authenticated %}
-<script src="{% static 'js/explorer-swipe.js' %}?v=20260815h2" defer></script>
+<script src="{% static 'js/message-invite.js' %}?v=20260821m5" defer></script>
+<script src="{% static 'js/explorer-match.js' %}?v=20260821c1" defer></script>
+<script src="{% static 'js/explorer-swipe.js' %}?v=20260822s6" defer></script>
+{% else %}
+<script src="{% static 'js/explorer-match.js' %}?v=20260821c1" defer></script>
 {% endif %}
 {% endblock %}
 {% block body %}
@@ -100,6 +104,11 @@
 
   {% url 'public:explorer_search' as explorer_search_url %}
   {% include "partials/explorer_search_bar.html" with search_url=explorer_search_url search_placeholder="Rechercher un profil…" search_label="Rechercher un profil" %}
+  {% if swipe_quota and swipe_quota.is_freemium %}
+  <p class="explorer__quota" data-quota-label>
+    {{ swipe_quota.swipes_left }} profil{{ swipe_quota.swipes_left|pluralize }} · {{ swipe_quota.likes_left }} like{{ swipe_quota.likes_left|pluralize }} restant{{ swipe_quota.likes_left|pluralize }} aujourd’hui
+  </p>
+  {% endif %}
   </div>
 
   <div
@@ -228,7 +237,7 @@
 
   if (!feed || !sentinel) return;
 
-  const REVEAL_MS = 2000;
+  const REVEAL_MS = 1200;
   let fetching = false;
   let paging = false;
   let gestureLock = 0;
@@ -283,6 +292,9 @@
     paging = true;
     list[index].scrollIntoView({ behavior: "smooth", block: "start" });
     startReveal(list[index]);
+    if (window.timaloveMatchScore) {
+      window.timaloveMatchScore.scanVisible(feed);
+    }
     window.setTimeout(function () {
       paging = false;
     }, 560);
@@ -408,6 +420,10 @@
         if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
           if (chip) chip.classList.add("is-inview");
           startReveal(slide);
+          if (window.timaloveMatchScore) {
+            const badge = slide.querySelector("[data-match-score]");
+            if (badge) window.timaloveMatchScore.schedule(badge, "high");
+          }
           return;
         }
         if (chip && !entry.isIntersecting) chip.classList.remove("is-inview");
@@ -434,6 +450,9 @@
           feed.insertBefore(slide, sentinel);
         });
         observeSlides();
+        if (window.timaloveMatchScore) {
+          window.timaloveMatchScore.scan(feed);
+        }
         if (meta) {
           feed.dataset.nextOffset = meta.dataset.nextOffset || offset;
           feed.dataset.hasMore = meta.dataset.hasMore || "false";
@@ -450,6 +469,9 @@
   }
 
   observeSlides();
+  if (window.timaloveMatchScore) {
+    window.timaloveMatchScore.scanVisible(feed);
+  }
   const first = slideList()[0];
   if (first) startReveal(first);
 
@@ -460,5 +482,6 @@
   };
 })();
 </script>
+{% include "partials/message_invite_modal.html" %}
 {% include "partials/profile_modal.html" %}
 {% endblock %}

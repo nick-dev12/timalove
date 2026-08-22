@@ -2,6 +2,7 @@ from urllib.parse import urlparse
 
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 
 from core.controllers import home_controller
@@ -66,6 +67,7 @@ def commencer(request):
     )
 
 
+@ensure_csrf_cookie
 @require_GET
 def explorer(request):
     from core.controllers import explore_controller
@@ -90,12 +92,18 @@ def explorer(request):
         viewer=getattr(request.user, "profile", None) if request.user.is_authenticated else None,
     )
     next_offset = offset + len(cards)
+    quota = None
+    if request.user.is_authenticated:
+        from core.controllers import quota_controller
+
+        quota = quota_controller.snapshot(getattr(request.user, "profile", None))
     context = {
         "title": "Explorer",
         "cards": cards,
         "has_more": has_more,
         "next_offset": next_offset,
         "reveal_first": (not is_hx) and offset == 0,
+        "swipe_quota": quota,
     }
 
     if is_hx:
@@ -132,10 +140,6 @@ def messages(request):
         profile = getattr(request.user, "profile", None)
         if profile:
             conversations = message_controller.list_conversations(profile)
-            is_preview = False
-            if not conversations:
-                conversations = message_controller.demo_conversations()
-                is_preview = True
             return render(
                 request,
                 "app/messages.html",
@@ -143,7 +147,7 @@ def messages(request):
                     "title": "Messages",
                     "conversations": conversations,
                     "me": profile,
-                    "is_preview": is_preview,
+                    "is_preview": False,
                 },
             )
     demo_list = message_controller.demo_conversations()
@@ -178,6 +182,11 @@ def messages_preview(request, partner_key):
     if not member:
         return redirect("public:messages")
 
+    if request.user.is_authenticated:
+        profile = getattr(request.user, "profile", None)
+        if profile and message_controller.get_active_match(profile, partner_key):
+            return redirect("app:discussion_detail", partner_id=partner_key)
+
     me = None
     if request.user.is_authenticated:
         profile = getattr(request.user, "profile", None)
@@ -207,11 +216,25 @@ def messages_preview(request, partner_key):
 
 @require_GET
 def historique(request):
-    from core.controllers import likes_controller
+    from core.controllers import likes_controller, quota_controller
 
     if request.user.is_authenticated:
         profile = getattr(request.user, "profile", None)
         if profile:
+            if quota_controller.history_locked(profile):
+                return render(
+                    request,
+                    "app/historique.html",
+                    {
+                        "title": "Historique",
+                        "items": [],
+                        "stories": [],
+                        "has_more": False,
+                        "next_offset": 0,
+                        "is_preview": False,
+                        "history_locked": True,
+                    },
+                )
             page = likes_controller.outgoing(profile)
             items = page["items"]
             return render(
@@ -224,6 +247,7 @@ def historique(request):
                     "has_more": page["has_more"],
                     "next_offset": page["next_offset"],
                     "is_preview": False,
+                    "history_locked": False,
                 },
             )
     return render(
@@ -236,18 +260,19 @@ def historique(request):
             "has_more": False,
             "next_offset": 0,
             "is_preview": True,
+            "history_locked": False,
         },
     )
 
 
 @require_GET
 def historique_plus(request):
-    from core.controllers import likes_controller
+    from core.controllers import likes_controller, quota_controller
 
     if not request.user.is_authenticated:
         return HttpResponse("")
     profile = getattr(request.user, "profile", None)
-    if not profile:
+    if not profile or quota_controller.history_locked(profile):
         return HttpResponse("")
     try:
         offset = max(0, int(request.GET.get("offset") or 0))
@@ -268,13 +293,13 @@ def historique_plus(request):
 
 @require_GET
 def historique_search(request):
-    from core.controllers import likes_controller
+    from core.controllers import likes_controller, quota_controller
 
     query = request.GET.get("q", "")
     hits = []
     if request.user.is_authenticated:
         profile = getattr(request.user, "profile", None)
-        if profile:
+        if profile and not quota_controller.history_locked(profile):
             hits = likes_controller.search_outgoing(profile, query)
     return render(
         request,
@@ -302,10 +327,10 @@ def explorer_stories(request):
 def explorer_profil(request, profile_id):
     from core.controllers import explore_controller, likes_controller
 
-    member = explore_controller.get_public_profile_or_404(profile_id)
+    viewer = getattr(request.user, "profile", None) if request.user.is_authenticated else None
+    member = explore_controller.get_public_profile_or_404(profile_id, viewer=viewer)
     liked = False
     super_liked = False
-    viewer = getattr(request.user, "profile", None) if request.user.is_authenticated else None
     if viewer:
         liked = likes_controller.has_liked(viewer, member["id"])
         super_liked = likes_controller.has_super_liked(viewer, member["id"])

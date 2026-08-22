@@ -33,10 +33,16 @@ class RegistrationStatus(models.TextChoices):
 
 class SubscriptionTier(models.TextChoices):
     FREE = "free", "Gratuit"
+    # Offres actuelles
+    JOURNEE_AMOUREUSE = "journee_amoureuse", "Journée amoureuse"
+    PASS_AMOUR = "pass_amour", "Pass Amour"
+    ETERNITE = "eternite", "Éternité"
+    VIP_1M = "vip_1m", "VIP"
+    PASS_FEMME = "pass_femme", "Pass Femme"
+    # Anciennes offres (import / historique)
     PREMIUM_10D = "premium_10d", "Premium 10 jours"
     PREMIUM_1M = "premium_1m", "Premium 1 mois"
     PREMIUM_2M = "premium_2m", "Premium 2 mois"
-    VIP_1M = "vip_1m", "VIP 1 mois"
     VIP_2M = "vip_2m", "VIP 2 mois"
     VIP_FEMME_1W = "vip_femme_1w", "VIP Femme 1 semaine"
 
@@ -57,6 +63,7 @@ class MatchStatus(models.TextChoices):
 class MessageType(models.TextChoices):
     TEXT = "text", "Texte"
     VOICE = "voice", "Vocal"
+    IMAGE = "image", "Image"
     SYSTEM = "system", "Système"
 
 

@@ -11,7 +11,7 @@ from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
 
-from core.data.onboarding import INTERESTS, TRAITS
+from core.data.onboarding import INTERESTS, TRAITS, encode_looking_for, looking_for_free_text, looking_for_ids, looking_for_labels, life_value_labels
 from core.models import Profile, ProfileGalleryPhoto
 from core.models.choices import Gender, LastSeenVisibility, RegistrationStatus, RelationshipIntent, Religion, SubscriptionStatus, SubscriptionTier
 from core.controllers.onboarding_controller import _clean_values, _read_image_bytes, dob_from_age
@@ -29,10 +29,12 @@ DEFAULT_FILTERS = {
 }
 
 DEFAULT_NOTIF_PREFS = {
+    "push": False,
     "likes": True,
+    "super_likes": True,
     "matches": True,
     "messages": True,
-    "push": True,
+    "status": True,
 }
 
 ALLOWED_PROFILE_FIELDS = {
@@ -138,6 +140,9 @@ def serialize_visit(profile: Profile) -> dict:
         "is_verified": bool(profile.is_verified),
         "bio": (profile.bio or "").strip(),
         "looking_for": (profile.looking_for or "").strip(),
+        "looking_for_ids": looking_for_ids(profile.looking_for),
+        "looking_for_labels": looking_for_labels(profile.looking_for),
+        "looking_for_text": looking_for_free_text(profile.looking_for),
         "profession": (profile.profession or "").strip(),
         "religion": profile.get_religion_display() if profile.religion else "",
         "religion_value": profile.religion or "",
@@ -158,6 +163,7 @@ def serialize_visit(profile: Profile) -> dict:
         "personality_traits": list(profile.personality_traits or []),
         "trait_labels": [trait_labels.get(t, t) for t in (profile.personality_traits or [])],
         "life_values": [str(v).strip() for v in (profile.life_values or []) if str(v).strip()],
+        "life_value_labels": life_value_labels(profile.life_values),
         "completion": completion_score(profile),
         "hide_age": bool(profile.hide_age),
         "is_hidden": bool(profile.is_hidden),
@@ -173,29 +179,127 @@ def notification_prefs_for(profile: Profile) -> dict:
     return prefs
 
 
-def settings_context(profile: Profile) -> dict:
-    from core.controllers import payment_controller, site_settings_controller
+def activate_push_preferences(profile: Profile, *, all_types: bool = True) -> dict:
+    """Active les notifications push côté profil (après permission navigateur + token FCM)."""
+    merged = notification_prefs_for(profile)
+    merged["push"] = True
+    if all_types:
+        for key in ("likes", "super_likes", "matches", "messages", "status"):
+            merged[key] = True
+    profile.notification_preferences = merged
+    profile.save(update_fields=["notification_preferences", "updated_at"])
+    return merged
+
+
+def _price_label(amount: int) -> str:
+    return f"{amount:,}".replace(",", "\u202f") + " FCFA"
+
+
+def subscription_plans_for(profile: Profile) -> list[dict]:
+    from core.controllers import site_settings_controller
 
     prices = site_settings_controller.get("subscription_prices") or {}
-    plans = []
-    vip_ids = {
-        SubscriptionTier.VIP_1M,
-        SubscriptionTier.VIP_2M,
-        SubscriptionTier.VIP_FEMME_1W,
-    }
-    for value, label in SubscriptionTier.choices:
-        if value == SubscriptionTier.FREE:
+    catalog = [
+        {
+            "id": SubscriptionTier.JOURNEE_AMOUREUSE,
+            "label": "Journée amoureuse",
+            "duration_label": "24 heures",
+            "benefits": [
+                "Messages illimités pendant 24 h",
+                "Swipes et likes sans limite quotidienne",
+                "Historique et likes reçus complets",
+            ],
+            "is_featured": False,
+            "is_vip": False,
+        },
+        {
+            "id": SubscriptionTier.PASS_AMOUR,
+            "label": "Pass Amour",
+            "duration_label": "1 mois",
+            "benefits": [
+                "Messages illimités",
+                "Swipes, likes et historique sans restriction",
+                "Tous les likes reçus visibles",
+            ],
+            "is_featured": True,
+            "badge": "Meilleur choix · le plus populaire",
+            "is_vip": False,
+        },
+        {
+            "id": SubscriptionTier.ETERNITE,
+            "label": "Éternité",
+            "duration_label": "À vie",
+            "benefits": [
+                "Accès premium permanent",
+                "Messages, swipes et likes sans limite",
+                "Historique et likes reçus complets",
+            ],
+            "is_featured": False,
+            "is_vip": False,
+        },
+        {
+            "id": SubscriptionTier.VIP_1M,
+            "label": "VIP",
+            "duration_label": "1 mois",
+            "benefits": [
+                "Tous les avantages Premium",
+                "Badge VIP doré sur votre profil",
+                "Mise en avant prioritaire",
+            ],
+            "is_featured": False,
+            "is_vip": True,
+        },
+        {
+            "id": SubscriptionTier.PASS_FEMME,
+            "label": "Pass Femme",
+            "duration_label": "15 jours",
+            "benefits": [
+                "Boost et mise en avant du profil",
+                "Visibilité accrue dans l’explorer",
+                "Messages illimités pendant 15 jours",
+            ],
+            "is_featured": False,
+            "is_vip": False,
+            "female_only": True,
+        },
+    ]
+    plans: list[dict] = []
+    for item in catalog:
+        if item.get("female_only") and profile.gender != Gender.FEMALE:
             continue
-        amount = int(prices.get(value, 0))
+        amount = int(prices.get(item["id"], 0))
         plans.append(
             {
-                "id": value,
-                "label": label,
+                **item,
                 "price": amount,
-                "price_label": f"{amount:,}".replace(",", "\u202f") + " FCFA",
-                "is_vip": value in vip_ids,
+                "price_label": _price_label(amount),
             }
         )
+    return plans
+
+
+def account_context(profile: Profile) -> dict:
+    from core.controllers.auth_controller import is_synthetic_email, normalize_email
+
+    user = profile.user
+    raw = profile.email or user.email or ""
+    email = "" if is_synthetic_email(raw) else (normalize_email(raw) or "")
+    is_google = bool(profile.google_uid)
+    is_apple = bool(profile.apple_uid)
+    oauth = is_google or is_apple
+    return {
+        "account_email": email,
+        "is_google_account": is_google,
+        "is_apple_account": is_apple,
+        "can_change_email": not oauth,
+        "can_change_password": not oauth and user.has_usable_password(),
+    }
+
+
+def settings_context(profile: Profile) -> dict:
+    from core.controllers import payment_controller
+
+    plans = subscription_plans_for(profile)
     status = payment_controller.payment_status(profile)
     tier_labels = dict(SubscriptionTier.choices)
     status_labels = dict(SubscriptionStatus.choices)
@@ -211,6 +315,7 @@ def settings_context(profile: Profile) -> dict:
         "visibilities": LastSeenVisibility.choices,
         "notif_prefs": notification_prefs_for(profile),
         "boost_price_label": "5\u202f000 FCFA",
+        **account_context(profile),
     }
 
 
@@ -248,6 +353,9 @@ def update_profile(profile: Profile, data: dict) -> Profile:
         payload["commune"] = str(payload.get("commune") or "").strip()[:180]
     if "life_values" in payload:
         payload["life_values"] = _clean_values(payload.get("life_values"))
+    if "looking_for" in payload:
+        encoded = encode_looking_for(payload.get("looking_for"))
+        payload["looking_for"] = encoded or None
     for key, value in payload.items():
         if key in ALLOWED_PROFILE_FIELDS:
             setattr(profile, key, value)

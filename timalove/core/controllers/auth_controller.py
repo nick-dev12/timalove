@@ -172,11 +172,18 @@ def verify_google_id_token(id_token: str) -> dict | None:
 
 
 @transaction.atomic
-def login_or_register_oauth(request, id_token: str, provider: str) -> tuple[bool, str, bool]:
+def login_or_register_oauth(
+    request,
+    id_token: str,
+    provider: str,
+    *,
+    hints: dict | None = None,
+) -> tuple[bool, str, bool]:
     """Connecte ou crée un membre via un ID token Firebase (Google ou Apple)."""
     labels = {"google.com": "Google", "apple.com": "Apple"}
     label = labels.get(provider, "ce compte")
     uid_field = "google_uid" if provider == "google.com" else "apple_uid"
+    hints = hints or {}
 
     try:
         decoded = verify_firebase_id_token(id_token, provider)
@@ -188,16 +195,19 @@ def login_or_register_oauth(request, id_token: str, provider: str) -> tuple[bool
         return False, f"Jeton {label} invalide.", False
 
     uid = str(decoded.get("uid") or "")
-    email = normalize_email(decoded.get("email"))
+    email = normalize_email(decoded.get("email") or hints.get("email"))
     if not email:
         email = f"{provider.split('.')[0]}.{uid[:16]}@oauth.timalove.local"
     if is_banned(email=email):
         return False, "Ce compte a été banni.", False
 
-    given = (decoded.get("given_name") or "").strip()
-    family = (decoded.get("family_name") or "").strip()
-    if not given:
-        given, family = _split_display_name(decoded.get("name") or "", email)
+    given = (decoded.get("given_name") or hints.get("given_name") or "").strip()
+    family = (decoded.get("family_name") or hints.get("family_name") or "").strip()
+    if not given and not family:
+        given, family = _split_display_name(
+            decoded.get("name") or hints.get("display_name") or "",
+            email,
+        )
     picture = (decoded.get("picture") or "").strip() or None
 
     profile = None
@@ -267,8 +277,13 @@ def login_or_register_google(request, id_token: str) -> tuple[bool, str, bool]:
     return login_or_register_oauth(request, id_token, "google.com")
 
 
-def login_or_register_apple(request, id_token: str) -> tuple[bool, str, bool]:
-    return login_or_register_oauth(request, id_token, "apple.com")
+def login_or_register_apple(
+    request,
+    id_token: str,
+    *,
+    hints: dict | None = None,
+) -> tuple[bool, str, bool]:
+    return login_or_register_oauth(request, id_token, "apple.com", hints=hints)
 
 
 def complete_member_profile(profile: Profile, data: dict) -> tuple[bool, str]:
@@ -395,3 +410,63 @@ def request_password_reset(email: str) -> tuple[bool, str, str | None]:
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
     return True, "Si un compte existe, un email a été envoyé.", f"{uid}/{token}"
+
+
+def verify_user_password(user, password: str) -> bool:
+    if not password:
+        return False
+    if authenticate(username=user.username, password=password):
+        return True
+    email_n = normalize_email(user.email)
+    if email_n and user.username != email_n and authenticate(username=email_n, password=password):
+        return True
+    return False
+
+
+def change_password(profile: Profile, current_password: str, new_password: str, confirm_password: str) -> tuple[bool, str]:
+    if profile.google_uid:
+        return False, "Compte Google — le mot de passe est géré par Google."
+    user = profile.user
+    if not user.has_usable_password():
+        return False, "Aucun mot de passe local configuré sur ce compte."
+    if not verify_user_password(user, current_password):
+        return False, "Mot de passe actuel incorrect."
+    if len(new_password or "") < 8:
+        return False, "Le nouveau mot de passe doit contenir au moins 8 caractères."
+    if new_password != confirm_password:
+        return False, "Les mots de passe ne correspondent pas."
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+    return True, "Mot de passe mis à jour."
+
+
+def change_email(profile: Profile, new_email: str, current_password: str) -> tuple[bool, str]:
+    if profile.google_uid:
+        return False, "Compte Google — l’email ne peut pas être modifié ici."
+    if profile.apple_uid:
+        return False, "Compte Apple — l’email ne peut pas être modifié ici."
+    email_n = normalize_email(new_email)
+    if not email_n:
+        return False, "Email invalide."
+    if is_synthetic_email(email_n):
+        return False, "Veuillez saisir une adresse email valide."
+    user = profile.user
+    current = normalize_email(profile.email or user.email)
+    if email_n == current:
+        return False, "Cet email est déjà le vôtre."
+    if not verify_user_password(user, current_password):
+        return False, "Mot de passe incorrect."
+    if User.objects.filter(email__iexact=email_n).exclude(pk=user.pk).exists():
+        return False, "Cet email est déjà utilisé."
+    if Profile.objects.filter(email__iexact=email_n).exclude(pk=profile.pk).exists():
+        return False, "Cet email est déjà utilisé."
+    old_email = normalize_email(user.email)
+    if old_email and (user.username == old_email or normalize_email(user.username) == old_email):
+        if User.objects.filter(username=email_n).exclude(pk=user.pk).exists():
+            return False, "Cet email est déjà utilisé."
+        user.username = email_n
+    user.email = email_n
+    user.save(update_fields=["email", "username"])
+    profile.email = email_n
+    profile.save(update_fields=["email", "updated_at"])
+    return True, "Email mis à jour."

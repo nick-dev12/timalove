@@ -1,9 +1,10 @@
-﻿{% extends "layouts/base.html" %}
+{% extends "layouts/base.html" %}
 {% load static %}
 {% block title %}Mon profil{% endblock %}
 {% block body_class %}visit-profil-page{% endblock %}
 {% block head %}
-<script src="{% static 'js/own-profile.js' %}?v=20260815ic2" defer></script>
+<script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
+<script src="{% static 'js/own-profile.js' %}?v=20260822s1" defer></script>
 {% endblock %}
 {% block body %}
 <div class="visit visit--own" data-own-profile data-max-photos="{{ max_photos }}">
@@ -70,142 +71,90 @@
     </div>
 
     <section class="visit__panel" id="panel-about" role="tabpanel" aria-labelledby="tab-about">
-      <article class="visit-glass visit__card" data-block="interests">
+      <article class="visit-glass visit__card visit__preview">
         <div class="visit__card-head">
-          <p class="visit__kicker">Ce qui vous anime</p>
-          <h2 class="visit__card-title">Intérêts et caractère</h2>
-          <p class="visit__card-lead">Choisissez ce qui vous ressemble. Enregistrez ce bloc seulement.</p>
+          <p class="visit__kicker">Aperçu visiteur</p>
+          <h2 class="visit__card-title">Présentation</h2>
+          <p class="visit__card-lead">Tel que les autres vous voient, avec élégance et sincérité.</p>
         </div>
+        {% if member.bio %}
+        <p class="visit__about-text">{{ member.bio }}</p>
+        {% else %}
+        <p class="visit__about-text visit__about-text--muted">Vous n’avez pas encore rédigé de présentation. Quelques mots sincères suffisent.</p>
+        {% endif %}
+        <ul class="visit__facts">
+          {% if member.gender_label %}
+          <li><span>Genre</span><strong>{{ member.gender_label }}</strong></li>
+          {% endif %}
+          {% if member.profession %}
+          <li><span>Profession</span><strong>{{ member.profession }}</strong></li>
+          {% endif %}
+          {% if member.religion %}
+          <li><span>Religion</span><strong>{{ member.religion }}</strong></li>
+          {% endif %}
+          {% if member.relationship_intent_label %}
+          <li><span>Intention</span><strong>{{ member.relationship_intent_label }}</strong></li>
+          {% endif %}
+          {% if member.life_project %}
+          <li><span>Projet de vie</span><strong>{{ member.life_project }}</strong></li>
+          {% else %}
+          <li><span>Projet de vie</span><strong>Encore en silence — le cœur parlera.</strong></li>
+          {% endif %}
+          {% if member.commune %}
+          <li><span>Commune</span><strong>{{ member.commune }}</strong></li>
+          {% endif %}
+          {% if member.city %}
+          <li><span>Ville</span><strong>{{ member.city }}</strong></li>
+          {% endif %}
+          {% if member.country %}
+          <li><span>Pays d’origine</span><strong>{{ member.country }}</strong></li>
+          {% endif %}
+          {% if member.residence_country %}
+          <li><span>Pays de résidence</span><strong>{{ member.residence_country }}</strong></li>
+          {% endif %}
+        </ul>
         <p class="visit__label">Centres d’intérêt</p>
-        <div class="visit__pills visit__pills--edit" data-interests>
-          {% for item in interests %}
-          <button type="button" class="visit__pill-btn{% if item.id in member.interests %} is-on{% endif %}" data-interest="{{ item.id }}">
-            <span class="visit__pill-icon" data-icon="{{ item.icon }}"></span>
-            <span>{{ item.label }}</span>
-          </button>
+        {% if member.interest_labels %}
+        <div class="visit__pills">
+          {% for label in member.interest_labels %}
+          <span class="is-on">{{ label }}</span>
           {% endfor %}
         </div>
+        {% else %}
+        <p class="visit__about-text visit__about-text--muted">Vous n’avez pas encore défini vos intérêts. Un premier choix suffit.</p>
+        {% endif %}
         <p class="visit__label">Caractère</p>
-        <div class="visit__pills visit__pills--edit" data-traits>
-          {% for item in traits %}
-          <button type="button" class="visit__pill-btn{% if item.id in member.personality_traits %} is-on{% endif %}" data-trait="{{ item.id }}">
-            <span class="visit__pill-icon" data-icon="{{ item.icon }}"></span>
-            <span>{{ item.label }}</span>
-          </button>
+        {% if member.trait_labels %}
+        <div class="visit__pills">
+          {% for label in member.trait_labels %}
+          <span class="is-on">{{ label }}</span>
           {% endfor %}
         </div>
-        <div class="visit__card-foot">
-          <p class="visit__save-msg" data-save-msg="interests" hidden></p>
-          <button type="button" class="visit__save" data-save="interests">Enregistrer</button>
+        {% else %}
+        <p class="visit__about-text visit__about-text--muted">Votre caractère s’écrira ici, dès que vous le choisirez.</p>
+        {% endif %}
+        <p class="visit__label">Valeurs</p>
+        {% if member.life_value_labels %}
+        <div class="visit__pills">
+          {% for value in member.life_value_labels %}
+          <span class="is-on">{{ value }}</span>
+          {% endfor %}
         </div>
-      </article>
-
-      <article class="visit-glass visit__card" data-block="values">
-        <div class="visit__card-head">
-          <p class="visit__kicker">Ce qui vous guide</p>
-          <h2 class="visit__card-title">Valeurs</h2>
-          <p class="visit__card-lead">Ajoutez-les une par une. Cette section est optionnelle — jusqu’à 12.</p>
+        {% else %}
+        <p class="visit__about-text visit__about-text--muted">Vos valeurs n’apparaissent pas encore. La rencontre les révélera.</p>
+        {% endif %}
+        <p class="visit__label">Profil recherché</p>
+        {% if member.looking_for_labels %}
+        <div class="visit__pills">
+          {% for label in member.looking_for_labels %}
+          <span class="is-on">{{ label }}</span>
+          {% endfor %}
         </div>
-        <div class="visit-values" data-values>
-          <div class="visit-values__row">
-            <input type="text" maxlength="40" placeholder="Ex. : respect, famille, sincérité…" data-value-input autocomplete="off">
-            <button type="button" class="visit-values__add" data-value-add>Ajouter</button>
-          </div>
-          <div class="visit-values__list" data-value-list>
-            {% for value in member.life_values %}
-            <span class="visit-values__chip" data-value-chip="{{ value }}">{{ value }} <button type="button" data-value-remove aria-label="Retirer">×</button></span>
-            {% endfor %}
-          </div>
-        </div>
-        <div class="visit__card-foot">
-          <p class="visit__save-msg" data-save-msg="values" hidden></p>
-          <button type="button" class="visit__save" data-save="values">Enregistrer</button>
-        </div>
-      </article>
-
-      <article class="visit-glass visit__card visit__card--form" data-block="identity">
-        <div class="visit__card-head">
-          <p class="visit__kicker">Fiche publique</p>
-          <h2 class="visit__card-title">Votre profil</h2>
-          <p class="visit__card-lead">Ces informations apparaissent telles quelles sur votre fiche, comme dans l’explorer.</p>
-        </div>
-        <form class="visit-form" data-profile-form>
-          <div class="visit-form-block">
-            <h3>Identité</h3>
-            <div class="visit-form__row">
-              <label class="visit-form__field"><span>Prénom</span><input name="first_name" required value="{{ profile.first_name }}"></label>
-              <label class="visit-form__field"><span>Nom</span><input name="last_name" required value="{{ profile.last_name }}"></label>
-            </div>
-            <div class="visit-form__row">
-              <label class="visit-form__field"><span>Âge</span><input name="age" type="number" min="18" max="99" value="{{ profile.age|default:'' }}"></label>
-              <label class="visit-form__field">
-                <span>Je suis</span>
-                <select name="gender" required>
-                  <option value="" disabled {% if not profile.gender %}selected{% endif %}>Sélectionnez une option</option>
-                  {% for value, label in genders %}
-                  <option value="{{ value }}"{% if profile.gender == value %} selected{% endif %}>{{ label }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-            </div>
-            <label class="visit-form__field"><span>Profession</span><input name="profession" value="{{ profile.profession|default:'' }}" placeholder="Votre métier"></label>
-          </div>
-          <div class="visit-form-block">
-            <h3>Où vous vivez</h3>
-            <div class="visit-form__row">
-              <label class="visit-form__field"><span>Ville</span><input name="city" value="{{ profile.city }}"></label>
-              <label class="visit-form__field"><span>Commune</span><input name="commune" value="{{ profile.commune }}" placeholder="Votre commune"></label>
-            </div>
-            <div class="visit-form__row">
-              <label class="visit-form__field">
-                <span>Pays d’origine</span>
-                <select name="country">
-                  {% for c in countries %}
-                  <option value="{{ c }}"{% if profile.country == c %} selected{% endif %}>{{ c }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-              <label class="visit-form__field">
-                <span>Pays de résidence</span>
-                <select name="residence_country">
-                  <option value="">Non renseigné</option>
-                  {% for c in countries %}
-                  <option value="{{ c }}"{% if profile.residence_country == c %} selected{% endif %}>{{ c }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-            </div>
-            <label class="visit-form__field">
-              <span>Religion</span>
-              <select name="religion">
-                <option value="">Sélectionnez une option</option>
-                {% for value, label in religions %}
-                <option value="{{ value }}"{% if profile.religion == value %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-            </label>
-            <label class="visit-form__field"><span>Téléphone</span><input name="phone" value="{{ profile.phone|default:'' }}" autocomplete="tel"></label>
-          </div>
-          <div class="visit-form-block">
-            <h3>Votre histoire</h3>
-            <label class="visit-form__field">
-              <span>Intention</span>
-              <select name="relationship_intent">
-                <option value="">Sélectionnez une option</option>
-                {% for value, label in relationship_intents %}
-                <option value="{{ value }}"{% if profile.relationship_intent == value %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-            </label>
-            <label class="visit-form__field"><span>Projet de vie</span><textarea name="life_project" rows="3" maxlength="800" placeholder="Famille, foi, installation, ce que vous construisez…">{{ profile.life_project|default:'' }}</textarea></label>
-            <label class="visit-form__field"><span>À propos de vous</span><textarea name="bio" rows="4" maxlength="800" placeholder="Ce qui vous tient à cœur…">{{ profile.bio|default:'' }}</textarea></label>
-            <label class="visit-form__field"><span>Vous recherchez</span><textarea name="looking_for" rows="3" maxlength="500" placeholder="Sérieux, bienveillant, prêt pour une union…">{{ profile.looking_for|default:'' }}</textarea></label>
-          </div>
-        </form>
-        <div class="visit__card-foot">
-          <p class="visit__save-msg" data-save-msg="identity" hidden></p>
-          <button type="button" class="visit__save" data-save="identity">Enregistrer</button>
-        </div>
+        {% elif member.looking_for_text %}
+        <p class="visit__about-text">{{ member.looking_for_text }}</p>
+        {% else %}
+        <p class="visit__about-text visit__about-text--muted">Le profil recherché n’est pas encore précisé. Un regard sincère suffit souvent.</p>
+        {% endif %}
       </article>
     </section>
 
@@ -287,85 +236,533 @@
       </div>
       {% endif %}
 
-      <article class="visit-glass visit__card" data-block="privacy">
-        <div class="visit__card-head">
-          <p class="visit__kicker">Confidentialité</p>
-          <h2 class="visit__card-title">Visibilité du profil</h2>
-          <p class="visit__card-lead">Choisissez ce que les autres membres peuvent voir de vous.</p>
-        </div>
-        <form class="visit-form" data-privacy-form>
-          <label class="visit-form__check"><input type="checkbox" name="hide_age"{% if profile.hide_age %} checked{% endif %}> Masquer mon âge</label>
-          <label class="visit-form__check"><input type="checkbox" name="is_hidden"{% if profile.is_hidden %} checked{% endif %}> Masquer mon profil dans l’explorer</label>
-          <label class="visit-form__field">
-            <span>Dernière connexion visible pour</span>
-            <select name="last_seen_visibility">
-              {% for value, label in visibilities %}
-              <option value="{{ value }}"{% if profile.last_seen_visibility == value %} selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </label>
-        </form>
-        <div class="visit__card-foot">
-          <p class="visit__save-msg" data-save-msg="privacy" hidden></p>
-          <button type="button" class="visit__save" data-save="privacy">Enregistrer</button>
-        </div>
-      </article>
+      <div class="visit__subtabs" role="tablist" aria-label="Sections des paramètres">
+        <button type="button" class="visit__subtab is-active" role="tab" id="settings-tab-profile" aria-selected="true" aria-controls="settings-panel-profile" data-settings-tab="profile">Profil</button>
+        <button type="button" class="visit__subtab" role="tab" id="settings-tab-privacy" aria-selected="false" aria-controls="settings-panel-privacy" data-settings-tab="privacy">Visibilité</button>
+        <button type="button" class="visit__subtab" role="tab" id="settings-tab-notifications" aria-selected="false" aria-controls="settings-panel-notifications" data-settings-tab="notifications">Notifications</button>
+        <button type="button" class="visit__subtab" role="tab" id="settings-tab-subscription" aria-selected="false" aria-controls="settings-panel-subscription" data-settings-tab="subscription">Abonnements</button>
+      </div>
 
-      <article class="visit-glass visit__card" data-block="notifications">
-        <div class="visit__card-head">
-          <p class="visit__kicker">Alertes</p>
-          <h2 class="visit__card-title">Notifications</h2>
-          <p class="visit__card-lead">Activez ou désactivez les alertes que vous souhaitez recevoir.</p>
-        </div>
-        <form class="visit-form" data-notifs-form>
-          <label class="visit-form__check"><input type="checkbox" name="push"{% if notif_prefs.push %} checked{% endif %}> Notifications push</label>
-          <label class="visit-form__check"><input type="checkbox" name="likes"{% if notif_prefs.likes %} checked{% endif %}> Nouveaux likes</label>
-          <label class="visit-form__check"><input type="checkbox" name="matches"{% if notif_prefs.matches %} checked{% endif %}> Nouveaux matchs</label>
-          <label class="visit-form__check"><input type="checkbox" name="messages"{% if notif_prefs.messages %} checked{% endif %}> Nouveaux messages</label>
-        </form>
-        <div class="visit__card-foot">
-          <p class="visit__save-msg" data-save-msg="notifications" hidden></p>
-          <button type="button" class="visit__save" data-save="notifications">Enregistrer</button>
-        </div>
-      </article>
+      <div class="visit__settings-panel" id="settings-panel-profile" role="tabpanel" aria-labelledby="settings-tab-profile" data-settings-panel="profile">
+        <article class="visit-glass visit__card" data-block="interests">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Ce qui vous anime</p>
+            <h2 class="visit__card-title">Intérêts et caractère</h2>
+            <p class="visit__card-lead">Choisissez ce qui vous ressemble. Enregistrez ce bloc seulement.</p>
+          </div>
+          <p class="visit__label">Centres d’intérêt</p>
+          <div class="visit__pills visit__pills--edit" data-interests>
+            {% for item in interests %}
+            <button type="button" class="visit__pill-btn{% if item.id in member.interests %} is-on{% endif %}" data-interest="{{ item.id }}">
+              <span class="visit__pill-icon" data-icon="{{ item.icon }}"></span>
+              <span>{{ item.label }}</span>
+            </button>
+            {% endfor %}
+          </div>
+          <p class="visit__label">Caractère</p>
+          <div class="visit__pills visit__pills--edit" data-traits>
+            {% for item in traits %}
+            <button type="button" class="visit__pill-btn{% if item.id in member.personality_traits %} is-on{% endif %}" data-trait="{{ item.id }}">
+              <span class="visit__pill-icon" data-icon="{{ item.icon }}"></span>
+              <span>{{ item.label }}</span>
+            </button>
+            {% endfor %}
+          </div>
+          <div class="visit__card-foot">
+            <p class="visit__save-msg" data-save-msg="interests" hidden></p>
+            <button type="button" class="visit__save" data-save="interests">Enregistrer</button>
+          </div>
+        </article>
 
-      <article class="visit-glass visit__card" data-block="subscription">
-        <div class="visit__card-head">
-          <p class="visit__kicker">Abonnement</p>
-          <h2 class="visit__card-title">Premium et VIP</h2>
-          <p class="visit__card-lead">Débloquez plus de messages, la visibilité et les avantages VIP.</p>
-        </div>
-        <p class="visit__meta-line">Statut : <strong>{{ status_label }}</strong></p>
-        <p class="visit__meta-line">Offre : <strong>{{ tier_label }}</strong></p>
-        {% if payment_status.has_active_subscription and subscription_end_display %}
-        <p class="visit__meta-line">Valable jusqu’au {{ subscription_end_display }}</p>
+        <article class="visit-glass visit__card" data-block="values">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Ce qui vous guide</p>
+            <h2 class="visit__card-title">Valeurs</h2>
+            <p class="visit__card-lead">Choisissez ce qui vous ressemble. Cette section est optionnelle.</p>
+          </div>
+          <div class="visit__pills visit__pills--edit" data-values>
+            {% for item in life_values_catalog %}
+            <button type="button" class="visit__pill-btn{% if item.id in member.life_values or item.label in member.life_values %} is-on{% endif %}" data-value="{{ item.id }}" aria-pressed="{% if item.id in member.life_values or item.label in member.life_values %}true{% else %}false{% endif %}">
+              <span class="visit__pill-icon" data-icon="{{ item.icon }}"></span>
+              <span>{{ item.label }}</span>
+            </button>
+            {% endfor %}
+          </div>
+          <div class="visit__card-foot">
+            <p class="visit__save-msg" data-save-msg="values" hidden></p>
+            <button type="button" class="visit__save" data-save="values">Enregistrer</button>
+          </div>
+        </article>
+
+        <article class="visit-glass visit__card" data-block="looking">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Vers l’autre</p>
+            <h2 class="visit__card-title">Le profil recherché</h2>
+            <p class="visit__card-lead">Ce que vous espérez rencontrer, et votre intention.</p>
+          </div>
+          <p class="visit__label">Qualités recherchées</p>
+          <div class="visit__pills visit__pills--edit" data-looking-for>
+            {% for item in looking_for_catalog %}
+            <button type="button" class="visit__pill-btn{% if item.id in member.looking_for_ids %} is-on{% endif %}" data-looking="{{ item.id }}" aria-pressed="{% if item.id in member.looking_for_ids %}true{% else %}false{% endif %}">
+              <span class="visit__pill-icon" data-icon="{{ item.icon }}"></span>
+              <span>{{ item.label }}</span>
+            </button>
+            {% endfor %}
+          </div>
+          <p class="visit__label">Votre intention</p>
+          <div class="signup-intents visit-intents" data-intents>
+            {% for value, label in relationship_intents %}
+            <button type="button" class="signup-intent{% if profile.relationship_intent == value %} is-on{% endif %}" data-intent="{{ value }}">
+              <span class="signup-intent__body">
+                <span class="signup-intent__label">{{ label }}</span>
+              </span>
+            </button>
+            {% endfor %}
+          </div>
+          <div class="visit__card-foot">
+            <p class="visit__save-msg" data-save-msg="looking" hidden></p>
+            <button type="button" class="visit__save" data-save="looking">Enregistrer</button>
+          </div>
+        </article>
+
+        <article class="visit-glass visit__card visit__card--form" data-block="identity">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Fiche publique</p>
+            <h2 class="visit__card-title">Votre profil</h2>
+            <p class="visit__card-lead">Organisez votre fiche par sections. Seules les informations publiques sont visibles dans l’explorer.</p>
+          </div>
+
+          <form class="visit-form visit-form--profile" data-profile-form novalidate>
+            <section class="visit-form-group">
+              <header class="visit-form-group__head">
+                <span class="visit-form-group__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4 0-7 2-7 4.5V20h14v-1.5C19 16 16 14 12 14z"/></svg>
+                </span>
+                <div>
+                  <h3 class="visit-form-group__title">Identité</h3>
+                  <p class="visit-form-group__lead">Ce que les autres voient en premier sur votre fiche.</p>
+                </div>
+              </header>
+              <div class="visit-form-group__body">
+                <div class="visit-form__row">
+                  <label class="visit-form__field"><span>Prénom</span><input name="first_name" required value="{{ profile.first_name }}" autocomplete="given-name"></label>
+                  <label class="visit-form__field"><span>Nom</span><input name="last_name" required value="{{ profile.last_name }}" autocomplete="family-name"></label>
+                </div>
+                <div class="visit-form__row">
+                  <label class="visit-form__field"><span>Âge</span><input name="age" type="number" min="18" max="99" value="{{ profile.age|default:'' }}" inputmode="numeric"></label>
+                  <label class="visit-form__field">
+                    <span>Je suis</span>
+                    <select name="gender" required>
+                      <option value="" disabled {% if not profile.gender %}selected{% endif %}>Sélectionnez une option</option>
+                      {% for value, label in genders %}
+                      <option value="{{ value }}"{% if profile.gender == value %} selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                </div>
+                <label class="visit-form__field visit-form__field--full"><span>Profession</span><input name="profession" value="{{ profile.profession|default:'' }}" placeholder="Votre métier ou activité"></label>
+              </div>
+            </section>
+
+            <section class="visit-form-group" data-location-block>
+              <header class="visit-form-group__head visit-form-group__head--actions">
+                <span class="visit-form-group__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 9a2.5 2.5 0 0 1 0 5.5z"/></svg>
+                </span>
+                <div class="visit-form-group__intro">
+                  <h3 class="visit-form-group__title">Localisation</h3>
+                  <p class="visit-form-group__lead">Où vous vivez et d’où vous venez.</p>
+                </div>
+                <button type="button" class="visit-form-group__action" data-geo-locate aria-label="Utiliser ma position actuelle">
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 2v3M12 19v3M2 12h3M19 12h3M7.8 7.8l2.1 2.1M14.1 14.1l2.1 2.1M16.2 7.8l-2.1 2.1M9.9 14.1l-2.1 2.1"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                  Ma position
+                </button>
+              </header>
+              <div class="visit-form-group__body">
+                <p class="visit-form-hint" data-geo-status hidden></p>
+                <div class="visit-form__row">
+                  <label class="visit-form__field"><span>Ville</span><input name="city" value="{{ profile.city }}" autocomplete="address-level2" data-geo-city></label>
+                  <label class="visit-form__field"><span>Commune</span><input name="commune" value="{{ profile.commune }}" placeholder="Votre commune" data-geo-commune></label>
+                </div>
+                <div class="visit-form__row">
+                  <label class="visit-form__field">
+                    <span>Pays d’origine</span>
+                    <select name="country">
+                      {% for c in countries %}
+                      <option value="{{ c }}"{% if profile.country == c %} selected{% endif %}>{{ c }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <label class="visit-form__field">
+                    <span>Pays de résidence</span>
+                    <select name="residence_country" data-geo-residence>
+                      <option value="">Non renseigné</option>
+                      {% for c in countries %}
+                      <option value="{{ c }}"{% if profile.residence_country == c %} selected{% endif %}>{{ c }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                </div>
+                <label class="visit-form__field visit-form__field--full">
+                  <span>Religion</span>
+                  <select name="religion">
+                    <option value="">Sélectionnez une option</option>
+                    {% for value, label in religions %}
+                    <option value="{{ value }}"{% if profile.religion == value %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+              </div>
+            </section>
+
+            <section class="visit-form-group">
+              <header class="visit-form-group__head">
+                <span class="visit-form-group__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 19V5m0 14h16M8 15V9m4 6V7m4 8v-4"/></svg>
+                </span>
+                <div>
+                  <h3 class="visit-form-group__title">Votre histoire</h3>
+                  <p class="visit-form-group__lead">Les mots qui donnent du sens à votre recherche.</p>
+                </div>
+              </header>
+              <div class="visit-form-group__body">
+                <label class="visit-form__field visit-form__field--full"><span>Projet de vie</span><textarea name="life_project" rows="3" maxlength="800" placeholder="Famille, foi, installation, ce que vous construisez…">{{ profile.life_project|default:'' }}</textarea></label>
+                <label class="visit-form__field visit-form__field--full"><span>À propos de vous</span><textarea name="bio" rows="4" maxlength="800" placeholder="Ce qui vous tient à cœur, ce que vous recherchez…">{{ profile.bio|default:'' }}</textarea></label>
+              </div>
+            </section>
+          </form>
+
+          <div class="visit__card-foot visit__card-foot--split">
+            <p class="visit__save-msg" data-save-msg="identity" hidden></p>
+            <p class="visit__save-msg" data-save-msg="location" hidden></p>
+            <button type="button" class="visit__save" data-save="identity">Enregistrer le profil public</button>
+          </div>
+        </article>
+
+        <article class="visit-glass visit__card visit__card--account" data-block="email">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Connexion</p>
+            <h2 class="visit__card-title">Adresse email</h2>
+            <p class="visit__card-lead">L’email sert à vous connecter et à recevoir les notifications importantes.</p>
+          </div>
+          <div class="visit-account-panel" data-email-block>
+            {% if is_google_account %}
+            <div class="visit-account-field">
+              <span class="visit-account-field__label">Email actuel</span>
+              <div class="visit-account-email__display">
+                <input type="email" class="visit-form__input" value="{{ account_email|default:'—' }}" readonly disabled data-email-display>
+                <span class="visit-google-badge" title="Compte connecté via Google">
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                    <path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-.9 2.3-1.9 3l3 2.3c1.8-1.7 2.8-4.1 2.8-7 0-.7-.1-1.4-.2-2H12z"/>
+                    <path fill="#34A853" d="M6.6 14.3 5.5 15.1 3 17.1C4.7 20.5 8.1 23 12 23c2.9 0 5.3-1 7.1-2.6l-3-2.3c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3z"/>
+                    <path fill="#4A90D9" d="M3 6.9C2.4 8.1 2 9.5 2 11s.4 2.9 1 4.1C4.1 12.4 6.6 10.2 6.6 10.2 6.2 8.9 6.2 7.5 6.6 6.2L3 6.9z"/>
+                    <path fill="#FBBC05" d="M12 5c1.6 0 3 .6 4.1 1.6L18.8 4C16.9 2.2 14.6 1 12 1 8.1 1 4.7 3.5 3 6.9l3.6 2.8C7 7 9.3 5 12 5z"/>
+                  </svg>
+                  Google
+                </span>
+              </div>
+              <p class="visit-form-hint">Compte lié à Google — l’email est géré par Google et ne peut pas être modifié ici.</p>
+            </div>
+            {% elif is_apple_account %}
+            <div class="visit-account-field">
+              <span class="visit-account-field__label">Email actuel</span>
+              <div class="visit-account-email__display">
+                <input type="email" class="visit-form__input" value="{{ account_email|default:'—' }}" readonly disabled data-email-display>
+                <span class="visit-oauth-badge visit-oauth-badge--apple">Apple</span>
+              </div>
+              <p class="visit-form-hint">Compte lié à Apple — l’email ne peut pas être modifié ici.</p>
+            </div>
+            {% else %}
+            <div class="visit-account-field" data-email-view>
+              <span class="visit-account-field__label">Email actuel</span>
+              <div class="visit-account-email__display">
+                <input type="email" class="visit-form__input" value="{{ account_email|default:'' }}" readonly data-email-display autocomplete="email">
+                <button type="button" class="visit-account-email__edit" data-email-edit>Modifier</button>
+              </div>
+            </div>
+            <form class="visit-account-form" data-email-form hidden>
+              <label class="visit-form__field visit-form__field--full">
+                <span>Nouvel email</span>
+                <input class="visit-form__input" type="email" name="email" value="{{ account_email|default:'' }}" autocomplete="email" placeholder="nouvelle.adresse@email.com" data-email-input>
+              </label>
+              <label class="visit-form__field visit-form__field--full">
+                <span>Mot de passe actuel</span>
+                <div class="visit-form__password">
+                  <input type="password" name="email_current_password" autocomplete="current-password" placeholder="Confirmez avec votre mot de passe" data-email-password>
+                  <button type="button" class="visit-form__password-toggle" data-password-toggle="email_current_password" aria-label="Afficher le mot de passe">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                  </button>
+                </div>
+              </label>
+              <p class="visit-form-hint">Pour des raisons de sécurité, votre mot de passe est requis pour changer l’email.</p>
+              <div class="visit-form-group__actions">
+                <button type="button" class="visit__save visit__save--ghost" data-email-cancel>Annuler</button>
+                <button type="button" class="visit__save" data-save="email">Enregistrer l’email</button>
+              </div>
+            </form>
+            {% endif %}
+            <p class="visit__save-msg" data-save-msg="email" hidden></p>
+          </div>
+        </article>
+
+        <article class="visit-glass visit__card visit__card--account" data-block="phone">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Contact</p>
+            <h2 class="visit__card-title">Numéro de téléphone</h2>
+            <p class="visit__card-lead">Votre numéro pour la vérification et les échanges importants.</p>
+          </div>
+          <div class="visit-account-panel" data-phone-block>
+            <div class="visit-account-field" data-phone-view>
+              <span class="visit-account-field__label">Téléphone actuel</span>
+              <div class="visit-account-email__display">
+                <input type="tel" class="visit-form__input" value="{{ profile.phone|default:'' }}" readonly data-phone-display autocomplete="tel">
+                <button type="button" class="visit-account-email__edit" data-phone-edit>Modifier</button>
+              </div>
+            </div>
+            <form class="visit-account-form" data-phone-form hidden>
+              <label class="visit-form__field visit-form__field--full">
+                <span>Nouveau numéro</span>
+                <input class="visit-form__input" type="tel" name="phone" value="{{ profile.phone|default:'' }}" autocomplete="tel" inputmode="tel" placeholder="+221 77 000 00 00" data-phone-input>
+              </label>
+              <div class="visit-form-group__actions">
+                <button type="button" class="visit__save visit__save--ghost" data-phone-cancel>Annuler</button>
+                <button type="button" class="visit__save" data-save="phone">Enregistrer le téléphone</button>
+              </div>
+            </form>
+            <p class="visit__save-msg" data-save-msg="phone" hidden></p>
+          </div>
+        </article>
+
+        {% if can_change_password %}
+        <article class="visit-glass visit__card visit__card--account" data-block="password">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Sécurité</p>
+            <h2 class="visit__card-title">Mot de passe</h2>
+            <p class="visit__card-lead">Mettez à jour votre mot de passe pour sécuriser votre compte.</p>
+          </div>
+          <form class="visit-account-form visit-account-panel" data-password-form>
+            <label class="visit-form__field visit-form__field--full">
+              <span>Mot de passe actuel</span>
+              <div class="visit-form__password">
+                <input type="password" name="current_password" autocomplete="current-password" data-password-current>
+                <button type="button" class="visit-form__password-toggle" data-password-toggle="current_password" aria-label="Afficher le mot de passe">
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                </button>
+              </div>
+            </label>
+            <div class="visit-form__row">
+              <label class="visit-form__field">
+                <span>Nouveau mot de passe</span>
+                <div class="visit-form__password">
+                  <input type="password" name="new_password" autocomplete="new-password" minlength="8" data-password-new>
+                  <button type="button" class="visit-form__password-toggle" data-password-toggle="new_password" aria-label="Afficher le mot de passe">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                  </button>
+                </div>
+              </label>
+              <label class="visit-form__field">
+                <span>Confirmer</span>
+                <div class="visit-form__password">
+                  <input type="password" name="confirm_password" autocomplete="new-password" minlength="8" data-password-confirm>
+                  <button type="button" class="visit-form__password-toggle" data-password-toggle="confirm_password" aria-label="Afficher le mot de passe">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                  </button>
+                </div>
+              </label>
+            </div>
+            <p class="visit-form-hint">Minimum 8 caractères.</p>
+            <div class="visit-form-group__actions">
+              <button type="button" class="visit__save" data-save="password">Mettre à jour le mot de passe</button>
+            </div>
+            <p class="visit__save-msg" data-save-msg="password" hidden></p>
+          </form>
+        </article>
+        {% elif is_google_account or is_apple_account %}
+        <article class="visit-glass visit__card visit__card--account" data-block="password">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Sécurité</p>
+            <h2 class="visit__card-title">Mot de passe</h2>
+          </div>
+          {% if is_apple_account %}
+          <p class="visit-form-hint visit-form-hint--boxed visit-account-panel">Mot de passe géré par Apple — connectez-vous via le bouton Apple.</p>
+          {% else %}
+          <p class="visit-form-hint visit-form-hint--boxed visit-account-panel">Mot de passe géré par Google — connectez-vous via le bouton Google.</p>
+          {% endif %}
+        </article>
         {% endif %}
-        {% if payment_status.is_boosted and boost_end_display %}
-        <p class="visit__meta-line">Profil mis en avant jusqu’au {{ boost_end_display }}</p>
-        {% endif %}
-        <div class="visit-plans">
-          {% for plan in plans %}
-          <button type="button" class="visit-plan{% if plan.is_vip %} visit-plan--vip{% endif %}{% if payment_status.tier == plan.id %} is-current{% endif %}" data-checkout="{{ plan.id }}">
-            <span>{{ plan.label }}</span>
-            <strong>{{ plan.price_label }}</strong>
-          </button>
-          {% endfor %}
-        </div>
-        <button type="button" class="visit__save visit__save--block" data-boost>Booster mon profil — {{ boost_price_label }}</button>
-        <p class="visit__save-msg" data-save-msg="subscription" hidden></p>
-      </article>
 
-      <article class="visit-glass visit__card visit__card--danger" data-block="danger">
-        <div class="visit__card-head">
-          <p class="visit__kicker">Zone sensible</p>
-          <h2 class="visit__card-title">Supprimer mon compte</h2>
-          <p class="visit__card-lead">Cette action est définitive. Vos photos, conversations et matchs seront effacés.</p>
-        </div>
-        <div class="visit__card-foot">
-          <p class="visit__save-msg" data-save-msg="danger" hidden></p>
-          <button type="button" class="visit__save visit__save--danger" data-delete-account>Supprimer mon compte</button>
-        </div>
-      </article>
+        <article class="visit-glass visit__card visit__card--account" data-block="session">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Session</p>
+            <h2 class="visit__card-title">Déconnexion</h2>
+            <p class="visit__card-lead">Quittez votre session en toute sécurité sur cet appareil.</p>
+          </div>
+          <div class="visit__card-foot">
+            <a class="visit__settings-logout-link" href="{% url 'auth:deconnexion' %}">Se déconnecter</a>
+          </div>
+        </article>
+
+        <article class="visit-glass visit__card visit__card--danger" data-block="danger">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Zone sensible</p>
+            <h2 class="visit__card-title">Supprimer mon compte</h2>
+            <p class="visit__card-lead">Cette action est définitive. Vos photos, conversations et matchs seront effacés.</p>
+          </div>
+          <div class="visit__card-foot">
+            <p class="visit__save-msg" data-save-msg="danger" hidden></p>
+            <button type="button" class="visit__save visit__save--danger" data-delete-account>Supprimer mon compte</button>
+          </div>
+        </article>
+      </div>
+
+      <div class="visit__settings-panel" id="settings-panel-privacy" role="tabpanel" aria-labelledby="settings-tab-privacy" data-settings-panel="privacy" hidden>
+        <article class="visit-glass visit__card" data-block="privacy">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Confidentialité</p>
+            <h2 class="visit__card-title">Visibilité du profil</h2>
+            <p class="visit__card-lead">Choisissez ce que les autres membres peuvent voir de vous.</p>
+          </div>
+          <form class="visit-form" data-privacy-form>
+            <label class="visit-form__check"><input type="checkbox" name="hide_age"{% if profile.hide_age %} checked{% endif %}> Masquer mon âge</label>
+            <label class="visit-form__check"><input type="checkbox" name="is_hidden"{% if profile.is_hidden %} checked{% endif %}> Masquer mon profil dans l’explorer</label>
+            <label class="visit-form__field">
+              <span>Dernière connexion visible pour</span>
+              <select name="last_seen_visibility">
+                {% for value, label in visibilities %}
+                <option value="{{ value }}"{% if profile.last_seen_visibility == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          </form>
+          <div class="visit__card-foot">
+            <p class="visit__save-msg" data-save-msg="privacy" hidden></p>
+            <button type="button" class="visit__save" data-save="privacy">Enregistrer</button>
+          </div>
+        </article>
+      </div>
+
+      <div class="visit__settings-panel" id="settings-panel-notifications" role="tabpanel" aria-labelledby="settings-tab-notifications" data-settings-panel="notifications" hidden>
+        <article class="visit-glass visit__card visit-ws-test" data-block="ws-diagnostic">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Diagnostic</p>
+            <h2 class="visit__card-title">Connexion WebSocket</h2>
+            <p class="visit__card-lead">Teste le temps réel (Daphne + Memurai). Ouvrez la console (F12) puis cliquez ci-dessous.</p>
+          </div>
+          <p class="visit-form-hint visit-form-hint--boxed visit-ws-test__endpoint" data-ws-test-url aria-live="polite"></p>
+          <div class="visit__card-foot visit__card-foot--split visit-notifs__foot">
+            <p class="visit__save-msg visit-ws-test__msg" data-ws-test-msg hidden aria-live="polite"></p>
+            <button type="button" class="visit__save" data-ws-test>Lancer le test WebSocket</button>
+          </div>
+        </article>
+
+        <article class="visit-glass visit__card" data-block="notifications">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Alertes</p>
+            <h2 class="visit__card-title">Notifications</h2>
+          </div>
+
+          <div class="visit-notifs__enable" data-notifs-enable-wrap{% if notif_prefs.push %} hidden{% endif %}>
+            <p class="visit__card-lead" data-notifs-enable-lead>Recevez en temps réel les likes, matchs et messages qui comptent pour vous.</p>
+            <button type="button" class="visit__save visit__save--block" data-notifs-enable>Activer les notifications</button>
+            <button type="button" class="visit__save visit__save--block visit-notifs__enable-btn--active" data-notifs-active-badge hidden disabled>Notifications en temps réel activées</button>
+            <p class="visit__save-msg visit-notifs__msg" data-notifs-enable-msg hidden></p>
+          </div>
+
+          <div class="visit-notifs__prefs" data-notifs-prefs-wrap{% if not notif_prefs.push %} hidden{% endif %}>
+            <p class="visit-notifs__status" data-notifs-status>
+              <span class="visit-notifs__status-dot" aria-hidden="true"></span>
+              Notifications en temps réel activées
+            </p>
+            <p class="visit__card-lead">Choisissez les alertes que vous souhaitez recevoir.</p>
+            <form class="visit-form visit-form--checks" data-notifs-form>
+              <label class="visit-form__check"><input type="checkbox" name="likes"{% if notif_prefs.likes %} checked{% endif %}> Nouveau like</label>
+              <label class="visit-form__check"><input type="checkbox" name="super_likes"{% if notif_prefs.super_likes %} checked{% endif %}> Super like</label>
+              <label class="visit-form__check"><input type="checkbox" name="matches"{% if notif_prefs.matches %} checked{% endif %}> Nouveau match</label>
+              <label class="visit-form__check"><input type="checkbox" name="messages"{% if notif_prefs.messages %} checked{% endif %}> Nouveau message</label>
+              <label class="visit-form__check"><input type="checkbox" name="status"{% if notif_prefs.status %} checked{% endif %}> Statut du compte</label>
+            </form>
+            <div class="visit__card-foot visit__card-foot--split visit-notifs__foot">
+              <p class="visit__save-msg" data-save-msg="notifications" hidden></p>
+              <button type="button" class="visit__save" data-save="notifications">Enregistrer</button>
+              <button type="button" class="visit__save visit__save--ghost" data-notifs-test>Tester la notification</button>
+              <button type="button" class="visit__save visit__save--ghost" data-notifs-disable>Désactiver</button>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="visit__settings-panel" id="settings-panel-subscription" role="tabpanel" aria-labelledby="settings-tab-subscription" data-settings-panel="subscription" hidden>
+        <article class="visit-glass visit__card visit__card--plans" data-block="subscription">
+          <div class="visit__card-head">
+            <p class="visit__kicker">Abonnement</p>
+            <h2 class="visit__card-title">Choisissez votre formule</h2>
+            <p class="visit__card-lead">Des offres simples pour avancer sereinement vers la rencontre.</p>
+          </div>
+          <div class="visit-sub-status">
+            <p class="visit__meta-line">Statut : <strong>{{ status_label }}</strong></p>
+            <p class="visit__meta-line">Offre : <strong>{{ tier_label }}</strong></p>
+            {% if payment_status.has_active_subscription and subscription_end_display %}
+            <p class="visit__meta-line">Valable jusqu’au {{ subscription_end_display }}</p>
+            {% endif %}
+            {% if payment_status.is_boosted and boost_end_display %}
+            <p class="visit__meta-line">Profil mis en avant jusqu’au {{ boost_end_display }}</p>
+            {% endif %}
+          </div>
+          <p class="visit__save-msg visit__save-msg--plans" data-save-msg="subscription" hidden aria-live="assertive"></p>
+          <div class="tl-plans-grid">
+            {% for plan in plans %}
+            <article class="tl-plan tl-plan--{{ plan.id }}{% if plan.is_featured %} tl-plan--featured{% endif %}{% if plan.is_vip %} tl-plan--vip{% endif %}{% if payment_status.tier == plan.id %} is-current{% endif %}">
+              {% if plan.badge %}
+              <p class="tl-plan__ribbon">{{ plan.badge }}</p>
+              {% endif %}
+              {% if payment_status.tier == plan.id %}
+              <p class="tl-plan__tag">Ma formule</p>
+              {% endif %}
+
+              <header class="tl-plan__header">
+                <p class="tl-plan__brand">
+                  <span class="tl-plan__brand-name">TimaLove</span>
+                  <span class="tl-plan__brand-plan">{{ plan.label }}</span>
+                </p>
+                <p class="tl-plan__duration">{{ plan.duration_label }}</p>
+                <p class="tl-plan__price">{{ plan.price_label }}</p>
+              </header>
+
+              <button type="button" class="tl-plan__cta tl-plan__cta--primary" data-checkout="{{ plan.id }}"{% if payment_status.tier == plan.id %} disabled{% endif %}>
+                {% if payment_status.tier == plan.id %}
+                Formule active
+                {% else %}
+                Profitez de {{ plan.label }}
+                {% endif %}
+              </button>
+
+              <div class="tl-plan__compare" role="table" aria-label="Comparatif Gratuit et {{ plan.label }}">
+                <div class="tl-plan__compare-head" role="row">
+                  <span class="tl-plan__compare-label" role="columnheader"></span>
+                  <span class="tl-plan__compare-col" role="columnheader">Gratuit</span>
+                  <span class="tl-plan__compare-col tl-plan__compare-col--plan" role="columnheader">{{ plan.label }}</span>
+                </div>
+                {% for benefit in plan.benefits %}
+                <div class="tl-plan__compare-row" role="row">
+                  <p class="tl-plan__feature" role="cell">{{ benefit }}</p>
+                  <span class="tl-plan__mark tl-plan__mark--no" role="cell" aria-label="Non inclus dans Gratuit">
+                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M7 7l10 10M17 7 7 17"/></svg>
+                  </span>
+                  <span class="tl-plan__mark tl-plan__mark--yes" role="cell" aria-label="Inclus dans {{ plan.label }}">
+                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M6 12.5l3.5 3.5L18 8"/></svg>
+                  </span>
+                </div>
+                {% endfor %}
+              </div>
+
+              <button type="button" class="tl-plan__cta tl-plan__cta--ghost" data-checkout="{{ plan.id }}"{% if payment_status.tier == plan.id %} disabled{% endif %}>
+                {% if payment_status.tier == plan.id %}Formule en cours{% else %}Choisir {{ plan.label }}{% endif %}
+              </button>
+            </article>
+            {% endfor %}
+          </div>
+        </article>
+      </div>
     </section>
   </main>
 </div>

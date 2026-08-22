@@ -15,7 +15,9 @@
       <p class="empty-state">Dites bonjour 👋</p>
     {% endfor %}
   </div>
-  {% if not payment_status.has_active_subscription and request.user.profile.gender == 'male' %}
+  {% if quota_locked %}
+  <div class="alert alert-info">Vos messages gratuits sont utilisés. <a href="{% url 'app:parametres' %}" style="color:var(--rose-primary);font-weight:600;">Passer Premium</a></div>
+  {% elif not payment_status.has_active_subscription %}
   <div class="alert alert-info">Messages gratuits limités. <a href="{% url 'app:parametres' %}" style="color:var(--rose-primary);font-weight:600;">Passer Premium</a></div>
   {% endif %}
   <form class="composer" method="post">{% csrf_token %}

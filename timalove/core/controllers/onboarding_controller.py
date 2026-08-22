@@ -18,6 +18,7 @@ from core.data.onboarding import (
     FACE_MATCH_THRESHOLD,
     MIN_INTERESTS,
     MIN_TRAITS,
+    encode_looking_for,
 )
 
 MAX_VALUES = 12
@@ -191,7 +192,7 @@ def save_step_2(profile: Profile, data: dict) -> tuple[bool, str]:
 
 def save_step_3(profile: Profile, data: dict) -> tuple[bool, str]:
     profile.bio = (data.get("bio") or "").strip()
-    profile.looking_for = (data.get("looking_for") or "").strip()
+    profile.looking_for = encode_looking_for(data.get("looking_for")) or None
     profile.onboarding_step = max(profile.onboarding_step or 1, 4)
     profile.save(update_fields=["bio", "looking_for", "onboarding_step", "updated_at"])
     return True, "Dernière étape."

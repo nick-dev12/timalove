@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from django.db.models import Exists, OuterRef, Q
 
-from core.models import BlockedUser, Profile, Swipe
+from core.controllers import swipe_controller
+from core.models import BlockedUser, Profile
 from core.models.choices import Gender, RegistrationStatus, UserRole
 
 
@@ -13,7 +14,6 @@ def opposite_gender(gender: str) -> str:
 
 
 def feed_for(viewer: Profile, limit: int = 20) -> list[Profile]:
-    already = Swipe.objects.filter(swiper=viewer, swiped_id=OuterRef("pk"))
     blocked_by_me = BlockedUser.objects.filter(blocker=viewer, blocked_id=OuterRef("pk"))
     blocked_me = BlockedUser.objects.filter(blocker_id=OuterRef("pk"), blocked=viewer)
 
@@ -25,15 +25,13 @@ def feed_for(viewer: Profile, limit: int = 20) -> list[Profile]:
         )
         .exclude(pk=viewer.pk)
         .exclude(banned_at__isnull=False)
-        .annotate(
-            already_swiped=Exists(already),
-            is_blocked=Exists(blocked_by_me) | Exists(blocked_me),
-        )
-        .filter(already_swiped=False, is_blocked=False)
+        .annotate(is_blocked=Exists(blocked_by_me) | Exists(blocked_me))
+        .filter(is_blocked=False)
     )
     from core.controllers.profile_controller import apply_discover_filters
 
     qs = apply_discover_filters(qs, viewer)
+    qs = swipe_controller.apply_feed_exclusions(qs, viewer)
     return list(qs.order_by("-is_boosted", "-last_active_at", "-created_at")[:limit])
 
 

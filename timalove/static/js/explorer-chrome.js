@@ -175,6 +175,13 @@
         return;
       }
       if (document.body.classList.contains("is-guest")) return;
+      if (
+        event.target.closest(
+          "[data-msg-open], [data-swipe], [data-likes-pass], [data-likes-super], [data-likes-back], .history__actions, .likes__card-actions, .likes__card-bar"
+        )
+      ) {
+        return;
+      }
       const trigger = event.target.closest("[data-profile-modal], a[href*='/explorer/profil/']");
       if (!trigger) return;
       if (event.target.closest("[data-photo-step]")) return;
@@ -207,7 +214,60 @@
     }
   }
 
+  function bindUnreadBadge() {
+    if (window.timaloveRealtime) return;
+    const tab = document.querySelector("[data-dock-messages]");
+    const badge = document.querySelector("[data-unread-messages]");
+    if (!tab || !badge || document.body.classList.contains("is-guest")) return;
+
+    function render(count) {
+      const n = Math.max(0, parseInt(count, 10) || 0);
+      badge.hidden = n < 1;
+      badge.textContent = n > 99 ? "99+" : String(n);
+      if (n > 0) {
+        tab.setAttribute("aria-label", "Messages, " + n + (n > 1 ? " non lus" : " non lu"));
+      } else if (tab.getAttribute("aria-current") === "page") {
+        tab.setAttribute("aria-label", "Messages");
+      } else {
+        tab.removeAttribute("aria-label");
+      }
+    }
+
+    window.timaloveRenderUnreadBadge = render;
+
+    function refresh() {
+      fetch("/api/messages/unread-count/", {
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then(function (res) {
+          if (!res.ok) throw new Error("unread");
+          return res.json();
+        })
+        .then(function (data) {
+          render(data && data.count);
+        })
+        .catch(function () {});
+    }
+
+    const onThreadPage = document.body.classList.contains("messages-page");
+    const onInboxPage = document.body.classList.contains("messages-inbox-page");
+    window.timaloveRefreshUnreadBadge = refresh;
+    refresh();
+    let pollMs = 0;
+    if (onInboxPage) pollMs = 5000;
+    else if (!onThreadPage) pollMs = 20000;
+    if (pollMs > 0) {
+      window.setInterval(refresh, pollMs);
+    }
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) refresh();
+    });
+    window.addEventListener("focus", refresh);
+  }
+
   bindMenu();
   bindLightbox();
   bindModal();
+  bindUnreadBadge();
 })();

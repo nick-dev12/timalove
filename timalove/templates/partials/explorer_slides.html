@@ -29,9 +29,16 @@
         <button type="button" class="explorer__photo-hit explorer__photo-hit--next" data-photo-step="1" aria-label="Photo suivante"></button>
         {% endif %}
 
-        <div class="explorer__match" role="button" tabindex="0">
+        <div
+          class="explorer__match is-pending"
+          role="button"
+          tabindex="0"
+          data-match-score
+          data-profile-id="{{ card.id }}"
+          aria-label="Calcul de compatibilité en cours"
+        >
           <svg viewBox="0 0 24 22" width="13" height="12" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
-          {{ card.compatibility }}% Match
+          <span data-match-label>Calcul…</span>
         </div>
 
         <a class="explorer__go-profile" href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}" aria-label="Voir le profil de {{ card.first_name }}">

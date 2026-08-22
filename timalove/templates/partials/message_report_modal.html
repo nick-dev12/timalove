@@ -1,0 +1,29 @@
+<div class="msg-report" id="msg-report-modal" hidden>
+  <div class="msg-report__backdrop" data-msg-report-close tabindex="-1"></div>
+  <div class="msg-report__card" role="dialog" aria-modal="true" aria-labelledby="msg-report-title">
+    <header class="msg-report__head">
+      <p class="msg-report__kicker">Sécurité</p>
+      <h2 class="msg-report__title" id="msg-report-title">Signaler ce profil</h2>
+      <p class="msg-report__lead">Votre signalement reste confidentiel. Décrivez ce qui vous a gêné.</p>
+    </header>
+    <form class="msg-report__form" data-msg-report-form>
+      <label class="msg-report__field">
+        <span>Motif</span>
+        <select name="reason" required data-msg-report-reason>
+          {% for value, label in report_reasons %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="msg-report__field">
+        <span>Détails</span>
+        <textarea name="message" rows="4" required minlength="10" maxlength="1000" placeholder="Expliquez la situation avec vos mots…" data-msg-report-message></textarea>
+      </label>
+      <p class="msg-report__error" data-msg-report-error hidden></p>
+      <div class="msg-report__actions">
+        <button type="button" class="msg-report__btn msg-report__btn--ghost" data-msg-report-close>Annuler</button>
+        <button type="submit" class="msg-report__btn">Envoyer le signalement</button>
+      </div>
+    </form>
+  </div>
+</div>

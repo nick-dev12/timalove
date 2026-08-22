@@ -23,7 +23,7 @@ from core.controllers.auth_controller import (
     normalize_phone,
 )
 from core.data.countries import COUNTRIES_FR
-from core.data.onboarding import MIN_INTERESTS, MIN_TRAITS
+from core.data.onboarding import encode_looking_for, looking_for_ids
 from core.models import Profile
 from core.models.choices import Gender, RegistrationStatus, RelationshipIntent, Religion
 
@@ -93,7 +93,7 @@ def profile_prefill(profile: Profile | None) -> dict:
         "religion": profile.religion or "",
         "country": profile.country or "",
         "bio": profile.bio or "",
-        "looking_for": profile.looking_for or "",
+        "looking_for": looking_for_ids(profile.looking_for),
         "interests": list(profile.interests or []),
         "personality_traits": list(profile.personality_traits or []),
         "life_values": list(profile.life_values or []),
@@ -439,7 +439,7 @@ def _member_payload(data: dict) -> dict:
         "residence_country": (data.get("residence_country") or data.get("geo_country") or "").strip() or None,
         "religion": data.get("religion") or None,
         "bio": (data.get("bio") or "").strip() or None,
-        "looking_for": (data.get("looking_for") or "").strip() or None,
+        "looking_for": encode_looking_for(data.get("looking_for")) or None,
         "photo_url": None,
     }
 
@@ -451,7 +451,7 @@ def _apply_profile_extras(profile: Profile, data: dict) -> None:
     )
     profile.life_values = onboarding_controller._clean_values(data.get("life_values") or data.get("values"))
     profile.bio = (data.get("bio") or "").strip() or profile.bio
-    profile.looking_for = (data.get("looking_for") or "").strip() or profile.looking_for
+    profile.looking_for = encode_looking_for(data.get("looking_for")) or profile.looking_for
     intent = (data.get("relationship_intent") or "").strip()
     if intent in _INTENT_VALUES:
         profile.relationship_intent = intent

@@ -37,6 +37,10 @@ class Match(models.Model):
     user_1 = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="matches_as_user1")
     user_2 = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="matches_as_user2")
     status = models.CharField(max_length=20, choices=MatchStatus.choices, default=MatchStatus.ACTIVE)
+    is_one_sided = models.BooleanField(
+        default=False,
+        help_text="Conversation ouverte après like envoyé, sans like retour.",
+    )
     user_1_message_count = models.PositiveIntegerField(default=0)
     user_2_message_count = models.PositiveIntegerField(default=0)
     scheduled_date = models.DateTimeField(blank=True, null=True)

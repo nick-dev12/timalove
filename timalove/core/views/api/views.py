@@ -2,7 +2,7 @@ import json
 
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
@@ -24,6 +24,7 @@ from core.controllers import (
     signup_controller,
     site_settings_controller,
     swipe_controller,
+    matching_controller,
 )
 
 
@@ -70,17 +71,25 @@ def discover_feed(request):
 @login_required
 @require_POST
 def swipes(request):
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "error": "Profil introuvable."}, status=400)
     data = _json(request) or request.POST
     result = swipe_controller.record_swipe(
-        request.user.profile, data.get("swiped_id") or data.get("swipedId"), data.get("action", "pass")
+        profile, data.get("swiped_id") or data.get("swipedId"), data.get("action", "pass")
     )
-    return JsonResponse(result)
+    status = 200 if result.get("ok") else 400
+    return JsonResponse(result, status=status)
 
 
 @login_required
 @require_GET
 def likes_incoming(request):
     items = likes_controller.incoming(request.user.profile)
+    from core.controllers import quota_controller
+
+    if quota_controller.is_freemium(request.user.profile):
+        items = items[: quota_controller.likes_visible_limit()]
     return JsonResponse(
         {
             "likes": [
@@ -152,16 +161,111 @@ def messages(request):
     ok, msg, message = message_controller.send_text(
         request.user.profile, data.get("partner_id"), data.get("content", "")
     )
+    payload = {"ok": ok, "message": msg}
+    if message:
+        payload["id"] = str(message.id)
+        payload["item"] = message_controller._serialize_message_ws(message)
+    return JsonResponse(payload, status=200 if ok else 400)
+
+
+@login_required
+@require_http_methods(["DELETE"])
+def message_delete(request, message_id):
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    ok, msg = message_controller.delete_message(profile, message_id)
+    return JsonResponse({"ok": ok, "message": msg}, status=200 if ok else 400)
+
+
+@login_required
+@require_POST
+def messages_open(request):
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    data = _json(request) or request.POST
+    partner_id = data.get("partner_id")
+    ok, msg, match = message_controller.ensure_conversation(profile, partner_id)
+    if not ok:
+        return JsonResponse({"ok": False, "message": msg}, status=400)
     return JsonResponse(
-        {"ok": ok, "message": msg, "id": str(message.id) if message else None},
-        status=200 if ok else 400,
+        {
+            "ok": True,
+            "partner_id": str(partner_id),
+            "match_id": str(match.id) if match else None,
+            "thread_url": f"/discussions/{partner_id}/",
+        }
     )
 
 
 @login_required
 @require_GET
 def unread_messages(request):
-    return JsonResponse({"count": message_controller.unread_count(request.user.profile)})
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"count": 0})
+    return JsonResponse({"count": message_controller.unread_count(profile)})
+
+
+@login_required
+@require_GET
+def messages_inbox(request):
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"items": [], "total_unread": 0})
+    items = message_controller.inbox_feed(profile)
+    return JsonResponse(
+        {
+            "items": items,
+            "total_unread": message_controller.unread_count(profile),
+        }
+    )
+
+
+@login_required
+@require_GET
+def message_read_receipts(request):
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"read_ids": []})
+    partner_id = request.GET.get("partner_id")
+    return JsonResponse({"read_ids": message_controller.read_receipts(profile, partner_id)})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def message_mark_read(request):
+    """Marque les messages du partenaire comme lus (accusés de lecture temps réel)."""
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    partner_id = request.GET.get("partner_id")
+    if not partner_id and request.method == "POST":
+        try:
+            payload = json.loads(request.body or b"{}")
+        except json.JSONDecodeError:
+            payload = {}
+        partner_id = payload.get("partner_id") or request.POST.get("partner_id")
+    if not partner_id:
+        return JsonResponse({"ok": False, "message": "Partenaire manquant."}, status=400)
+    count = message_controller.mark_read(profile, partner_id)
+    return JsonResponse({"ok": True, "marked": count})
+
+
+@require_GET
+def compatibility_score_api(request, profile_id):
+    viewer = getattr(request.user, "profile", None) if request.user.is_authenticated else None
+    ok, msg, score = matching_controller.compatibility_for_profile_id(viewer, profile_id)
+    if not ok:
+        return JsonResponse({"ok": False, "message": msg}, status=404)
+    return JsonResponse(
+        {
+            "ok": True,
+            "profile_id": str(profile_id),
+            "compatibility": score,
+        }
+    )
 
 
 @login_required
@@ -196,14 +300,15 @@ def payments_checkout(request):
     else:
         result = payment_controller.create_checkout(request.user.profile, data.get("tier"))
     if not result.get("ok"):
-        return JsonResponse({"ok": False, "message": result.get("error", "Erreur")}, status=400)
+        return JsonResponse({"ok": False, "message": result.get("error") or result.get("message") or "Erreur"}, status=400)
     return JsonResponse(result)
 
 
 @require_GET
 def payments_confirm(request):
-    order_id = request.GET.get("order_id")
-    ok, msg = payment_controller.fulfill_order(order_id)
+    order_id = request.GET.get("order_id") or request.GET.get("transaction_id") or ""
+    simulate = request.GET.get("simulate") == "1"
+    ok, msg = payment_controller.confirm_order(order_id, simulate=simulate)
     if request.user.is_authenticated:
         messages_mod = __import__("django.contrib.messages", fromlist=["messages"]).messages
         if ok:
@@ -215,21 +320,38 @@ def payments_confirm(request):
 
 
 @csrf_exempt
-@require_POST
-def naboo_webhook(request):
-    data = _json(request)
-    order_id = data.get("order_id") or data.get("orderId")
-    naboo_id = data.get("transaction_id") or data.get("id")
-    ok, msg = payment_controller.fulfill_order(order_id, naboo_id)
-    return JsonResponse({"ok": ok, "message": msg})
+@require_http_methods(["GET", "POST"])
+def cinetpay_notify(request):
+    if request.method == "GET":
+        return HttpResponse("OK", status=200)
+    payload = {key: request.POST.get(key, "") for key in request.POST}
+    if not payload.get("cpm_trans_id"):
+        payload.update(_json(request) or {})
+    x_token = request.headers.get("x-token") or request.META.get("HTTP_X_TOKEN", "")
+    ok, msg = payment_controller.handle_notify(payload, x_token)
+    return HttpResponse("OK" if ok else msg, status=200)
 
 
 @login_required
 @require_POST
 def reports(request):
     data = _json(request) or request.POST
-    r = moderation_controller.create_report(request.user.profile, data)
-    return JsonResponse({"ok": True, "id": str(r.id)})
+    try:
+        r = moderation_controller.create_report(request.user.profile, data)
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "message": str(exc)}, status=400)
+    return JsonResponse({"ok": True, "id": str(r.id), "message": "Signalement envoyé. Merci pour votre vigilance."})
+
+
+@login_required
+@require_POST
+def conversation_hide(request):
+    data = _json(request) or request.POST
+    partner_id = data.get("partner_id")
+    if not partner_id:
+        return JsonResponse({"ok": False, "message": "Conversation introuvable."}, status=400)
+    ok, msg = message_controller.hide_conversation(request.user.profile, partner_id)
+    return JsonResponse({"ok": ok, "message": msg}, status=200 if ok else 400)
 
 
 @login_required
@@ -260,6 +382,39 @@ def push_config(request):
 
 
 @login_required
+@require_GET
+def push_status(request):
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    return JsonResponse({"ok": True, **push_controller.status_for(profile)})
+
+
+@login_required
+@require_POST
+def push_test(request):
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    try:
+        result = notification_controller.send_test(profile)
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "message": str(exc)}, status=400)
+    if result.get("sent", 0) < 1:
+        errors = result.get("errors") or []
+        detail = errors[0] if errors else "Push non envoyée. Vérifiez Firebase et l’appareil enregistré."
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": detail,
+                **result,
+            },
+            status=502,
+        )
+    return JsonResponse({"ok": True, "message": "Notification test envoyée.", **result})
+
+
+@login_required
 @require_POST
 def push_register(request):
     data = _json(request) or request.POST
@@ -272,6 +427,7 @@ def push_register(request):
             platform=platform,
             user_agent=request.META.get("HTTP_USER_AGENT", ""),
         )
+        profile_controller.activate_push_preferences(request.user.profile)
     except ValueError as exc:
         return JsonResponse({"ok": False, "message": str(exc)}, status=400)
     return JsonResponse({"ok": True, "id": str(device.id)})
@@ -329,8 +485,15 @@ def _auth_oauth(request, provider: str):
     if not id_token:
         return JsonResponse({"ok": False, "message": f"Jeton {label} manquant."}, status=400)
 
+    hints = {}
     if provider == "apple":
-        ok, msg, needs_completion = auth_controller.login_or_register_apple(request, id_token)
+        for key in ("given_name", "family_name", "display_name", "email"):
+            val = (data.get(key) or "").strip()
+            if val:
+                hints[key] = val
+        ok, msg, needs_completion = auth_controller.login_or_register_apple(
+            request, id_token, hints=hints or None
+        )
     else:
         ok, msg, needs_completion = auth_controller.login_or_register_google(request, id_token)
     if not ok:
@@ -384,16 +547,20 @@ def signup_complete(request):
         )
 
     token = (data.get("fcm_token") or "").strip()
-    if token and created_profile is not None:
-        try:
-            push_controller.register_device(
-                created_profile,
-                token=token,
-                platform="web",
-                user_agent=request.META.get("HTTP_USER_AGENT", ""),
-            )
-        except ValueError:
-            pass
+    notifications_push = bool(data.get("notifications_push"))
+    if created_profile is not None and (token or notifications_push):
+        if token:
+            try:
+                push_controller.register_device(
+                    created_profile,
+                    token=token,
+                    platform="web",
+                    user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                )
+            except ValueError:
+                pass
+        if notifications_push or token:
+            profile_controller.activate_push_preferences(created_profile)
 
     return JsonResponse({"ok": True, "message": msg, "redirect": _signup_next(next_url)})
 
@@ -531,6 +698,46 @@ def profile_update(request):
     profile_controller.update_profile(profile, payload)
     fresh = profile_controller.get_own(profile)
     return JsonResponse({"ok": True, "message": "Enregistré.", "member": profile_controller.serialize_visit(fresh)})
+
+
+@login_required
+@require_POST
+def profile_email(request):
+    from core.controllers import auth_controller
+
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    data = _json(request) or {}
+    ok, msg = auth_controller.change_email(
+        profile,
+        str(data.get("email") or ""),
+        str(data.get("current_password") or ""),
+    )
+    if not ok:
+        return JsonResponse({"ok": False, "message": msg}, status=400)
+    email = profile_controller.account_context(profile)["account_email"]
+    return JsonResponse({"ok": True, "message": msg, "email": email})
+
+
+@login_required
+@require_POST
+def profile_password(request):
+    from core.controllers import auth_controller
+
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    data = _json(request) or {}
+    ok, msg = auth_controller.change_password(
+        profile,
+        str(data.get("current_password") or ""),
+        str(data.get("new_password") or ""),
+        str(data.get("confirm_password") or ""),
+    )
+    if not ok:
+        return JsonResponse({"ok": False, "message": msg}, status=400)
+    return JsonResponse({"ok": True, "message": msg})
 
 
 @login_required

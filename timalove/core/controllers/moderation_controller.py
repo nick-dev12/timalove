@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.db import models
 from django.utils import timezone
 
 from core.models import BannedIdentity, BlockedUser, Profile, Report, Testimonial
@@ -36,14 +37,22 @@ def moderate_testimonial(tid, *, is_published: bool | None = None, delete: bool 
 
 
 def create_report(reporter: Profile, data: dict) -> Report:
+    from core.models.choices import ReportReason
+
     reported = None
     if data.get("reported_profile_id"):
         reported = Profile.objects.filter(pk=data["reported_profile_id"]).first()
+    reason = (data.get("reason") or ReportReason.OTHER).strip()
+    if reason not in ReportReason.values:
+        reason = ReportReason.OTHER
+    message = (data.get("message") or "").strip()
+    if not message:
+        raise ValueError("Décrivez brièvement le motif du signalement.")
     return Report.objects.create(
         reporter=reporter,
         reported_profile=reported,
-        reason=data.get("reason", "other"),
-        message=data.get("message"),
+        reason=reason,
+        message=message,
         report_kind=data.get("report_kind", "profile"),
     )
 
@@ -81,6 +90,16 @@ def ban_profile(profile: Profile, reason: str = "", admin: Profile | None = None
             phone_normalized=phone_n,
             defaults={"profile": profile, "reason": reason},
         )
+
+
+def has_blocked(blocker: Profile, blocked_id) -> bool:
+    return BlockedUser.objects.filter(blocker=blocker, blocked_id=blocked_id).exists()
+
+
+def is_blocked_between(a: Profile, b: Profile) -> bool:
+    return BlockedUser.objects.filter(
+        models.Q(blocker=a, blocked=b) | models.Q(blocker=b, blocked=a)
+    ).exists()
 
 
 def block_user(blocker: Profile, blocked_id) -> tuple[bool, str]:
