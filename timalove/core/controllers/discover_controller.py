@@ -49,6 +49,10 @@ def get_discover_profile(viewer: Profile, profile_id) -> Profile | None:
 
 def should_blur_photos(viewer: Profile) -> bool:
     """Hommes free : blur jusqu'à abo (règle freemium historique)."""
+    from core.controllers import quota_controller
+
+    if not quota_controller.is_freemium(viewer):
+        return False
     if viewer.gender != Gender.MALE:
         return False
-    return not viewer.has_active_subscription
+    return True

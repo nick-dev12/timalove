@@ -23,6 +23,8 @@ MESSAGE_LIMIT_MSG = (
 
 
 def is_freemium(profile: Profile | None) -> bool:
+    if not getattr(settings, "FREEMIUM_LIMITS_ENABLED", True):
+        return False
     if profile is None:
         return False
     if getattr(profile, "is_admin", False):

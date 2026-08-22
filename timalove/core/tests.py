@@ -42,6 +42,7 @@ class SwipeMatchTests(TestCase):
         self.assertTrue(r2["matched"])
 
 
+@override_settings(FREEMIUM_LIMITS_ENABLED=True)
 class FreemiumMessageTests(TestCase):
     def setUp(self):
         site_settings_controller.seed_defaults()
@@ -530,6 +531,7 @@ class NotificationFlowTests(TestCase):
         self.assertTrue(r.json()["ok"]        )
 
 
+@override_settings(FREEMIUM_LIMITS_ENABLED=True)
 class BlockMessagingTests(TestCase):
     def setUp(self):
         from core.models import Match
@@ -798,6 +800,7 @@ class PagesSmokeTests(TestCase):
         self.assertNotIn("/connexion/", resp.get("Location", ""))
 
 
+@override_settings(FREEMIUM_LIMITS_ENABLED=True)
 class FreemiumQuotaTests(TestCase):
     def setUp(self):
         site_settings_controller.seed_defaults()

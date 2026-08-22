@@ -211,6 +211,9 @@ FREE_MESSAGES_LIMIT_DEFAULT = 3
 FREE_SWIPES_PER_DAY_DEFAULT = 20
 FREE_LIKES_PER_DAY_DEFAULT = 10
 FREE_LIKES_VISIBLE_DEFAULT = 1
+# False = tests complets (messages, swipes, likes, historique, photos sans quota).
+# Remettre True avant l’ouverture publique.
+FREEMIUM_LIMITS_ENABLED = env.bool("FREEMIUM_LIMITS_ENABLED", default=False)
 
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND",
