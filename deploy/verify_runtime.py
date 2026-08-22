@@ -35,7 +35,8 @@ def check_push_config(site_url: str) -> tuple[bool, str]:
         return False, str(exc)
 
 
-def check_websocket(site_url: str) -> tuple[bool, str]:
+def check_websocket(site_url: str) -> tuple[bool, str, bool]:
+    """Retourne (ok, message, warn_only). warn_only=True si Daphne local OK mais pas le public."""
     import django
 
     django.setup()
@@ -45,10 +46,12 @@ def check_websocket(site_url: str) -> tuple[bool, str]:
     os.environ["TIMALOVE_SITE_URL"] = site_url.rstrip("/")
     code = ws_main(site_url=site_url.rstrip("/"))
     if code == 0:
-        return True, "WebSocket OK"
+        return True, "WebSocket OK (public + stack)", False
+    if code == 4:
+        return True, "WebSocket OK en local (Daphne) — vérifier le proxy Nginx /wss public", True
     if code == 3:
-        return False, "WebSocket live indisponible"
-    return False, f"WebSocket échec (code {code})"
+        return False, "WebSocket indisponible (public et local)", False
+    return False, f"WebSocket échec interne (code {code})", False
 
 
 def main() -> int:
@@ -64,8 +67,13 @@ def main() -> int:
     push_ok, push_msg = check_push_config(site)
     print(f"notifications/push: {'OK' if push_ok else 'FAIL'} — {push_msg}")
 
-    ws_ok, ws_msg = check_websocket(site)
-    print(f"websocket: {'OK' if ws_ok else 'FAIL'} — {ws_msg}")
+    ws_ok, ws_msg, ws_warn = check_websocket(site)
+    if ws_ok and ws_warn:
+        print(f"websocket: WARN — {ws_msg}")
+    elif ws_ok:
+        print(f"websocket: OK — {ws_msg}")
+    else:
+        print(f"websocket: FAIL — {ws_msg}")
 
     if push_ok and ws_ok:
         return 0

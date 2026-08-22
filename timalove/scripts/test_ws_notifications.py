@@ -50,36 +50,42 @@ async def test_in_process(cookie: bytes) -> bool:
     return True
 
 
-def test_live_daphne(cookie: str, site_url: str = "http://127.0.0.1:8000") -> bool:
+def test_live_ws(cookie: str, site_url: str, *, label: str = "live") -> bool:
     try:
         from websocket import create_connection
     except ImportError:
-        print("SKIP live: pip install websocket-client")
+        print(f"SKIP {label}: pip install websocket-client")
         return False
 
     parsed = urllib.parse.urlparse(site_url.rstrip("/"))
     host = parsed.hostname or "127.0.0.1"
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    port = parsed.port
     ws_scheme = "wss" if parsed.scheme == "https" else "ws"
-    if parsed.port is None and parsed.scheme == "https":
-        port = 443
-    elif parsed.port is None:
-        port = 80
+    if port is None:
+        port = 443 if parsed.scheme == "https" else 80
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
     try:
         sock.connect((host, port))
     except OSError:
-        print(f"SKIP live: rien n'écoute sur {host}:{port}")
+        print(f"SKIP {label}: rien n'écoute sur {host}:{port}")
         return False
     finally:
         sock.close()
 
     ws_url = f"{ws_scheme}://{host}:{port}/ws/notifications/"
-    ws = create_connection(ws_url, cookie=cookie, timeout=10)
-    ws.close()
-    return True
+    try:
+        ws = create_connection(ws_url, cookie=cookie, timeout=12)
+        ws.close()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        print(f"FAIL {label}: {exc}")
+        return False
+
+
+def test_live_daphne(cookie: str, site_url: str = "http://127.0.0.1:8000") -> bool:
+    return test_live_ws(cookie, site_url, label="live")
 
 
 def main(site_url: str | None = None) -> int:
@@ -95,12 +101,27 @@ def main(site_url: str | None = None) -> int:
     if not inproc:
         return 2
 
-    live = test_live_daphne(cookie, site_url=site)
-    print(f"live ({site}/ws/notifications/):", "OK" if live else "FAIL")
+    live_public = test_live_daphne(cookie, site_url=site)
+    print(f"live public ({site}/ws/notifications/):", "OK" if live_public else "FAIL")
 
-    payload = {"status": "ok", "user": email, "live_daphne": live, "site": site}
+    daphne_port = int(os.environ.get("DAPHNE_PORT", "8001"))
+    live_local = test_live_ws(cookie, f"http://127.0.0.1:{daphne_port}", label="live-local")
+    print(f"live local (127.0.0.1:{daphne_port}/ws/notifications/):", "OK" if live_local else "FAIL")
+
+    live_ok = live_public or live_local
+    payload = {
+        "status": "ok" if live_ok else "degraded",
+        "user": email,
+        "live_public": live_public,
+        "live_local": live_local,
+        "site": site,
+    }
     print(json.dumps(payload, ensure_ascii=False))
-    return 0 if live else 3
+    if not live_ok:
+        return 3
+    if not live_public and live_local:
+        return 4
+    return 0
 
 
 if __name__ == "__main__":
