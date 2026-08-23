@@ -50,6 +50,16 @@ messaging.onBackgroundMessage((payload) => {{
 self.addEventListener("notificationclick", (event) => {{
   event.notification.close();
   let target = event.notification.data?.url || "/";
+  if (typeof target === "string" && target.includes(",")) {{
+    const parts = target.split(",");
+    target =
+      parts.find(function (p) {{
+        return /\\/discussions\\/|\\/likes\\/|\\/profil/.test(p);
+      }}) ||
+      parts[parts.length - 1] ||
+      "/";
+    target = target.trim();
+  }}
   try {{
     const parsed = new URL(target, self.location.origin);
     if (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") {{

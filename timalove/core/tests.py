@@ -520,12 +520,14 @@ class NotificationFlowTests(TestCase):
         self.assertEqual(payload["related_user_name"], "Notif1")
         self.assertIn("unread_messages", payload)
         self.assertTrue(payload["url"])
+        self.assertTrue(payload["url"].startswith("/"))
 
         msg_notif = notification_controller.notify_new_message(
             sender=self.p1, match=match, preview="Salut"
         )
         msg_payload = notification_controller._notification_payload(msg_notif)
         self.assertEqual(msg_payload["kind"], "new_message")
+        self.assertEqual(msg_payload["url"], f"/discussions/{self.p1.id}/")
         self.assertGreaterEqual(msg_payload["unread_messages"], 0)
 
     def test_push_test_requires_device(self):

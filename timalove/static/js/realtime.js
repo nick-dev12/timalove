@@ -453,7 +453,7 @@
     navigator.serviceWorker.addEventListener("message", function (event) {
       const data = event.data || {};
       if (data.type === "timalove:open" && data.url) {
-        window.location.href = data.url;
+        window.location.href = normalizeNotifUrl(data.url);
       }
       if (data.type === "timalove:notification") {
         handleNotification(data.payload || data);

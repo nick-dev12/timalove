@@ -6,16 +6,40 @@
   const FIREBASE_VERSION = "12.18.0";
 
   function normalizeNotifUrl(url) {
-    const fallback = window.location.origin + "/";
-    if (!url) return fallback;
+    const origin = window.location.origin;
+    const fallback = origin + "/";
+    if (!url || typeof url !== "string") return fallback;
+
+    let raw = url.trim();
+    // SITE_URL mal configuré (ex. https://a.com,https://www.a.com/discussions/…)
+    if (raw.includes(",")) {
+      const parts = raw.split(",");
+      const withPath =
+        parts.find(function (p) {
+          return /\/discussions\/|\/likes\/|\/profil/.test(p);
+        }) || parts[parts.length - 1];
+      raw = (withPath || raw).trim();
+    }
+
+    if (raw.startsWith("/")) return origin + raw;
+
     try {
-      const parsed = new URL(url, window.location.origin);
+      const fixed = raw.replace(/^https\/\//i, "https://").replace(/^http\/\//i, "http://");
+      const parsed = new URL(fixed, origin);
       if (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") {
-        return window.location.origin + parsed.pathname + parsed.search + parsed.hash;
+        return origin + parsed.pathname + parsed.search + parsed.hash;
+      }
+      if (parsed.hostname === window.location.hostname) {
+        return parsed.href;
       }
       return parsed.href;
     } catch (_err) {
-      return url.startsWith("/") ? window.location.origin + url : fallback;
+      const pathMatch =
+        raw.match(/(\/discussions\/[^?\s#,]+)/) ||
+        raw.match(/(\/likes\/?[^?\s#,]*)/) ||
+        raw.match(/(\/profil[^?\s#,]*)/);
+      if (pathMatch) return origin + pathMatch[1];
+      return raw.startsWith("/") ? origin + raw : fallback;
     }
   }
 

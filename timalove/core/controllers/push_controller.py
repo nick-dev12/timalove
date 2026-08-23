@@ -150,19 +150,26 @@ def _notification_link(notification: Notification) -> str:
 
 
 def notification_link(notification: Notification) -> str:
-    site = settings.SITE_URL.rstrip("/")
+    """Chemin relatif — le navigateur complète avec son origin (évite SITE_URL mal configuré)."""
     if notification.type == "new_message" and notification.related_match_id:
         partner_id = notification.related_user_id
         if partner_id:
-            return f"{site}/discussions/{partner_id}/"
+            return f"/discussions/{partner_id}/"
     if notification.type == "new_match":
         partner_id = notification.related_user_id
         if partner_id:
-            return f"{site}/discussions/{partner_id}/"
-        return f"{site}/likes/"
+            return f"/discussions/{partner_id}/"
+        return "/likes/"
     if notification.type == "new_like":
-        return f"{site}/likes/"
-    return f"{site}/profil/?tab=settings"
+        return "/likes/"
+    return "/profil/?tab=settings"
+
+
+def absolute_notification_link(notification: Notification) -> str:
+    rel = notification_link(notification)
+    if rel.startswith("/"):
+        return f"{settings.SITE_URL.rstrip('/')}{rel}"
+    return rel
 
 
 def send_for_notification(notification_id: str, *, force: bool = False) -> dict[str, int]:
@@ -192,6 +199,7 @@ def send_for_notification(notification_id: str, *, force: bool = False) -> dict[
     from firebase_admin import messaging
 
     link = notification_link(notification)
+    absolute_link = absolute_notification_link(notification)
     data = {
         "notification_id": str(notification.id),
         "type": notification.type,
@@ -215,7 +223,7 @@ def send_for_notification(notification_id: str, *, force: bool = False) -> dict[
         message = messaging.Message(
             token=device.token,
             data={k: str(v) for k, v in data.items()},
-            webpush=_webpush_config(notification, link),
+            webpush=_webpush_config(notification, absolute_link),
         )
         try:
             messaging.send(message, app=app)
