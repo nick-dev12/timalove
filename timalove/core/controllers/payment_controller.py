@@ -145,8 +145,12 @@ def _start_provider_checkout(tx: Transaction, profile: Profile | None, descripti
 
 
 def create_checkout(profile: Profile, tier: str, payment_method: str | None = None) -> dict:
+    from core.controllers import subscription_controller
+
     if tier not in SubscriptionTier.values or tier == SubscriptionTier.FREE:
         return {"ok": False, "error": "Offre invalide.", "message": "Offre invalide."}
+    if tier not in subscription_controller.plans_catalog_for(profile):
+        return {"ok": False, "error": "Offre non disponible pour votre profil.", "message": "Offre non disponible."}
     amount = price_for_tier(tier)
     if amount <= 0:
         return {"ok": False, "error": "Tarif introuvable.", "message": "Tarif introuvable."}

@@ -104,6 +104,8 @@ def serialize_card(
     super_liked: bool = False,
     viewer=None,
 ) -> dict:
+    from core.controllers import subscription_controller
+
     photos = collect_photos(profile)
     city = _public_place(profile.city)
     country = _public_place(profile.country)
@@ -123,6 +125,7 @@ def serialize_card(
         "profile_url": f"/explorer/profil/{profile.pk}/",
         "liked": liked,
         "super_liked": super_liked,
+        "subscription_badge": subscription_controller.badge_for(profile),
     }
 
 
@@ -171,6 +174,34 @@ def reset_feed_session(session) -> None:
     session.modified = True
 
 
+def _order_feed_ids(remaining: list, viewer=None, *, seed: str = "", served_count: int = 0) -> list:
+    """Priorise visibilité Premium/VIP et profils complets pour viewers VIP."""
+    import random
+
+    from core.controllers import profile_controller, subscription_controller
+
+    if not remaining:
+        return []
+    profiles = Profile.objects.in_bulk(remaining)
+    rng = random.Random(f"{seed}:order:{served_count}")
+    scored: list[tuple[float, int, object]] = []
+    for pk in remaining:
+        profile = profiles.get(pk)
+        if not profile:
+            continue
+        mult = subscription_controller.visibility_multiplier(profile)
+        if profile.is_boosted:
+            mult *= 2
+        score = rng.random() * mult
+        completion = profile_controller.completion_score(profile)
+        scored.append((score, completion, pk))
+    if viewer and subscription_controller.is_vip(viewer):
+        scored.sort(key=lambda row: (-(1 if row[1] >= 70 else 0), -row[0]))
+    else:
+        scored.sort(key=lambda row: -row[0])
+    return [pk for _, _, pk in scored]
+
+
 def public_feed(
     *,
     offset: int = 0,
@@ -210,8 +241,7 @@ def public_feed(
         in_queue = set(queue)
         remaining = [pk for pk in eligible if str(pk) not in served and pk not in in_queue]
         if len(queue) < limit and remaining:
-            rng = random.Random(f"{seed}:refill:{len(served)}")
-            rng.shuffle(remaining)
+            remaining = _order_feed_ids(remaining, viewer, seed=seed, served_count=len(served))
             queue.extend(remaining)
 
         page_ids = queue[:limit]

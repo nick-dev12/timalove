@@ -5,8 +5,7 @@
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="{% static 'js/explorer-like-burst.js' %}?v=20260821b4" defer></script>
-<script src="{% static 'js/explorer-search.js' %}?v=20260815s1" defer></script>
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260822h6" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260825h1" defer></script>
 {% if user.is_authenticated %}
 <script src="{% static 'js/message-invite.js' %}?v=20260821m5" defer></script>
 <script src="{% static 'js/explorer-match.js' %}?v=20260821c1" defer></script>
@@ -93,8 +92,6 @@
     </div>
   </header>
 
-  {% url 'public:explorer_search' as explorer_search_url %}
-  {% include "partials/explorer_search_bar.html" with search_url=explorer_search_url search_placeholder="Rechercher un profil…" search_label="Rechercher un profil" %}
   {% if swipe_quota and swipe_quota.is_freemium %}
   <p class="explorer__quota" data-quota-label>
     {{ swipe_quota.swipes_left }} profil{{ swipe_quota.swipes_left|pluralize }} · {{ swipe_quota.likes_left }} like{{ swipe_quota.likes_left|pluralize }} restant{{ swipe_quota.likes_left|pluralize }} aujourd’hui
@@ -210,9 +207,58 @@
   }
 
   function goPrev() {
-    goTo(currentIndex() - 1);
+    const i = currentIndex();
+    const cur = slideList()[i];
+    if (cur && cur.dataset.ready !== "true") return;
+    loadBack();
   }
 
+  function loadBack() {
+    if (fetching || feed.dataset.hasMore !== "true") {
+      return Promise.resolve(false);
+    }
+    fetching = true;
+    const url = new URL(feed.dataset.loadUrl, window.location.origin);
+    url.searchParams.set("direction", "back");
+    return fetch(url.toString(), {
+      credentials: "same-origin",
+      headers: { "HX-Request": "true", "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("feed");
+        return r.text();
+      })
+      .then(function (html) {
+        const tmp = document.createElement("div");
+        tmp.innerHTML = html.trim();
+        const slide = tmp.querySelector(".explorer__slide");
+        const meta = tmp.querySelector("[data-explorer-meta]");
+        if (!slide) {
+          feed.dataset.hasMore = "false";
+          return false;
+        }
+        const anchor = feed.querySelector(".explorer__slide") || sentinel;
+        feed.insertBefore(slide, anchor);
+        observeSlides();
+        paging = true;
+        slide.scrollIntoView({ behavior: "auto", block: "start" });
+        startReveal(slide);
+        window.setTimeout(function () {
+          paging = false;
+        }, 280);
+        if (meta) {
+          feed.dataset.nextOffset = meta.dataset.nextOffset || feed.dataset.nextOffset || "0";
+          feed.dataset.hasMore = meta.dataset.hasMore || "false";
+        }
+        return true;
+      })
+      .catch(function () {
+        return false;
+      })
+      .finally(function () {
+        fetching = false;
+      });
+  }
   function onGesture(direction) {
     const now = Date.now();
     if (paging || now - gestureLock < 420) return;

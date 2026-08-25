@@ -50,7 +50,7 @@ def accueil(request):
 
 @require_GET
 def presentation(request):
-    return render(request, "landing/home.html", home_controller.home_context())
+    return redirect("public:commencer", permanent=True)
 
 
 @require_GET
@@ -75,6 +75,7 @@ def explorer(request):
     import secrets
 
     is_hx = request.headers.get("HX-Request") == "true"
+    direction = (request.GET.get("direction") or "").strip()
 
     if not is_hx:
         request.session["explorer_seed"] = secrets.token_hex(8)
@@ -85,11 +86,13 @@ def explorer(request):
         request.session["explorer_seed"] = secrets.token_hex(8)
 
     seed = request.session["explorer_seed"]
+    page_limit = 1 if direction == "back" else 20
     cards, has_more = explore_controller.public_feed(
         seed=seed,
+        limit=page_limit,
         viewer=getattr(request.user, "profile", None) if request.user.is_authenticated else None,
         session=request.session,
-        reset=not is_hx,
+        reset=not is_hx and direction != "back",
     )
     served = len(request.session.get("explorer_served", []))
     next_offset = served
@@ -248,6 +251,8 @@ def historique(request):
                     "next_offset": page["next_offset"],
                     "is_preview": False,
                     "history_locked": False,
+                    "history_locked_extra": page.get("history_locked_extra", 0),
+                    "history_limit": page.get("history_limit"),
                 },
             )
     return render(
@@ -272,8 +277,9 @@ def historique_plus(request):
     if not request.user.is_authenticated:
         return HttpResponse("")
     profile = getattr(request.user, "profile", None)
-    if not profile or quota_controller.history_locked(profile):
-        return HttpResponse("")
+    if not profile or quota_controller.history_limit_for(profile) is not None:
+        if profile and quota_controller.is_male_freemium(profile):
+            return HttpResponse("")
     try:
         offset = max(0, int(request.GET.get("offset") or 0))
     except (TypeError, ValueError):

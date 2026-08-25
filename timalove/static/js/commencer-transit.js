@@ -18,11 +18,11 @@
   }
 
   function go(href) {
-    window.location.href = href || "/explorer/";
+    window.location.href = href || "/connexion/";
   }
 
   function start(href) {
-    const target = href || "/explorer/";
+    const target = href || "/connexion/";
     if (started) return;
     started = true;
 

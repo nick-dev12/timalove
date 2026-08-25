@@ -1038,4 +1038,35 @@
         });
     });
   }
+
+  const acceptBtn = document.querySelector("[data-conversation-accept]");
+  const declineBtn = document.querySelector("[data-conversation-decline]");
+  if (acceptBtn && partnerId) {
+    acceptBtn.addEventListener("click", function () {
+      acceptBtn.disabled = true;
+      apiJSON("/api/conversations/" + partnerId + "/accept/", "POST", {})
+        .then(function (data) {
+          toast(data.message || "Discussion acceptée.");
+          window.location.reload();
+        })
+        .catch(function (err) {
+          acceptBtn.disabled = false;
+          toast(err.message || "Action impossible.");
+        });
+    });
+  }
+  if (declineBtn && partnerId) {
+    declineBtn.addEventListener("click", function () {
+      if (!window.confirm("Refuser et bloquer cette discussion ?")) return;
+      declineBtn.disabled = true;
+      apiJSON("/api/conversations/" + partnerId + "/decline/", "POST", {})
+        .then(function () {
+          window.location.href = "/messages/";
+        })
+        .catch(function (err) {
+          declineBtn.disabled = false;
+          toast(err.message || "Action impossible.");
+        });
+    });
+  }
 })();

@@ -824,10 +824,11 @@ class PagesSmokeTests(TestCase):
 class FreemiumQuotaTests(TestCase):
     def setUp(self):
         site_settings_controller.seed_defaults()
-        site_settings_controller.set_value("free_messages_limit", 3)
+        site_settings_controller.set_value("free_messages_limit", 5)
         site_settings_controller.set_value("free_swipes_per_day", 20)
-        site_settings_controller.set_value("free_likes_per_day", 10)
-        site_settings_controller.set_value("free_likes_visible", 1)
+        site_settings_controller.set_value("free_likes_per_day", 20)
+        site_settings_controller.set_value("free_likes_visible", 2)
+        site_settings_controller.set_value("free_history_visible", 5)
         self.client = Client(enforce_csrf_checks=False)
         self.free = make_profile("free@test.com", Gender.MALE, "Libre")
         self.p2 = make_profile("quota2@test.com", Gender.FEMALE, "Awa")
@@ -847,10 +848,12 @@ class FreemiumQuotaTests(TestCase):
         ok1, _, _ = message_controller.send_text(self.free, self.p2.id, "Un")
         ok2, _, _ = message_controller.send_text(self.free, self.p2.id, "Deux")
         ok3, _, _ = message_controller.send_text(self.free, self.p3.id, "Trois")
-        ok4, msg, _ = message_controller.send_text(self.free, self.p3.id, "Quatre")
-        self.assertTrue(ok1 and ok2 and ok3)
-        self.assertFalse(ok4)
-        self.assertIn("3 messages", msg)
+        ok4, _, _ = message_controller.send_text(self.free, self.p3.id, "Quatre")
+        ok5, _, _ = message_controller.send_text(self.free, self.p2.id, "Cinq")
+        ok6, msg, _ = message_controller.send_text(self.free, self.p3.id, "Six")
+        self.assertTrue(ok1 and ok2 and ok3 and ok4 and ok5)
+        self.assertFalse(ok6)
+        self.assertIn("5 messages", msg)
 
     def test_daily_swipe_and_like_limits(self):
         site_settings_controller.set_value("free_swipes_per_day", 1)
@@ -869,20 +872,71 @@ class FreemiumQuotaTests(TestCase):
         self.assertFalse(like2["ok"])
         self.assertEqual(like2.get("code"), "like_limit")
 
-    def test_historique_locked_for_freemium(self):
+    def test_historique_partial_for_freemium_male(self):
+        for i in range(6):
+            other = make_profile(f"hist{i}@test.com", Gender.FEMALE, f"H{i}")
+            other.photo_url = "https://example.com/p.webp"
+            other.onboarding_completed = True
+            other.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+            swipe_controller.record_swipe(self.free, other.id, "like")
         self.client.force_login(self.free.user)
         page = self.client.get("/historique/")
         self.assertEqual(page.status_code, 200)
-        self.assertContains(page, "réservé aux membres Premium")
-        self.assertNotContains(page, "history__grid")
+        self.assertContains(page, "history__grid")
+        self.assertContains(page, "plan supérieur")
 
-    def test_likes_page_shows_one_profile(self):
+    def test_female_unlimited_freemium(self):
+        from core.controllers import quota_controller
+
+        femme = make_profile("femme@test.com", Gender.FEMALE, "Awa")
+        self.assertFalse(quota_controller.is_freemium(femme))
+
+    def test_likes_page_shows_two_profiles(self):
+        p4 = make_profile("quota4@test.com", Gender.FEMALE, "Sokhna")
+        p4.photo_url = "https://example.com/photo.webp"
+        p4.onboarding_completed = True
+        p4.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
         swipe_controller.record_swipe(self.p2, self.free.id, "like")
         swipe_controller.record_swipe(self.p3, self.free.id, "like")
+        swipe_controller.record_swipe(p4, self.free.id, "like")
         self.client.force_login(self.free.user)
         page = self.client.get("/likes/")
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "is-locked")
         html = page.content.decode()
-        self.assertTrue(("Awa" in html) != ("Fatou" in html))
+        visible_names = sum(1 for name in ("Awa", "Fatou", "Sokhna") if name in html)
+        self.assertGreaterEqual(visible_names, 2)
+
+    def test_subscription_entitlements(self):
+        from core.controllers import subscription_controller
+        from core.models.choices import SubscriptionStatus, SubscriptionTier
+
+        self.free.subscription_tier = SubscriptionTier.PREMIUM_1M
+        self.free.subscription_status = SubscriptionStatus.ACTIVE
+        self.free.save(update_fields=["subscription_tier", "subscription_status", "updated_at"])
+        self.assertEqual(subscription_controller.visibility_multiplier(self.free), 5)
+        self.free.subscription_tier = SubscriptionTier.VIP_1M
+        self.free.save(update_fields=["subscription_tier", "updated_at"])
+        self.assertEqual(subscription_controller.visibility_multiplier(self.free), 10)
+        self.assertTrue(subscription_controller.can_bypass_gender_filter(self.free))
+
+    def test_auto_ban_after_reports(self):
+        from core.controllers import moderation_controller
+        from core.models.choices import ReportReason
+
+        target = make_profile("bad@test.com", Gender.MALE, "Bad")
+        r1 = make_profile("r1@test.com", Gender.FEMALE, "R1")
+        r2 = make_profile("r2@test.com", Gender.FEMALE, "R2")
+        r3 = make_profile("r3@test.com", Gender.FEMALE, "R3")
+        for rep in (r1, r2, r3):
+            moderation_controller.create_report(
+                rep,
+                {
+                    "reported_profile_id": str(target.id),
+                    "reason": ReportReason.HARASSMENT,
+                    "message": "Comportement inacceptable répété.",
+                },
+            )
+        target.refresh_from_db()
+        self.assertIsNotNone(target.banned_at)
 

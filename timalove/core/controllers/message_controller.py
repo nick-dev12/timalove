@@ -15,7 +15,7 @@ from core.controllers import notification_controller, site_settings_controller
 from core.controllers.moderation_controller import has_blocked, is_blocked_between
 from core.controllers.swipe_controller import models_q_participant
 from core.models import ConversationHide, Match, Message, Profile
-from core.models.choices import MatchStatus, MessageType
+from core.models.choices import ConversationStatus, MatchStatus, MessageType
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +128,77 @@ def get_active_match(profile: Profile, partner_id) -> Match | None:
     )
 
 
+def _apply_conversation_gate(match: Match, initiator: Profile, recipient: Profile) -> None:
+    from core.controllers import subscription_controller
+
+    if not subscription_controller.conversation_requires_acceptance(recipient):
+        if match.conversation_status != ConversationStatus.ACCEPTED:
+            match.conversation_status = ConversationStatus.ACCEPTED
+            match.save(update_fields=["conversation_status", "updated_at"])
+        return
+    if initiator.pk == recipient.pk:
+        return
+    match.conversation_status = ConversationStatus.PENDING
+    match.conversation_initiator = initiator
+    match.save(update_fields=["conversation_status", "conversation_initiator", "updated_at"])
+
+
+def _conversation_visible(match: Match, profile: Profile) -> bool:
+    if match.conversation_status in {ConversationStatus.DECLINED, ConversationStatus.BLOCKED}:
+        return False
+    return True
+
+
+def _is_conversation_recipient(match: Match, profile: Profile) -> bool:
+    return match.conversation_initiator_id and match.conversation_initiator_id != profile.id
+
+
+def _pending_blocks_send(match: Match, profile: Profile) -> tuple[bool, str]:
+    if match.conversation_status != ConversationStatus.PENDING:
+        return False, ""
+    if _is_conversation_recipient(match, profile):
+        return True, "Acceptez ou refusez cette demande pour répondre."
+    if match.conversation_initiator_id == profile.id:
+        sent = match.messages.filter(sender=profile).count()
+        if sent >= 1:
+            return True, "En attente d’acceptation. Vous pourrez écrire à nouveau une fois la discussion acceptée."
+    return False, ""
+
+
+@transaction.atomic
+def accept_conversation(profile: Profile, partner_id) -> tuple[bool, str]:
+    match = get_active_match(profile, partner_id)
+    if not match:
+        return False, "Conversation introuvable."
+    if match.conversation_status != ConversationStatus.PENDING:
+        return False, "Aucune demande en attente."
+    if not _is_conversation_recipient(match, profile):
+        return False, "Seul le destinataire peut accepter."
+    match.conversation_status = ConversationStatus.ACCEPTED
+    match.is_one_sided = False
+    match.save(update_fields=["conversation_status", "is_one_sided", "updated_at"])
+    return True, "Discussion acceptée."
+
+
+@transaction.atomic
+def decline_conversation(profile: Profile, partner_id) -> tuple[bool, str]:
+    from core.controllers.moderation_controller import block_user
+
+    match = get_active_match(profile, partner_id)
+    if not match:
+        return False, "Conversation introuvable."
+    if match.conversation_status != ConversationStatus.PENDING:
+        return False, "Aucune demande en attente."
+    if not _is_conversation_recipient(match, profile):
+        return False, "Seul le destinataire peut refuser."
+    partner = match.partner_of(profile)
+    match.conversation_status = ConversationStatus.BLOCKED
+    match.save(update_fields=["conversation_status", "updated_at"])
+    block_user(profile, partner.id)
+    hide_conversation(profile, partner.id)
+    return True, "Discussion refusée."
+
+
 @transaction.atomic
 def ensure_conversation(profile: Profile, partner_id) -> tuple[bool, str, Match | None]:
     """Ouvre une conversation : match existant ou création après like envoyé."""
@@ -169,6 +240,8 @@ def ensure_conversation(profile: Profile, partner_id) -> tuple[bool, str, Match 
     if update_fields:
         match.save(update_fields=list(dict.fromkeys(update_fields)))
 
+    _apply_conversation_gate(match, initiator=profile, recipient=partner)
+
     for p in (profile, partner):
         p.matches_count = Match.objects.filter(
             status=MatchStatus.ACTIVE
@@ -208,6 +281,8 @@ def list_conversations(profile: Profile, include_hidden: bool = False) -> list[d
     results = []
     for m in matches:
         partner = m.partner_of(profile)
+        if not _conversation_visible(m, profile):
+            continue
         if not include_hidden and partner.id in hidden_ids:
             continue
         if include_hidden and partner.id not in hidden_ids:
@@ -226,6 +301,10 @@ def list_conversations(profile: Profile, include_hidden: bool = False) -> list[d
                 "preview": preview,
                 "unread": 0 if flags["blocked_by_me"] else unread,
                 "last_time": _format_list_time(last.created_at) if last else "",
+                "conversation_status": m.conversation_status,
+                "conversation_pending": m.conversation_status == ConversationStatus.PENDING,
+                "can_accept": m.conversation_status == ConversationStatus.PENDING
+                and _is_conversation_recipient(m, profile),
                 **flags,
             }
         )
@@ -256,6 +335,8 @@ def inbox_feed(profile: Profile) -> list[dict]:
                 "last_time": c["last_time"] or "",
                 "unread": int(c["unread"] or 0),
                 "blocked_by_me": bool(c["blocked_by_me"]),
+                "conversation_pending": bool(c.get("conversation_pending")),
+                "can_accept": bool(c.get("can_accept")),
                 "thread_url": f"/discussions/{partner.id}/",
             }
         )
@@ -306,15 +387,29 @@ def _notify_new_message(profile: Profile, match: Match, preview: str) -> None:
 
 
 def can_send(profile: Profile, match: Match) -> tuple[bool, str]:
-    from core.controllers import quota_controller
+    from core.controllers import quota_controller, subscription_controller
 
     partner = match.partner_of(profile)
     denied = _messaging_denied(profile, partner)
     if denied:
         return False, denied
+    blocked, pending_msg = _pending_blocks_send(match, profile)
+    if blocked:
+        return False, pending_msg
     ok, err = quota_controller.check_message(profile)
     if not ok:
         return False, err
+    return True, ""
+
+
+def can_send_media(profile: Profile, match: Match) -> tuple[bool, str]:
+    from core.controllers import subscription_controller
+
+    ok, err = can_send(profile, match)
+    if not ok:
+        return False, err
+    if not subscription_controller.can_send_media(profile):
+        return False, "Photos et audio réservés aux membres Premium."
     return True, ""
 
 
@@ -356,7 +451,7 @@ def send_voice(
     match = get_active_match(profile, partner_id)
     if not match:
         return False, "Conversation introuvable.", None
-    ok, err = can_send(profile, match)
+    ok, err = can_send_media(profile, match)
     if not ok:
         return False, err, None
     msg = Message.objects.create(
@@ -378,7 +473,7 @@ def send_image(profile: Profile, partner_id, image_url: str) -> tuple[bool, str,
     match = get_active_match(profile, partner_id)
     if not match:
         return False, "Conversation introuvable.", None
-    ok, err = can_send(profile, match)
+    ok, err = can_send_media(profile, match)
     if not ok:
         return False, err, None
     url = (image_url or "").strip()
@@ -516,17 +611,24 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
     items = [_serialize_message(msg, profile) for msg in messages_for(profile, partner_id)]
     denied = _messaging_denied(profile, partner)
     quota_ok, quota_err = quota_controller.check_message(profile)
+    pending_block, pending_msg = _pending_blocks_send(match, profile)
     blocked = bool(flags["is_blocked"])
+    can_accept = (
+        match.conversation_status == ConversationStatus.PENDING and _is_conversation_recipient(match, profile)
+    )
     return {
         "me": _person_card(profile),
         "partner": _person_card(partner),
         "thread_items": items,
         "match": match,
         **flags,
-        "can_send": not blocked and not denied,
-        "quota_locked": (not blocked) and not quota_ok,
-        "quota_message": quota_err if (not blocked and not quota_ok) else "",
+        "can_send": not blocked and not denied and not pending_block,
+        "quota_locked": (not blocked) and not pending_block and not quota_ok,
+        "quota_message": pending_msg or (quota_err if (not blocked and not quota_ok) else ""),
         "messages_remaining": quota_controller.messages_remaining(profile),
+        "conversation_pending": match.conversation_status == ConversationStatus.PENDING,
+        "can_accept": can_accept,
+        "partner_profile_id": str(partner.id),
     }
 
 

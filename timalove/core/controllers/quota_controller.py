@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from core.controllers import site_settings_controller
 from core.models import Message, Profile, Swipe
-from core.models.choices import SwipeAction
+from core.models.choices import Gender, SwipeAction
 
 LIKE_Q = Q(is_like=True) | Q(is_super_like=True)
 UPGRADE_PATH = "/profil/?tab=settings&section=subscription"
@@ -20,6 +20,7 @@ MESSAGE_LIMIT_MSG = (
     "Limite de {n} messages gratuits atteinte (toutes discussions confondues). "
     "Passez Premium pour continuer."
 )
+HISTORY_LIMIT_MSG = "Passez au plan supérieur pour voir plus de profils dans votre historique."
 
 
 def is_freemium(profile: Profile | None) -> bool:
@@ -29,7 +30,14 @@ def is_freemium(profile: Profile | None) -> bool:
         return False
     if getattr(profile, "is_admin", False):
         return False
+    # Femmes : aucune restriction freemium
+    if profile.gender == Gender.FEMALE:
+        return False
     return not profile.has_active_subscription
+
+
+def is_male_freemium(profile: Profile | None) -> bool:
+    return bool(profile and is_freemium(profile) and profile.gender == Gender.MALE)
 
 
 def upgrade_path() -> str:
@@ -37,7 +45,7 @@ def upgrade_path() -> str:
 
 
 def messages_limit() -> int:
-    return max(0, int(site_settings_controller.get("free_messages_limit", 3) or 3))
+    return max(0, int(site_settings_controller.get("free_messages_limit", 5) or 5))
 
 
 def swipes_per_day_limit() -> int:
@@ -46,13 +54,18 @@ def swipes_per_day_limit() -> int:
 
 
 def likes_per_day_limit() -> int:
-    default = getattr(settings, "FREE_LIKES_PER_DAY_DEFAULT", 10)
+    default = getattr(settings, "FREE_LIKES_PER_DAY_DEFAULT", 20)
     return max(0, int(site_settings_controller.get("free_likes_per_day", default) or default))
 
 
 def likes_visible_limit() -> int:
-    default = getattr(settings, "FREE_LIKES_VISIBLE_DEFAULT", 1)
+    default = getattr(settings, "FREE_LIKES_VISIBLE_DEFAULT", 2)
     return max(0, int(site_settings_controller.get("free_likes_visible", default) or default))
+
+
+def history_visible_limit() -> int:
+    default = getattr(settings, "FREE_HISTORY_VISIBLE_DEFAULT", 5)
+    return max(0, int(site_settings_controller.get("free_history_visible", default) or default))
 
 
 def day_start():
@@ -82,7 +95,14 @@ def daily_like_count(profile: Profile) -> int:
 
 
 def history_locked(profile: Profile | None) -> bool:
+    """Historique partiellement visible (5 profils) — jamais verrouillé en entier."""
     return False
+
+
+def history_limit_for(profile: Profile | None) -> int | None:
+    if not is_male_freemium(profile):
+        return None
+    return history_visible_limit()
 
 
 def check_message(profile: Profile) -> tuple[bool, str]:
@@ -132,6 +152,7 @@ def snapshot(profile: Profile | None) -> dict:
             "likes_left": None,
             "messages_left": None,
             "history_locked": False,
+            "history_visible": None,
             "likes_visible": None,
             "upgrade_path": UPGRADE_PATH,
         }
@@ -141,6 +162,7 @@ def snapshot(profile: Profile | None) -> dict:
         "likes_left": max(0, likes_per_day_limit() - daily_like_count(profile)),
         "messages_left": messages_remaining(profile),
         "history_locked": False,
+        "history_visible": history_visible_limit(),
         "likes_visible": likes_visible_limit(),
         "upgrade_path": UPGRADE_PATH,
     }

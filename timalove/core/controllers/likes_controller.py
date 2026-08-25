@@ -318,8 +318,14 @@ PAGE_SIZE = 20
 
 def outgoing(profile: Profile, limit: int = PAGE_SIZE, offset: int = 0) -> dict:
     """Profils likés ou super likés, paginés du plus récent au plus ancien."""
+    from core.controllers import quota_controller
+
     limit = max(1, min(int(limit or PAGE_SIZE), 50))
     offset = max(0, int(offset or 0))
+    hist_limit = quota_controller.history_limit_for(profile)
+    total_swipes = (
+        Swipe.objects.filter(swiper=profile).filter(LIKE_Q).count()
+    )
     swipes = list(
         Swipe.objects.filter(swiper=profile)
         .filter(LIKE_Q)
@@ -329,10 +335,22 @@ def outgoing(profile: Profile, limit: int = PAGE_SIZE, offset: int = 0) -> dict:
     has_more = len(swipes) > limit
     swipes = swipes[:limit]
     matched_ids = _matched_ids(profile)
+    items = [_serialize_outgoing(swipe, matched_ids) for swipe in swipes]
+    locked_extra = 0
+    if hist_limit is not None and offset == 0:
+        visible_cap = hist_limit
+        if len(items) > visible_cap:
+            locked_extra = len(items) - visible_cap
+            items = items[:visible_cap]
+        elif total_swipes > visible_cap:
+            locked_extra = total_swipes - visible_cap
+        has_more = bool(locked_extra) or (has_more and hist_limit is None)
     return {
-        "items": [_serialize_outgoing(swipe, matched_ids) for swipe in swipes],
+        "items": items,
         "has_more": has_more,
         "next_offset": offset + len(swipes),
+        "history_locked_extra": locked_extra,
+        "history_limit": hist_limit,
     }
 
 

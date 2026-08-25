@@ -207,13 +207,14 @@ SITE_URL = resolve_public_site_url(
     debug=DEBUG,
     allowed_hosts=ALLOWED_HOSTS,
 )
-FREE_MESSAGES_LIMIT_DEFAULT = 3
+FREE_MESSAGES_LIMIT_DEFAULT = 5
 FREE_SWIPES_PER_DAY_DEFAULT = 20
-FREE_LIKES_PER_DAY_DEFAULT = 10
-FREE_LIKES_VISIBLE_DEFAULT = 1
+FREE_LIKES_PER_DAY_DEFAULT = 20
+FREE_LIKES_VISIBLE_DEFAULT = 2
+FREE_HISTORY_VISIBLE_DEFAULT = 5
 # False = tests complets (messages, swipes, likes, historique, photos sans quota).
 # Remettre True avant l’ouverture publique.
-FREEMIUM_LIMITS_ENABLED = env.bool("FREEMIUM_LIMITS_ENABLED", default=False)
+FREEMIUM_LIMITS_ENABLED = env.bool("FREEMIUM_LIMITS_ENABLED", default=True)
 
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND",

@@ -6,7 +6,7 @@ import uuid
 
 from django.db import models
 
-from .choices import MatchStatus, MessageType, SwipeAction
+from .choices import ConversationStatus, MatchStatus, MessageType, SwipeAction
 from .profile import Profile
 
 
@@ -40,6 +40,18 @@ class Match(models.Model):
     is_one_sided = models.BooleanField(
         default=False,
         help_text="Conversation ouverte après like envoyé, sans like retour.",
+    )
+    conversation_status = models.CharField(
+        max_length=20,
+        choices=ConversationStatus.choices,
+        default=ConversationStatus.ACCEPTED,
+    )
+    conversation_initiator = models.ForeignKey(
+        Profile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="initiated_conversations",
     )
     user_1_message_count = models.PositiveIntegerField(default=0)
     user_2_message_count = models.PositiveIntegerField(default=0)

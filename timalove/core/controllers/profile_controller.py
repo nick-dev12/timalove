@@ -128,6 +128,8 @@ def _public_place(value: str | None) -> str:
 
 
 def serialize_visit(profile: Profile) -> dict:
+    from core.controllers import subscription_controller
+
     location_parts = [p for p in (_public_place(profile.commune), _public_place(profile.city), _public_place(profile.country)) if p]
     photos = gallery_urls(profile)
     interest_labels = {i["id"]: i["label"] for i in INTERESTS}
@@ -175,6 +177,7 @@ def serialize_visit(profile: Profile) -> dict:
         "completion": completion_score(profile),
         "hide_age": bool(profile.hide_age),
         "is_hidden": bool(profile.is_hidden),
+        "subscription_badge": subscription_controller.badge_for(profile),
     }
 
 
@@ -204,46 +207,24 @@ def _price_label(amount: int) -> str:
 
 
 def subscription_plans_for(profile: Profile) -> list[dict]:
-    from core.controllers import site_settings_controller
+    from core.controllers import site_settings_controller, subscription_controller
 
     prices = site_settings_controller.get("subscription_prices") or {}
     catalog = [
         {
-            "id": SubscriptionTier.JOURNEE_AMOUREUSE,
-            "label": "Journée amoureuse",
-            "duration_label": "24 heures",
-            "benefits": [
-                "Messages illimités pendant 24 h",
-                "Swipes et likes sans limite quotidienne",
-                "Historique et likes reçus complets",
-            ],
-            "is_featured": False,
-            "is_vip": False,
-        },
-        {
-            "id": SubscriptionTier.PASS_AMOUR,
-            "label": "Pass Amour",
+            "id": SubscriptionTier.PREMIUM_1M,
+            "label": "Premium",
             "duration_label": "1 mois",
             "benefits": [
-                "Messages illimités",
-                "Swipes, likes et historique sans restriction",
-                "Tous les likes reçus visibles",
-            ],
-            "is_featured": True,
-            "badge": "Meilleur choix · le plus populaire",
-            "is_vip": False,
-        },
-        {
-            "id": SubscriptionTier.ETERNITE,
-            "label": "Éternité",
-            "duration_label": "À vie",
-            "benefits": [
-                "Accès premium permanent",
-                "Messages, swipes et likes sans limite",
+                "Messagerie illimitée",
+                "5× plus visible dans l’explorer",
+                "Photos et audio illimités",
                 "Historique et likes reçus complets",
             ],
-            "is_featured": False,
+            "is_featured": True,
+            "badge": "Le plus populaire",
             "is_vip": False,
+            "male_only": True,
         },
         {
             "id": SubscriptionTier.VIP_1M,
@@ -251,29 +232,39 @@ def subscription_plans_for(profile: Profile) -> list[dict]:
             "duration_label": "1 mois",
             "benefits": [
                 "Tous les avantages Premium",
-                "Badge VIP doré sur votre profil",
-                "Mise en avant prioritaire",
+                "10× plus visible · profils complets prioritaires",
+                "Badge VIP doré",
+                "Liker n’importe quel profil",
+                "Accepter ou refuser les demandes de discussion",
             ],
             "is_featured": False,
             "is_vip": True,
+            "male_only": True,
         },
         {
             "id": SubscriptionTier.PASS_FEMME,
-            "label": "Pass Femme",
+            "label": "Pass Femme Premium VIP",
             "duration_label": "15 jours",
             "benefits": [
-                "Boost et mise en avant du profil",
-                "Visibilité accrue dans l’explorer",
-                "Messages illimités pendant 15 jours",
+                "Tous les avantages Premium et VIP",
+                "10× plus visible · suggestions ×10",
+                "Badge doré · photos et audio illimités",
+                "Accepter ou refuser les demandes de discussion",
             ],
-            "is_featured": False,
-            "is_vip": False,
+            "is_featured": True,
+            "badge": "Offre femmes",
+            "is_vip": True,
             "female_only": True,
         },
     ]
+    allowed = set(subscription_controller.plans_catalog_for(profile))
     plans: list[dict] = []
     for item in catalog:
+        if item["id"] not in allowed:
+            continue
         if item.get("female_only") and profile.gender != Gender.FEMALE:
+            continue
+        if item.get("male_only") and profile.gender == Gender.FEMALE:
             continue
         amount = int(prices.get(item["id"], 0))
         plans.append(
@@ -500,8 +491,12 @@ def dob_bounds(age_min: int, age_max: int) -> tuple[date, date]:
 
 
 def apply_opposite_gender_filter(qs, viewer: Profile | None):
-    """Homme → femmes uniquement, femme → hommes uniquement (genre strict)."""
+    """Homme → femmes uniquement, femme → hommes uniquement (genre strict). VIP : tous les profils."""
+    from core.controllers import subscription_controller
+
     if viewer is None or not viewer.gender:
+        return qs
+    if subscription_controller.can_bypass_gender_filter(viewer):
         return qs
     opposite = Gender.FEMALE if viewer.gender == Gender.MALE else Gender.MALE
     return qs.filter(gender=opposite)

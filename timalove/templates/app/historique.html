@@ -89,15 +89,19 @@
     </section>
     {% endif %}
 
-    {% url 'public:historique_search' as history_search_url %}
-    {% include "partials/explorer_search_bar.html" with search_url=history_search_url search_placeholder="Rechercher un profil liké…" search_label="Rechercher un profil liké" %}
-
     <h1 class="history__heading">Près de vous</h1>
 
     {% if items %}
     <section class="history__grid" aria-label="Profils likés">
       {% include "partials/history_page.html" %}
     </section>
+    {% if history_locked_extra %}
+    <div class="history__more-wrap">
+      <p class="history__kicker">Offre Premium</p>
+      <p>Passez au plan supérieur pour voir {{ history_locked_extra }} profil{{ history_locked_extra|pluralize }} de plus dans votre historique.</p>
+      <a class="history__more" href="{% url 'app:parametres' %}">Voir les offres</a>
+    </div>
+    {% endif %}
     {% else %}
     <section class="history__empty" aria-live="polite">
       <span class="history__empty-ico" aria-hidden="true">

@@ -60,6 +60,13 @@ class MatchStatus(models.TextChoices):
     ENDED = "ended", "Terminé"
 
 
+class ConversationStatus(models.TextChoices):
+    PENDING = "pending", "En attente"
+    ACCEPTED = "accepted", "Acceptée"
+    DECLINED = "declined", "Refusée"
+    BLOCKED = "blocked", "Bloquée"
+
+
 class MessageType(models.TextChoices):
     TEXT = "text", "Texte"
     VOICE = "voice", "Vocal"

@@ -130,6 +130,17 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
                 match.status = MatchStatus.ACTIVE
                 match.is_one_sided = False
                 match.save(update_fields=["status", "is_one_sided", "updated_at"])
+            from core.controllers import message_controller, subscription_controller
+
+            initiator = swiper
+            recipient = swiped
+            first_swipe = Swipe.objects.filter(swiper=swiper, swiped=swiped).filter(like_q).first()
+            reciprocal_swipe = Swipe.objects.filter(swiper=swiped, swiped=swiper).filter(like_q).first()
+            if first_swipe and reciprocal_swipe and reciprocal_swipe.created_at < first_swipe.created_at:
+                initiator = swiped
+                recipient = swiper
+            if subscription_controller.conversation_requires_acceptance(recipient):
+                message_controller._apply_conversation_gate(match, initiator=initiator, recipient=recipient)
             matched = True
             for p in (swiper, swiped):
                 p.matches_count = Match.objects.filter(

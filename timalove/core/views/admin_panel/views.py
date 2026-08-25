@@ -166,16 +166,19 @@ def parametres(request):
             "maintenance_message", request.POST.get("maintenance_message", "")
         )
         site_settings_controller.set_value(
-            "free_messages_limit", int(request.POST.get("free_messages_limit") or 3)
+            "free_messages_limit", int(request.POST.get("free_messages_limit") or 5)
         )
         site_settings_controller.set_value(
             "free_swipes_per_day", int(request.POST.get("free_swipes_per_day") or 20)
         )
         site_settings_controller.set_value(
-            "free_likes_per_day", int(request.POST.get("free_likes_per_day") or 10)
+            "free_likes_per_day", int(request.POST.get("free_likes_per_day") or 20)
         )
         site_settings_controller.set_value(
-            "free_likes_visible", int(request.POST.get("free_likes_visible") or 1)
+            "free_likes_visible", int(request.POST.get("free_likes_visible") or 2)
+        )
+        site_settings_controller.set_value(
+            "free_history_visible", int(request.POST.get("free_history_visible") or 5)
         )
         site_settings_controller.set_value(
             "whatsapp_number", request.POST.get("whatsapp_number", "")

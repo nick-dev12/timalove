@@ -48,12 +48,51 @@ def create_report(reporter: Profile, data: dict) -> Report:
     message = (data.get("message") or "").strip()
     if not message:
         raise ValueError("Décrivez brièvement le motif du signalement.")
-    return Report.objects.create(
+    report = Report.objects.create(
         reporter=reporter,
         reported_profile=reported,
         reason=reason,
         message=message,
         report_kind=data.get("report_kind", "profile"),
+    )
+    _maybe_auto_ban_reported(reported, reason)
+    return report
+
+
+AUTO_BAN_REASONS = frozenset(
+    {
+        "harassment",
+        "inappropriate_content",
+        "scam",
+    }
+)
+AUTO_BAN_THRESHOLD = 3
+
+
+def _maybe_auto_ban_reported(reported: Profile | None, reason: str) -> None:
+    if reported is None or reason not in AUTO_BAN_REASONS:
+        return
+    if reported.banned_at:
+        return
+    distinct_reporters = (
+        Report.objects.filter(
+            reported_profile=reported,
+            reason__in=AUTO_BAN_REASONS,
+        )
+        .values("reporter_id")
+        .distinct()
+        .count()
+    )
+    if distinct_reporters < AUTO_BAN_THRESHOLD:
+        return
+    ban_profile(
+        reported,
+        reason=f"Ban automatique après {distinct_reporters} signalements ({reason}).",
+        admin=None,
+    )
+    Report.objects.filter(reported_profile=reported, reason__in=AUTO_BAN_REASONS).update(
+        status=ReportStatus.ACTION_TAKEN,
+        resolution="banned",
     )
 
 

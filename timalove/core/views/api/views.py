@@ -369,6 +369,22 @@ def cinetpay_notify(request):
 
 @login_required
 @require_POST
+def conversation_accept(request, partner_id):
+    ok, msg = message_controller.accept_conversation(request.user.profile, partner_id)
+    status = 200 if ok else 400
+    return JsonResponse({"ok": ok, "message": msg}, status=status)
+
+
+@login_required
+@require_POST
+def conversation_decline(request, partner_id):
+    ok, msg = message_controller.decline_conversation(request.user.profile, partner_id)
+    status = 200 if ok else 400
+    return JsonResponse({"ok": ok, "message": msg}, status=status)
+
+
+@login_required
+@require_POST
 def reports(request):
     data = _json(request) or request.POST
     try:

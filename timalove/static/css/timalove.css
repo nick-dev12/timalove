@@ -14157,6 +14157,40 @@ body.messages-page .msg__composer {
   line-height: 1.45;
 }
 
+.msg__pending-banner {
+  margin: 0 0.85rem 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  background: var(--white);
+  border: 1px solid rgba(232, 99, 122, 0.18);
+}
+
+.msg__pending-banner p {
+  margin: 0 0 0.65rem;
+  font-size: 0.875rem;
+  color: var(--bordeaux-dark);
+}
+
+.msg__pending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.msg__avatar--link,
+.msg__name-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.msg__avatar--link {
+  display: inline-flex;
+}
+
 .msg__composer--disabled {
   padding: 0.85rem 1rem;
   background: rgba(255, 255, 255, 0.72);

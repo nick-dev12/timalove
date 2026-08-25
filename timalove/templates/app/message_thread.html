@@ -39,19 +39,29 @@
     <p class="msg__blocked-banner" role="status">Vous avez bloqué ce profil. Vous ne recevrez plus ses messages.</p>
     {% elif blocked_me %}
     <p class="msg__blocked-banner" role="status">Cette conversation n'est plus disponible.</p>
+    {% elif can_accept %}
+    <div class="msg__pending-banner" data-conversation-pending role="region" aria-label="Demande de discussion">
+      <p>Cette personne souhaite échanger avec vous. Acceptez ou refusez la discussion.</p>
+      <div class="msg__pending-actions">
+        <button type="button" class="btn btn-primary btn-sm" data-conversation-accept>Accepter</button>
+        <button type="button" class="btn btn-outline btn-sm" data-conversation-decline>Bloquer</button>
+      </div>
+    </div>
+    {% elif conversation_pending %}
+    <p class="msg__blocked-banner" role="status">Demande envoyée — en attente d’acceptation.</p>
     {% endif %}
 
     <div class="msg__pair">
       <div class="msg__person">
-        <span class="msg__avatar">
+        <button type="button" class="msg__avatar msg__avatar--link" data-profile-modal="{{ partner_profile_id }}" aria-label="Voir le profil de {{ partner.first_name }}">
           {% if partner.photo_url %}
           <img src="{{ partner.photo_url }}" alt="">
           {% else %}
           <span>{{ partner.initial }}</span>
           {% endif %}
           {% if partner.is_online %}<i class="msg__dot"></i>{% endif %}
-        </span>
-        <strong>{{ partner.first_name }}</strong>
+        </button>
+        <strong><button type="button" class="msg__name-link" data-profile-modal="{{ partner_profile_id }}">{{ partner.first_name }}</button></strong>
         <em>{% if partner.is_online %}En ligne{% else %}Hors ligne{% endif %}</em>
       </div>
       <span class="msg__heart" aria-hidden="true">
@@ -149,7 +159,7 @@
     </form>
     {% elif blocked_by_me or blocked_me or not can_send %}
     <div class="msg__composer msg__composer--disabled" aria-disabled="true">
-      <p class="msg__composer-lock">Messagerie désactivée pour cette conversation.</p>
+      <p class="msg__composer-lock">{{ quota_message|default:"Messagerie désactivée pour cette conversation." }}</p>
     </div>
     {% else %}
     <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}" data-partner-id="{{ partner_id }}" data-media-url="{% url 'app:discussion_media' partner_id %}" data-quota-locked="{% if quota_locked %}1{% else %}0{% endif %}">
@@ -194,6 +204,7 @@
 </div>
 {% include "partials/message_report_modal.html" %}
 {% include "partials/message_delete_modal.html" %}
+{% include "partials/profile_modal.html" %}
 {% if not is_preview and plans %}
 {% include "partials/upgrade_plans_modal.html" %}
 {% endif %}

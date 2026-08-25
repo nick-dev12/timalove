@@ -203,15 +203,6 @@
             <label class="visit-form__field"><span>Âge maximum</span><input name="age_max" type="number" min="18" max="99" value="{{ filters.age_max }}"></label>
           </div>
           <label class="visit-form__field">
-            <span>Je recherche</span>
-            <select name="gender">
-              <option value="" {% if not filters.gender %}selected{% endif %}>Le genre opposé</option>
-              <option value="all" {% if filters.gender == 'all' %}selected{% endif %}>Tous les profils</option>
-              <option value="female" {% if filters.gender == 'female' %}selected{% endif %}>Femmes</option>
-              <option value="male" {% if filters.gender == 'male' %}selected{% endif %}>Hommes</option>
-            </select>
-          </label>
-          <label class="visit-form__field">
             <span>Religion</span>
             <select name="religion">
               <option value="" {% if not filters.religion %}selected{% endif %}>Toutes</option>
