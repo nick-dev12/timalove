@@ -207,6 +207,8 @@ def mark_inbox_seen(profile: Profile) -> None:
 
 def incoming_cards(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> list[dict]:
     """Likes reçus, format fiche pour la page Likes."""
+    from core.controllers import subscription_controller
+
     seen_at = profile.likes_inbox_seen_at
     cards = []
     for item in incoming(profile, limit=limit):
@@ -235,6 +237,7 @@ def incoming_cards(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> list[di
                 "is_new": _is_unread_incoming(item, seen_at),
                 "when": when,
                 "is_locked": False,
+                "subscription_badge": subscription_controller.badge_for(other),
             }
         )
     return cards
@@ -255,6 +258,7 @@ def _lock_incoming_card(item: dict) -> dict:
         "already_liked_back": False,
         "is_matched": False,
         "is_online": False,
+        "subscription_badge": "",
     }
 
 
@@ -294,6 +298,8 @@ def has_super_liked(profile: Profile, other_id) -> bool:
 
 
 def _serialize_outgoing(swipe: Swipe, matched_ids: set) -> dict | None:
+    from core.controllers import subscription_controller
+
     other = swipe.swiped
     if other is None:
         return None
@@ -312,6 +318,7 @@ def _serialize_outgoing(swipe: Swipe, matched_ids: set) -> dict | None:
         "liked_at": swipe.created_at,
         "profile_url": f"/explorer/profil/{other.pk}/",
         "message_url": f"/discussions/{other.pk}/" if other.id in matched_ids else "",
+        "subscription_badge": subscription_controller.badge_for(other),
     }
 
 

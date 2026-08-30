@@ -599,6 +599,8 @@ def unhide_conversation(profile: Profile, partner_id) -> None:
 
 
 def _person_card(profile: Profile) -> dict:
+    from core.controllers import subscription_controller
+
     name = (profile.first_name or "Membre").strip() or "Membre"
     return {
         "id": profile.id,
@@ -606,6 +608,7 @@ def _person_card(profile: Profile) -> dict:
         "photo_url": profile.primary_photo or "",
         "is_online": bool(profile.is_online),
         "initial": name[:1].upper(),
+        "subscription_badge": subscription_controller.badge_for(profile),
     }
 
 

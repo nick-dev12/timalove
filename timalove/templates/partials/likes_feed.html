@@ -1,8 +1,9 @@
+{% load subscription_tags %}
 {% if likes %}
 <span hidden data-likes-count-value="{{ pending_count }}"></span>
 <section class="likes__stories" aria-label="Nouveaux likes">
   {% for item in likes %}
-  <a class="likes__story{% if item.is_super_like %} is-super{% endif %}{% if item.is_matched %} is-matched{% endif %}{% if item.is_new %} is-new{% endif %}{% if item.is_locked %} is-locked{% endif %}" href="{{ item.profile_url }}"{% if not item.is_locked %} data-profile-modal="{{ item.id }}" data-profile-id="{{ item.id }}" data-filter-item data-super="{{ item.is_super_like|yesno:'1,0' }}" data-matched="{{ item.is_matched|yesno:'1,0' }}" data-online="{{ item.is_online|yesno:'1,0' }}"{% endif %}>
+  <a class="likes__story{% if item.is_super_like %} is-super{% endif %}{% if item.is_matched %} is-matched{% endif %}{% if item.is_new %} is-new{% endif %}{% if item.is_locked %} is-locked{% endif %}{% if item.subscription_badge == 'vip' %} is-vip{% endif %}" href="{{ item.profile_url }}"{% if not item.is_locked %} data-profile-modal="{{ item.id }}" data-profile-id="{{ item.id }}" data-filter-item data-super="{{ item.is_super_like|yesno:'1,0' }}" data-matched="{{ item.is_matched|yesno:'1,0' }}" data-online="{{ item.is_online|yesno:'1,0' }}"{% endif %}>
     <span class="likes__story-ring">
       {% if item.photo_url %}
       <img src="{{ item.photo_url }}" alt="">
@@ -22,7 +23,10 @@
       <svg viewBox="0 0 24 22" width="10" height="9"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
     </span>
     {% endif %}
-    <span class="likes__story-name">{{ item.first_name }}</span>
+    <span class="likes__story-name">
+      {% include "partials/subscription_mark.html" with badge=item.subscription_badge %}
+      {{ item.first_name }}
+    </span>
   </a>
   {% endfor %}
 </section>
@@ -45,7 +49,7 @@
     </div>
   </article>
   {% else %}
-  <article class="likes__card{% if item.is_matched %} is-matched{% endif %}" data-profile-id="{{ item.id }}" data-filter-item data-super="{{ item.is_super_like|yesno:'1,0' }}" data-matched="{{ item.is_matched|yesno:'1,0' }}" data-online="{{ item.is_online|yesno:'1,0' }}">
+  <article class="likes__card{% if item.is_matched %} is-matched{% endif %}{% if item.subscription_badge == 'vip' %} is-vip{% elif item.subscription_badge == 'premium' %} is-premium{% endif %}" data-profile-id="{{ item.id }}" data-filter-item data-super="{{ item.is_super_like|yesno:'1,0' }}" data-matched="{{ item.is_matched|yesno:'1,0' }}" data-online="{{ item.is_online|yesno:'1,0' }}">
     <a class="likes__card-media" href="{{ item.profile_url }}" data-profile-modal="{{ item.id }}">
       {% if item.photo_url %}
       <img src="{{ item.photo_url }}" alt="{{ item.first_name }}" loading="lazy">
@@ -63,7 +67,10 @@
       {% endif %}
     </a>
     <div class="likes__card-bar">
-      <strong>{{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}</strong>
+      <strong>
+        {% include "partials/subscription_mark.html" with badge=item.subscription_badge %}
+        {{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}
+      </strong>
       <em>{{ item.city }}</em>
       <div class="likes__card-actions">
         {% if item.is_matched or item.already_liked_back %}

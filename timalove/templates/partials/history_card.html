@@ -1,4 +1,5 @@
-<article class="history__card{% if item.is_super_like %} is-super{% endif %}{% if item.liked %} is-liked{% endif %}">
+{% load subscription_tags %}
+<article class="history__card{% if item.is_super_like %} is-super{% endif %}{% if item.liked %} is-liked{% endif %}{% if item.subscription_badge == 'vip' %} is-vip{% elif item.subscription_badge == 'premium' %} is-premium{% endif %}">
   <a class="history__media" href="{{ item.profile_url }}" data-profile-modal="{{ item.id }}">
     {% if item.photo_url %}
     <img src="{{ item.photo_url }}" alt="{{ item.first_name }}" loading="lazy">
@@ -12,7 +13,10 @@
     {% endif %}
   </a>
   <div class="history__bar">
-    <span class="history__name">{{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}</span>
+    <span class="history__name">
+      {% include "partials/subscription_mark.html" with badge=item.subscription_badge %}
+      <span>{{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}</span>
+    </span>
     {% if not is_preview %}
     <div class="history__actions">
       {% if item.liked %}

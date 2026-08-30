@@ -1,5 +1,5 @@
 {% load static %}
-<div class="visit" data-profile-id="{{ member.id }}">
+<div class="visit{% if member.subscription_badge == 'vip' %} is-vip{% elif member.subscription_badge == 'premium' %} is-premium{% endif %}" data-profile-id="{{ member.id }}">
   <header class="visit__nav">
     {% include "partials/btn_back.html" with is_button=True extra_class="visit__nav-back" extra="data-profile-modal-close" %}
     <p class="visit__nav-brand brand-mark">
@@ -12,7 +12,7 @@
   </header>
 
   <div class="visit__intro">
-    <header class="visit__ig">
+    <header class="visit__ig{% if member.subscription_badge == 'vip' %} is-vip{% elif member.subscription_badge == 'premium' %} is-premium{% endif %}">
       <div class="visit__ig-top">
         <div class="visit__media">
           <div class="visit__photo-stage">
@@ -29,6 +29,7 @@
           <div class="visit__identity-top">
             <div class="visit__who">
               <h1 class="visit__name">
+                {% include "partials/subscription_mark.html" with badge=member.subscription_badge %}
                 <span class="visit__name-main">{{ member.full_name|default:member.first_name }}{% if member.age %}<span class="visit__age">, {{ member.age }}</span>{% endif %}</span>
                 {% if member.is_verified %}
                 <span class="visit__verified" title="Profil vérifié" aria-label="Profil vérifié">

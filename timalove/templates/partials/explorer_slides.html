@@ -1,14 +1,14 @@
-{% load static %}
+{% load static subscription_tags %}
 {% for card in cards %}
 <article
-  class="explorer__slide"
+  class="explorer__slide{% if card.subscription_badge == 'vip' %} is-vip{% elif card.subscription_badge == 'premium' %} is-premium{% endif %}"
   data-profile-id="{{ card.id }}"
   {% if reveal_first and forloop.first %}data-ready="true"{% endif %}
 >
   <div class="explorer__card">
     <div class="explorer__media">
       <div class="explorer__reveal">
-        <div class="explorer__photos" data-photos data-profile-modal="{{ card.id }}" data-profile-tab="gallery" role="button" tabindex="0" aria-label="Ouvrir la galerie de {{ card.first_name }}">
+        <div class="explorer__photos{% if card.subscription_badge == 'vip' %} is-vip{% endif %}" data-photos data-profile-modal="{{ card.id }}" data-profile-tab="gallery" role="button" tabindex="0" aria-label="Ouvrir la galerie de {{ card.first_name }}">
           {% if card.photos %}
             {% for url in card.photos %}
             <img class="explorer__photo{% if forloop.first %} is-active{% endif %}" src="{{ url }}" alt="{{ card.first_name }}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
@@ -43,7 +43,7 @@
 
         <a class="explorer__go-profile" href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}" aria-label="Voir le profil de {{ card.first_name }}">
           <span>Profil</span>
-          <span class="explorer__go-profile-avatar">
+          <span class="explorer__go-profile-avatar{% if card.subscription_badge == 'vip' %} is-vip{% endif %}">
             {% if card.photo_url %}
             <img src="{{ card.photo_url }}" alt="" width="44" height="44">
             {% else %}
@@ -59,16 +59,12 @@
               {{ card.city|default:card.location }}
             </span>
             <h2>
+              {% include "partials/subscription_mark.html" with badge=card.subscription_badge %}
               <a href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}">
                 {{ card.first_name }}{% if card.age %}, {{ card.age }}{% endif %}
               </a>
               {% if card.is_verified %}
               <span class="explorer__verified" title="Profil vérifié" aria-label="Profil vérifié">★</span>
-              {% endif %}
-              {% if card.subscription_badge == "vip" %}
-              <span class="badge badge-vip">VIP</span>
-              {% elif card.subscription_badge == "premium" %}
-              <span class="badge badge-premium">Premium</span>
               {% endif %}
             </h2>
             {% if card.profession %}

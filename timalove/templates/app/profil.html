@@ -8,7 +8,7 @@
 <script src="{% static 'js/own-profile.js' %}?v=20260827promo1" defer></script>
 {% endblock %}
 {% block body %}
-<div class="visit visit--own" data-own-profile data-max-photos="{{ max_photos }}">
+<div class="visit visit--own{% if member.subscription_badge == 'vip' %} is-vip{% elif member.subscription_badge == 'premium' %} is-premium{% endif %}" data-own-profile data-max-photos="{{ max_photos }}">
   <header class="visit__nav">
     {% include "partials/btn_back.html" with href="/explorer/" extra_class="visit__nav-back" %}
     <p class="visit__nav-brand brand-mark">
@@ -19,7 +19,7 @@
   </header>
 
   <div class="visit__intro">
-    <header class="visit__ig">
+    <header class="visit__ig{% if member.subscription_badge == 'vip' %} is-vip{% elif member.subscription_badge == 'premium' %} is-premium{% endif %}">
       <div class="visit__ig-top">
         <div class="visit__media">
           <div class="visit__photo-stage">
@@ -37,6 +37,7 @@
           <div class="visit__identity-top">
             <div class="visit__who">
               <h1 class="visit__name">
+                {% include "partials/subscription_mark.html" with badge=member.subscription_badge labeled="1" %}
                 <span class="visit__name-main">
                   <span data-display-name>{{ member.full_name|default:member.first_name }}</span>{% if member.age %}<span class="visit__age" data-display-age>, {{ member.age }}</span>{% else %}<span class="visit__age" data-display-age></span>{% endif %}
                 </span>

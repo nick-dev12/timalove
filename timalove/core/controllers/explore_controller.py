@@ -274,6 +274,8 @@ def public_feed(
 
 def get_public_profile(profile_id, viewer=None) -> dict | None:
     """Détail public d'un profil visitable depuis l'explorer."""
+    from core.controllers import subscription_controller
+
     try:
         uid = uuid.UUID(str(profile_id))
     except (TypeError, ValueError):
@@ -339,6 +341,7 @@ def get_public_profile(profile_id, viewer=None) -> dict | None:
         "trait_chips": _chip_catalog(TRAITS, profile.personality_traits),
         "life_values": [str(v).strip() for v in (profile.life_values or []) if str(v).strip()],
         "life_value_labels": life_value_labels(profile.life_values),
+        "subscription_badge": subscription_controller.badge_for(profile),
     }
 
 

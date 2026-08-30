@@ -170,6 +170,39 @@ class SubscriptionPricesMergeTests(TestCase):
         self.assertEqual(stored["journee_amoureuse"], 1000)
 
 
+class SubscriptionBadgeTests(TestCase):
+    def _activate(self, profile, tier):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from core.models.choices import SubscriptionStatus
+
+        profile.subscription_tier = tier
+        profile.subscription_status = SubscriptionStatus.ACTIVE
+        profile.subscription_end_date = timezone.now() + timedelta(days=15)
+        profile.save(update_fields=["subscription_tier", "subscription_status", "subscription_end_date", "updated_at"])
+
+    def test_badge_premium_vip_and_pass_femme(self):
+        from core.controllers import subscription_controller
+        from core.models.choices import SubscriptionTier
+
+        free = make_profile("free-badge@test.com", Gender.MALE, "Free")
+        self.assertEqual(subscription_controller.badge_for(free), "")
+
+        premium = make_profile("prem-badge@test.com", Gender.MALE, "Prem")
+        self._activate(premium, SubscriptionTier.PREMIUM_1M)
+        self.assertEqual(subscription_controller.badge_for(premium), "premium")
+
+        vip = make_profile("vip-badge@test.com", Gender.MALE, "Vip")
+        self._activate(vip, SubscriptionTier.VIP_1M)
+        self.assertEqual(subscription_controller.badge_for(vip), "vip")
+
+        femme = make_profile("pass-badge@test.com", Gender.FEMALE, "Pass")
+        self._activate(femme, SubscriptionTier.PASS_FEMME)
+        self.assertEqual(subscription_controller.badge_for(femme), "vip")
+
+
 class LikesMessagingFlowTests(TestCase):
     """Like, super like, match et messagerie entre deux comptes."""
 
