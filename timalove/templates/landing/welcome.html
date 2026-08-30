@@ -60,7 +60,7 @@
   </div>
 
   <div class="welcome__actions">
-    <a class="welcome__cta" href="{% url 'public:commencer' %}">
+    <a class="welcome__cta" href="{% url 'auth:connexion' %}" id="commencer-cta" data-href="{% url 'auth:connexion' %}">
       <svg class="welcome__cta-icon" viewBox="0 0 24 22" aria-hidden="true">
         <path
           fill="none"
@@ -73,10 +73,8 @@
       </svg>
       Commencer maintenant
     </a>
-    <p class="welcome__login">
-      Déjà un compte ?
-      <a href="{% url 'auth:connexion' %}">Se connecter</a>
-    </p>
   </div>
 </main>
+{% include "partials/commencer_transit.html" %}
+<script src="{% static 'js/commencer-transit.js' %}?v=20260826t1" defer></script>
 {% endblock %}

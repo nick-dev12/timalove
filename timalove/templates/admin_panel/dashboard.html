@@ -1,13 +1,147 @@
-﻿{% extends "layouts/admin.html" %}
+{% extends "layouts/admin.html" %}
+{% load static %}
+{% block head %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+<script src="{% static 'js/admin-dashboard.js' %}?v=20260826d1" defer></script>
+{% endblock %}
+{% block subtitle %}
+<p class="adm__subtitle">Lecture instantanée de la santé de TimaLove — {{ "now"|date:"d F Y" }}</p>
+{% endblock %}
 {% block content %}
-<div class="stats-grid">
-  <div class="stat-card"><span>Membres</span><strong>{{ stats.members_total }}</strong></div>
-  <div class="stat-card"><span>Approuvés</span><strong>{{ stats.members_approved }}</strong></div>
-  <div class="stat-card"><span>En attente</span><strong>{{ stats.pending_registrations }}</strong></div>
-  <div class="stat-card"><span>Matchs actifs</span><strong>{{ stats.matches_active }}</strong></div>
-  <div class="stat-card"><span>Messages / 7j</span><strong>{{ stats.messages_week }}</strong></div>
-  <div class="stat-card"><span>Swipes / 7j</span><strong>{{ stats.swipes_week }}</strong></div>
-  <div class="stat-card"><span>Paiements</span><strong>{{ stats.revenue_paid }}</strong></div>
-  <div class="stat-card"><span>Signalements</span><strong>{{ stats.reports_pending }}</strong></div>
+<section class="adm-hero">
+  <div class="adm-hero__copy">
+    <p class="adm-hero__eyebrow">Espace super admin</p>
+    <h2 class="adm-hero__title">Vue d’ensemble TimaLove</h2>
+    <p class="adm-hero__lead">Revenus, engagement, modération et croissance utilisateurs en un coup d’œil.</p>
+    <div class="adm-hero__actions">
+      <a class="adm-btn adm-btn--primary adm-btn--sm" href="{% url 'admin_panel:paiements' %}">Paiements</a>
+      <a class="adm-btn adm-btn--ghost adm-btn--sm adm-hero__btn-ghost" href="{% url 'admin_panel:signalements' %}">Modération</a>
+    </div>
+  </div>
+  <div class="adm-hero__metrics" aria-hidden="true">
+    {% for kpi in kpis %}{% if kpi.id == 'dau' %}
+    <div class="adm-hero__metric"><span>Actifs 24 h</span><strong>{{ kpi.value_label }}</strong></div>
+    {% elif kpi.id == 'reports' %}
+    <div class="adm-hero__metric"><span>Signalements</span><strong>{{ kpi.value_label }}</strong></div>
+    {% endif %}{% endfor %}
+  </div>
+</section>
+
+<div class="adm-kpis">
+  {% for kpi in kpis %}
+  <article class="adm-kpi adm-kpi--{{ kpi.id }}{% if kpi.alert %} adm-kpi--alert{% endif %}">
+    <div class="adm-kpi__head">
+      <span class="adm-kpi__label">{{ kpi.label }}</span>
+      <span class="adm-kpi__trend adm-kpi__trend--{{ kpi.trend }}" title="{{ kpi.hint }}">
+        {% if kpi.trend == 'up' %}+{% elif kpi.trend == 'down' %}-{% endif %}{{ kpi.delta_pct|floatformat:1 }}%
+      </span>
+    </div>
+    <strong class="adm-kpi__value">{{ kpi.value_label }}{% if kpi.suffix %} <span class="adm-kpi__suffix">{{ kpi.suffix }}</span>{% endif %}</strong>
+    <span class="adm-kpi__hint">{{ kpi.hint }}</span>
+  </article>
+  {% endfor %}
 </div>
+
+{{ charts|json_script:"admin-charts-data" }}
+
+<section class="adm-dash-grid">
+  <article class="adm-card adm-chart-card adm-chart-card--wide">
+    <div class="adm-card__head">
+      <h2 class="adm-card__title">Courbe de croissance des revenus</h2>
+      <p class="adm-card__lead">Abonnements récurrents vs achats à la carte (Boost, Coaching) — 30 jours.</p>
+    </div>
+    <div class="adm-chart-wrap"><canvas id="chart-revenue" aria-label="Revenus sur 30 jours"></canvas></div>
+  </article>
+
+  <article class="adm-card adm-chart-card">
+    <div class="adm-card__head">
+      <h2 class="adm-card__title">Acquisition & rétention</h2>
+      <p class="adm-card__lead">Nouveaux inscrits vs comptes bannis par jour.</p>
+    </div>
+    <div class="adm-chart-wrap"><canvas id="chart-acquisition" aria-label="Acquisition"></canvas></div>
+  </article>
+
+  <article class="adm-card adm-chart-card">
+    <div class="adm-card__head">
+      <h2 class="adm-card__title">Répartition par genre</h2>
+      <p class="adm-card__lead">Équilibre Hommes / Femmes sur la plateforme.</p>
+    </div>
+    <div class="adm-chart-wrap adm-chart-wrap--square"><canvas id="chart-gender" aria-label="Genres"></canvas></div>
+  </article>
+
+  <article class="adm-card adm-chart-card adm-chart-card--wide">
+    <div class="adm-card__head">
+      <h2 class="adm-card__title">Entonnoir d’engagement</h2>
+      <p class="adm-card__lead">De l’inscription à la conversion payante.</p>
+    </div>
+    <div class="adm-chart-wrap adm-chart-wrap--funnel"><canvas id="chart-funnel" aria-label="Entonnoir"></canvas></div>
+  </article>
+
+  <article class="adm-card adm-chart-card">
+    <div class="adm-card__head">
+      <h2 class="adm-card__title">Densité géographique</h2>
+      <p class="adm-card__lead">Villes avec le plus de membres inscrits.</p>
+    </div>
+    <div class="adm-chart-wrap adm-chart-wrap--tall"><canvas id="chart-geography" aria-label="Répartition géographique"></canvas></div>
+  </article>
+</section>
+
+<section class="adm-dash-bottom">
+  <article class="adm-card">
+    <div class="adm-card__head adm-card__head--row">
+      <div>
+        <h2 class="adm-card__title">Dernières transactions</h2>
+        <p class="adm-card__lead">Flux financier récent.</p>
+      </div>
+      <a class="adm-btn adm-btn--ghost adm-btn--sm" href="{% url 'admin_panel:paiements' %}">Tout voir</a>
+    </div>
+    <div class="adm-table-wrap adm-table-wrap--stackable">
+      <table class="adm-table adm-table--compact adm-table--stackable">
+        <thead>
+          <tr><th>ID</th><th>Type</th><th>Montant</th><th>Statut</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+          {% for tx in recent.transactions %}
+          <tr>
+            <td data-label="ID"><code class="adm-plan-id">#{{ tx.id }}</code></td>
+            <td data-label="Type">{{ tx.type }}</td>
+            <td data-label="Montant"><strong>{{ tx.amount_label }}</strong> FCFA</td>
+            <td data-label="Statut"><span class="adm-badge adm-badge--{% if tx.status == 'paid' %}ok{% elif tx.status == 'failed' %}danger{% elif tx.status == 'pending' %}warn{% else %}muted{% endif %}">{{ tx.status_label }}</span></td>
+            <td data-label="Date">{{ tx.created_at|date:"d/m/Y H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5"><div class="adm-empty">Aucune transaction récente</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="adm-card{% for kpi in kpis %}{% if kpi.id == 'reports' and kpi.alert %} adm-card--alert{% endif %}{% endfor %}">
+    <div class="adm-card__head adm-card__head--row">
+      <div>
+        <h2 class="adm-card__title">Modération prioritaire</h2>
+        <p class="adm-card__lead">Signalements en attente de traitement.</p>
+      </div>
+      <a class="adm-btn adm-btn--primary adm-btn--sm" href="{% url 'admin_panel:signalements' %}">Traiter</a>
+    </div>
+    <div class="adm-mod-queue">
+      {% for r in recent.reports %}
+      <article class="adm-mod-item">
+        <div class="adm-mod-item__main">
+          <strong>{{ r.get_reason_display|default:r.reason }}</strong>
+          <p>
+            {% if r.reported_profile %}{{ r.reported_profile.first_name }} {{ r.reported_profile.last_name|slice:":1"|upper }}.{% else %}—{% endif %}
+            · {{ r.created_at|date:"d/m/Y H:i" }}
+          </p>
+        </div>
+        <span class="adm-badge adm-badge--warn">En attente</span>
+      </article>
+      {% empty %}
+      <div class="adm-empty">Aucun signalement urgent</div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
 {% endblock %}

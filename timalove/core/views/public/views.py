@@ -1,23 +1,52 @@
 from urllib.parse import urlparse
 
+from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 
-from core.controllers import home_controller
 from core.controllers import site_settings_controller
 from core.data import legal as legal_data
 
 
 def _member_home(request):
+    """Membre connecté : accès direct à l'application, pas la landing marketing."""
     if not request.user.is_authenticated:
         return None
+    from core.controllers import auth_controller
+
     profile = getattr(request.user, "profile", None)
-    if profile and not profile.is_profile_complete:
+    if not profile:
+        auth_controller.logout_user(request)
+        return redirect("auth:connexion")
+    if profile.banned_at:
+        auth_controller.logout_user(request)
+        return redirect("auth:connexion")
+    if not profile.is_admin and not profile.is_profile_complete:
         return redirect("/connexion/?signup=1")
     return redirect("public:explorer")
+
+
+def _explorer_access(request):
+    """Explorer réservé aux membres connectés avec session valide."""
+    from core.controllers import auth_controller
+
+    if not request.user.is_authenticated:
+        return redirect("public:home")
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        auth_controller.logout_user(request)
+        messages.info(request, "Session expirée. Connectez-vous à nouveau.")
+        return redirect("auth:connexion")
+    if profile.banned_at:
+        auth_controller.logout_user(request)
+        messages.error(request, "Ce compte n’est plus actif.")
+        return redirect("auth:connexion")
+    if not profile.is_admin and not profile.is_profile_complete:
+        return redirect(f"{reverse('auth:connexion')}?signup=1")
+    return None
 
 
 def _same_origin_back(request, fallback: str = "/explorer/") -> str:
@@ -45,32 +74,30 @@ def home(request):
 
 @require_GET
 def accueil(request):
-    return render(request, "landing/welcome.html", {"title": "Bienvenue"})
+    from core.controllers import home_controller
+
+    ctx = home_controller.home_context()
+    ctx["title"] = "En savoir plus"
+    return render(request, "landing/home.html", ctx)
 
 
 @require_GET
 def presentation(request):
-    return redirect("public:commencer", permanent=True)
+    return redirect("public:home")
 
 
 @require_GET
 def commencer(request):
-    landing = _member_home(request)
-    if landing:
-        return landing
-    return render(
-        request,
-        "landing/commencer.html",
-        {
-            "title": "Bienvenue",
-            "steps": home_controller.STEPS,
-        },
-    )
+    return redirect("auth:connexion")
 
 
 @ensure_csrf_cookie
 @require_GET
 def explorer(request):
+    blocked = _explorer_access(request)
+    if blocked:
+        return blocked
+
     from core.controllers import explore_controller
     import secrets
 
@@ -86,7 +113,13 @@ def explorer(request):
         request.session["explorer_seed"] = secrets.token_hex(8)
 
     seed = request.session["explorer_seed"]
-    page_limit = 1 if direction == "back" else 20
+    if direction == "back":
+        page_limit = 1
+    else:
+        try:
+            page_limit = min(max(1, int(request.GET.get("limit", 20))), 20)
+        except (TypeError, ValueError):
+            page_limit = 20
     cards, has_more = explore_controller.public_feed(
         seed=seed,
         limit=page_limit,
@@ -101,6 +134,19 @@ def explorer(request):
         from core.controllers import quota_controller
 
         quota = quota_controller.snapshot(getattr(request.user, "profile", None))
+    filters_ctx: dict = {}
+    if request.user.is_authenticated:
+        from core.controllers import profile_controller
+        from core.data.countries import COUNTRIES_FR
+        from core.models.choices import Religion
+
+        profile = getattr(request.user, "profile", None)
+        if profile is not None:
+            filters_ctx = {
+                "discover_filters": profile_controller.filters_for(profile),
+                "religions": Religion.choices,
+                "countries": COUNTRIES_FR,
+            }
     context = {
         "title": "Explorer",
         "cards": cards,
@@ -108,6 +154,7 @@ def explorer(request):
         "next_offset": next_offset,
         "reveal_first": not is_hx,
         "swipe_quota": quota,
+        **filters_ctx,
     }
 
     if is_hx:
@@ -141,11 +188,11 @@ def messages(request):
     from core.controllers import message_controller
 
     if not request.user.is_authenticated:
-        return redirect(f"{reverse('public:explorer')}?gate=1")
+        return redirect("public:home")
 
     profile = getattr(request.user, "profile", None)
     if not profile:
-        return redirect(f"{reverse('public:explorer')}?gate=1")
+        return redirect("public:home")
 
     from core.controllers import notification_controller
 
@@ -168,7 +215,7 @@ def messages_preview(request, partner_key):
     from core.controllers import explore_controller, message_controller
 
     if not request.user.is_authenticated:
-        return redirect(f"{reverse('public:explorer')}?gate=1")
+        return redirect("public:home")
 
     member = explore_controller.get_public_profile(partner_key)
     if not member:

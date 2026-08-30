@@ -177,7 +177,7 @@
       if (document.body.classList.contains("is-guest")) return;
       if (
         event.target.closest(
-          "[data-msg-open], [data-swipe], [data-likes-pass], [data-likes-super], [data-likes-back], .history__actions, .likes__card-actions, .likes__card-bar"
+          "[data-msg-open], [data-msg-like-required], [data-swipe], [data-likes-pass], [data-likes-super], [data-likes-back], .history__actions, .likes__card-actions, .likes__card-bar"
         )
       ) {
         return;
@@ -194,10 +194,12 @@
 
     document.addEventListener("keydown", function (event) {
       if (event.key !== "Enter" && event.key !== " ") return;
-      const photos = event.target.closest("[data-photos][data-profile-modal]");
-      if (!photos || document.body.classList.contains("is-guest")) return;
+      const trigger = event.target.closest("[data-profile-modal]");
+      if (!trigger || document.body.classList.contains("is-guest")) return;
+      if (event.target.closest("[data-photo-step]")) return;
       event.preventDefault();
-      photos.click();
+      lastFocus = trigger;
+      load(profileIdFrom(trigger), trigger.getAttribute("data-profile-tab") || "");
     });
 
     document.addEventListener("keydown", function (event) {

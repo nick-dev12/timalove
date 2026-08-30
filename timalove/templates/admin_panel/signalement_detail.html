@@ -1,0 +1,156 @@
+{% extends "layouts/admin.html" %}
+{% load admin_tags %}
+{% block subtitle %}
+<p class="adm__subtitle">Examen sécurisé du signalement — contexte photos & messages</p>
+{% endblock %}
+{% block content %}
+<p class="adm-back-link"><a class="adm-btn adm-btn--ghost adm-btn--sm" href="{% url 'admin_panel:signalements' %}">← Retour à la file</a></p>
+
+<div class="adm-mod-header adm-card">
+  <div class="adm-mod-header__main">
+    <div class="adm-um-header__title-row">
+      <h2 class="adm-card__title">{{ report.get_reason_display|default:report.reason }}</h2>
+      <span class="adm-badge adm-badge--{{ report|report_priority_badge }}">{{ priority }}</span>
+    </div>
+    <p class="adm-card__lead">Signalement #{{ report.id.hex|slice:":8" }} · {{ report.created_at|date:"d/m/Y à H:i" }}</p>
+    <div class="adm-um-badges">
+      <span class="adm-badge adm-badge--{% if report.status == 'pending' %}warn{% elif report.status == 'dismissed' %}muted{% elif report.status == 'action_taken' %}danger{% else %}ok{% endif %}">
+        {% if report.status == 'pending' %}En attente{% elif report.status == 'dismissed' %}Ignoré{% elif report.status == 'action_taken' %}Action prise{% else %}Traité{% endif %}
+      </span>
+      {% if report.resolution %}<span class="adm-badge adm-badge--muted">{{ report.resolution }}</span>{% endif %}
+    </div>
+  </div>
+  <dl class="adm-kv adm-kv--inline adm-mod-parties">
+    <div>
+      <dt>Signaleur</dt>
+      <dd>
+        <code class="adm-plan-id">{{ report.reporter|profile_ref }}</code>
+        {% if report.reporter %}
+        · {{ report.reporter.first_name|default:"—" }}
+        <a class="adm-link-inline" href="{% url 'admin_panel:membre_detail' report.reporter_id %}">Fiche</a>
+        {% endif %}
+      </dd>
+    </div>
+    <div>
+      <dt>Signalé</dt>
+      <dd>
+        <code class="adm-plan-id">{{ report.reported_profile|profile_ref }}</code>
+        {% if report.reported_profile %}
+        · {{ report.reported_profile.first_name|default:"—" }}
+        <a class="adm-link-inline" href="{% url 'admin_panel:membre_detail' report.reported_profile_id %}">Fiche</a>
+        {% endif %}
+      </dd>
+    </div>
+  </dl>
+</div>
+
+{% if report.message %}
+<article class="adm-card">
+  <div class="adm-card__head"><h2 class="adm-card__title">Message du signaleur</h2></div>
+  <p class="adm-mod-quote">{{ report.message }}</p>
+</article>
+{% endif %}
+
+<div class="adm-mod-grid">
+  <article class="adm-card adm-mod-viewer">
+    <div class="adm-card__head">
+      <h2 class="adm-card__title">Visualiseur contextuel</h2>
+      <p class="adm-card__hint">Photos du profil signalé (lecture seule)</p>
+    </div>
+    {% if context.photos %}
+    <div class="adm-mod-photos" role="group" aria-label="Photos signalées">
+      {% for photo in context.photos %}
+      <figure class="adm-mod-photo">
+        <img src="{{ photo }}" alt="Photo profil signalé" loading="lazy">
+      </figure>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="adm-empty">Aucune photo disponible pour ce profil</p>
+    {% endif %}
+  </article>
+
+  <article class="adm-card adm-mod-viewer">
+    <div class="adm-card__head">
+      <h2 class="adm-card__title">5 derniers messages</h2>
+      <p class="adm-card__hint">Échanges entre signaleur et signalé ayant déclenché l’alerte</p>
+    </div>
+    {% if context.messages %}
+    <ol class="adm-mod-messages">
+      {% for msg in context.messages %}
+      <li class="adm-mod-message{% if msg.is_flagged %} is-flagged{% endif %}">
+        <header class="adm-mod-message__head">
+          <span class="adm-mod-message__author">{{ msg.sender_name }} <code>{{ msg.sender_id }}</code></span>
+          <time datetime="{{ msg.created_at|date:'c' }}">{{ msg.created_at|date:"d/m H:i" }}</time>
+        </header>
+        <p class="adm-mod-message__body">{{ msg.content }}</p>
+        {% if msg.is_flagged %}<span class="adm-badge adm-badge--danger adm-badge--sm">Signalé</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="adm-empty">Aucun échange trouvé entre ces deux membres (pas de match ou messages vides)</p>
+    {% endif %}
+  </article>
+</div>
+
+{% if report.admin_note or report.reviewed_at %}
+<article class="adm-card">
+  <div class="adm-card__head"><h2 class="adm-card__title">Historique de traitement</h2></div>
+  <dl class="adm-kv">
+    {% if report.reviewed_at %}<dt>Traité le</dt><dd>{{ report.reviewed_at|date:"d/m/Y H:i" }}</dd>{% endif %}
+    {% if report.resolved_by %}<dt>Par</dt><dd>{{ report.resolved_by|profile_ref }}</dd>{% endif %}
+    {% if report.admin_note %}<dt>Note admin</dt><dd>{{ report.admin_note }}</dd>{% endif %}
+  </dl>
+</article>
+{% endif %}
+
+<article class="adm-card adm-mod-actions">
+  <div class="adm-card__head"><h2 class="adm-card__title">Actions de modération</h2></div>
+  {% if report.status == 'pending' %}
+  <div class="adm-mod-actions-grid">
+    <form method="post" class="adm-mod-action">{% csrf_token %}
+      <input type="hidden" name="action" value="dismiss">
+      <h3 class="adm-mod-action__title">Ignorer</h3>
+      <p class="adm-mod-action__desc">Signalement infondé — aucune action sur le compte.</p>
+      <textarea class="adm-input adm-mod-note" name="notes" rows="2" placeholder="Note interne (optionnel)"></textarea>
+      <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Ignorer le signalement</button>
+    </form>
+
+    <form method="post" class="adm-mod-action">{% csrf_token %}
+      <input type="hidden" name="action" value="warn">
+      <h3 class="adm-mod-action__title">Avertissement officiel</h3>
+      <p class="adm-mod-action__desc">Notification envoyée au membre signalé avec rappel des règles.</p>
+      <textarea class="adm-input adm-mod-note" name="notes" rows="3" placeholder="Message personnalisé (optionnel)"></textarea>
+      <button class="adm-btn adm-btn--primary adm-btn--sm" type="submit">Envoyer l’avertissement</button>
+    </form>
+
+    <form method="post" class="adm-mod-action adm-mod-action--danger" data-confirm="Bannir définitivement l’utilisateur signalé ?">{% csrf_token %}
+      <input type="hidden" name="action" value="ban">
+      <h3 class="adm-mod-action__title">Bannissement</h3>
+      <p class="adm-mod-action__desc">Compte masqué, identité ajoutée à la liste des bannis.</p>
+      <textarea class="adm-input adm-mod-note" name="notes" rows="2" placeholder="Motif du ban (optionnel)"></textarea>
+      <button class="adm-btn adm-btn--danger adm-btn--sm" type="submit">Bannir définitivement</button>
+    </form>
+
+    <form method="post" class="adm-mod-action" data-confirm="Ajouter les empreintes photo à la liste noire ?">{% csrf_token %}
+      <input type="hidden" name="action" value="blacklist">
+      <h3 class="adm-mod-action__title">Liste noire photos</h3>
+      <p class="adm-mod-action__desc">Empreintes SHA256 des photos du profil — blocage réutilisation.</p>
+      <textarea class="adm-input adm-mod-note" name="notes" rows="2" placeholder="Motif blacklist (optionnel)"></textarea>
+      <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Blacklister les photos</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="adm-empty">Ce signalement a déjà été traité. Consultez l’historique ci-dessus.</p>
+  {% endif %}
+</article>
+
+<script>
+document.querySelectorAll("[data-confirm]").forEach((form) => {
+  form.addEventListener("submit", (e) => {
+    if (!window.confirm(form.dataset.confirm)) e.preventDefault();
+  });
+});
+</script>
+{% endblock %}

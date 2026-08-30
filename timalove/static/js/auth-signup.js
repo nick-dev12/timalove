@@ -354,9 +354,17 @@
     }
 
     function toggleIdentityFields() {
-      const needEmail = draft.channel === "phone" || draft.channel === "oauth";
       const emailWrap = wizard.querySelector("[data-identity-email]");
-      if (emailWrap) emailWrap.hidden = !needEmail;
+      if (!emailWrap) return;
+      const oauthEmail = (draft.email || "").trim();
+      const oauthHasEmail = draft.channel === "oauth" && oauthEmail.includes("@");
+      if (oauthHasEmail) {
+        emailWrap.hidden = true;
+        const input = emailWrap.querySelector("[data-field='email']");
+        if (input) input.value = oauthEmail;
+        return;
+      }
+      emailWrap.hidden = draft.channel !== "phone";
     }
 
     function showSlide(i, fromRight) {
@@ -437,7 +445,9 @@
         if (draft.channel !== "phone" && !draft.phone) errors.phone = "Indiquez un numéro de téléphone valide.";
       }
       if (step === "socio") {
-        if (!draft.gender) errors.gender = "Choisissez Homme ou Femme.";
+        if (!draft.gender || (draft.gender !== "male" && draft.gender !== "female")) {
+          errors.gender = "Le genre est obligatoire. Choisissez Homme ou Femme.";
+        }
         if (!draft.religion) errors.religion = "Sélectionnez votre religion.";
         if (!draft.country) errors.country = "Sélectionnez votre pays d’origine dans la liste.";
       }
@@ -548,7 +558,10 @@
 
     function startOauth(profile) {
       draft = Object.assign({}, loadDraft(), profile || {}, { channel: "oauth" });
-      steps = OAUTH_STEPS;
+      steps = OAUTH_STEPS.filter((step) => {
+        if (step === "email" && (draft.email || "").includes("@")) return false;
+        return true;
+      });
       saveDraft(draft);
       showView("wizard");
       showSlide(0, true);
@@ -607,6 +620,7 @@
           return;
         }
         if (["interests", "bios", "projet", "geo"].includes(step)) {
+          if (step === "socio") return;
           showSlide(index + 1, true);
           return;
         }

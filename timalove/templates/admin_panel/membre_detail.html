@@ -1,0 +1,201 @@
+{% extends "layouts/admin.html" %}
+{% load admin_tags %}
+{% block content %}
+<p class="adm-back-link"><a class="adm-btn adm-btn--ghost adm-btn--sm" href="{% url 'admin_panel:membres' %}">← Retour à la liste</a></p>
+
+<div class="adm-um-header adm-card">
+  <div class="adm-um-header__main">
+    <div class="adm-um-header__title-row">
+      <h2 class="adm-card__title">{{ detail.pseudonym }}</h2>
+      {% if member.is_verified %}
+      <span class="adm-badge adm-badge--ok">Certifié{% if detail.verification_score %} · IA {{ detail.verification_score|floatformat:0 }}%{% endif %}</span>
+      {% else %}
+      <span class="adm-badge adm-badge--muted">Non certifié</span>
+      {% endif %}
+    </div>
+    <p class="adm-card__lead">{{ detail.masked_email }} · #{{ member.id.hex|slice:":8" }} · Inscrit le {{ member.created_at|date:"d/m/Y" }}</p>
+    <div class="adm-um-badges">
+      <span class="adm-badge adm-badge--{% if detail.account_status == 'Actif' %}ok{% elif detail.account_status == 'Banni' %}danger{% else %}warn{% endif %}">{{ detail.account_status }}</span>
+      <span class="adm-badge adm-badge--muted">{{ detail.subscription_label }}</span>
+      {% if member.is_shadowbanned %}<span class="adm-badge adm-badge--warn">Shadowban actif</span>{% endif %}
+    </div>
+  </div>
+  <dl class="adm-kv adm-kv--inline">
+    <div><dt>Dernier accès</dt><dd>{{ detail.last_access }}</dd></div>
+    <div><dt>Ville</dt><dd>{{ member.city|default:"—" }}</dd></div>
+    <div><dt>Genre</dt><dd>{{ member.get_gender_display|default:"—" }}</dd></div>
+    <div><dt>Âge</dt><dd>{% if member.age %}{{ member.age }} ans{% else %}—{% endif %}</dd></div>
+  </dl>
+</div>
+
+<div class="adm-um-grid">
+  <article class="adm-card">
+    <div class="adm-card__head"><h2 class="adm-card__title">Profil public</h2></div>
+    {% if detail.photos %}
+    <div class="adm-um-photos">
+      {% for photo in detail.photos %}
+      <img class="adm-um-photo" src="{{ photo }}" alt="Photo profil" loading="lazy">
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="adm-empty">Aucune photo publique</p>
+    {% endif %}
+    <dl class="adm-kv">
+      <dt>Bio</dt><dd>{{ member.bio|default:"—" }}</dd>
+      <dt>Profession</dt><dd>{{ member.profession|default:"—" }}</dd>
+      <dt>Intention</dt><dd>{{ member.get_relationship_intent_display|default:"—" }}</dd>
+    </dl>
+    {% if detail.has_verification_photo %}
+    <p class="adm-um-verify-note">Selfie de vérification enregistré{% if detail.verification_score %} (score IA : {{ detail.verification_score|floatformat:1 }}){% endif %}.</p>
+    {% endif %}
+  </article>
+
+  <article class="adm-card">
+    <div class="adm-card__head"><h2 class="adm-card__title">Activité & achats</h2></div>
+    <dl class="adm-kv">
+      <dt>Matchs actifs</dt><dd>{{ activity.matches }}</dd>
+      <dt>Matchs total</dt><dd>{{ activity.matches_total }}</dd>
+      <dt>Swipes envoyés</dt><dd>{{ activity.swipes_sent }}</dd>
+      <dt>Swipes reçus</dt><dd>{{ activity.swipes_received }}</dd>
+      <dt>Likes envoyés</dt><dd>{{ activity.likes_sent }}</dd>
+      <dt>Likes reçus</dt><dd>{{ activity.likes_received }}</dd>
+      <dt>Messages envoyés</dt><dd>{{ activity.messages_sent }}</dd>
+      <dt>Signalements reçus</dt><dd>{{ activity.reports_against }}</dd>
+    </dl>
+  </article>
+</div>
+
+{% if activity.transactions %}
+<article class="adm-card">
+  <div class="adm-card__head"><h2 class="adm-card__title">Historique d’achats</h2></div>
+  <div class="adm-table-wrap">
+    <table class="adm-table adm-table--compact">
+      <thead><tr><th>Date</th><th>Type</th><th>Montant</th><th>Statut</th><th>Réf.</th></tr></thead>
+      <tbody>
+        {% for tx in activity.transactions %}
+        <tr>
+          <td>{{ tx.created_at|date:"d/m/Y H:i" }}</td>
+          <td>{{ tx.get_type_display }}</td>
+          <td>{{ tx.amount }} FCFA</td>
+          <td><span class="adm-badge adm-badge--{% if tx.status == 'paid' %}ok{% elif tx.status == 'failed' %}danger{% else %}muted{% endif %}">{{ tx.get_status_display }}</span></td>
+          <td><code class="adm-plan-id">{{ tx.order_id|default:"—" }}</code></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endif %}
+
+<article class="adm-card adm-um-actions">
+  <div class="adm-card__head"><h2 class="adm-card__title">Actions administrateur</h2></div>
+  <div class="adm-um-actions-grid">
+
+    <section class="adm-um-action-block">
+      <h3 class="adm-um-action-block__title">Modération</h3>
+      {% if member.banned_at %}
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="unban">
+        <button class="adm-btn adm-btn--primary adm-btn--sm" type="submit">Lever le ban</button>
+      </form>
+      {% else %}
+      <form method="post" class="adm-um-action-form" data-confirm="Bannir définitivement ce compte ?">{% csrf_token %}
+        <input type="hidden" name="action" value="ban">
+        <select class="adm-select adm-select--sm" name="reason_key" required>
+          {% for key, label in moderation_reasons %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+        </select>
+        <input class="adm-input adm-input--inline" name="reason" placeholder="Précision (optionnel)">
+        <button class="adm-btn adm-btn--danger adm-btn--sm" type="submit">Bannir</button>
+      </form>
+      {% endif %}
+      {% if member.suspended_at %}
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="unsuspend">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Lever la suspension</button>
+      </form>
+      {% else %}
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="suspend">
+        <select class="adm-select adm-select--sm" name="reason_key" required>
+          {% for key, label in moderation_reasons %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+        </select>
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Suspendre</button>
+      </form>
+      {% endif %}
+      {% if member.is_shadowbanned %}
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="unshadowban">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Lever shadowban</button>
+      </form>
+      {% else %}
+      <form method="post" class="adm-um-action-form" data-confirm="Activer le shadowban ? Le profil pourra swiper mais ne sera plus visible des autres.">{% csrf_token %}
+        <input type="hidden" name="action" value="shadowban">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Shadowban</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="adm-um-action-block">
+      <h3 class="adm-um-action-block__title">Compte & sécurité</h3>
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="reset_password">
+        <input class="adm-input adm-input--inline" name="new_password" placeholder="Nouveau mdp (vide = auto)">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Réinitialiser mot de passe</button>
+      </form>
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="logout_sessions">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Déconnecter toutes les sessions</button>
+      </form>
+      {% if member.is_verified %}
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="revoke_verify">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Retirer certification</button>
+      </form>
+      {% else %}
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="force_verify">
+        <button class="adm-btn adm-btn--primary adm-btn--sm" type="submit">Forcer vérification profil</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="adm-um-action-block">
+      <h3 class="adm-um-action-block__title">Inscription & abonnement</h3>
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="approve">
+        <button class="adm-btn adm-btn--primary adm-btn--sm" type="submit">Approuver profil</button>
+      </form>
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="reject">
+        <input class="adm-input adm-input--inline" name="rejection_reason" placeholder="Motif rejet">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Rejeter profil</button>
+      </form>
+      <form method="post" class="adm-um-action-form">{% csrf_token %}
+        <input type="hidden" name="action" value="subscription">
+        <select class="adm-select adm-select--sm" name="tier">
+          {% for value, label in subscription_tiers %}<option value="{{ value }}"{% if member.subscription_tier == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <input class="adm-input adm-input--inline adm-input--days" type="number" name="days" min="1" value="30">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Attribuer abonnement</button>
+      </form>
+    </section>
+
+    <section class="adm-um-action-block adm-um-action-block--danger">
+      <h3 class="adm-um-action-block__title">Suppression RGPD</h3>
+      <form method="post" class="adm-um-action-form adm-um-delete-form" data-confirm="Suppression définitive du compte et de toutes les données. Continuer ?">{% csrf_token %}
+        <input type="hidden" name="action" value="delete_account">
+        <input class="adm-input adm-input--inline" name="confirm_delete" placeholder="Tapez SUPPRIMER" required autocomplete="off">
+        <button class="adm-btn adm-btn--danger adm-btn--sm" type="submit">Supprimer le compte</button>
+      </form>
+    </section>
+  </div>
+</article>
+
+<script>
+document.querySelectorAll("[data-confirm]").forEach((form) => {
+  form.addEventListener("submit", (e) => {
+    if (!window.confirm(form.dataset.confirm)) e.preventDefault();
+  });
+});
+</script>
+{% endblock %}

@@ -48,7 +48,9 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     "core.middleware.request_timing.RequestTimingMiddleware",
     "core.middleware.maintenance.MaintenanceMiddleware",
+    "core.middleware.force_update.ForceUpdateMiddleware",
     "core.middleware.auth_guards.AuthGuardsMiddleware",
+    "core.middleware.admin_security.AdminSecurityMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -65,6 +67,8 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.site_branding",
                 "core.context_processors.app_nav_badges",
+                "core.context_processors.app_features",
+                "core.context_processors.admin_panel_nav",
             ],
         },
     },
@@ -125,16 +129,29 @@ LOGIN_URL = "auth:connexion"
 LOGIN_REDIRECT_URL = "public:explorer"
 LOGOUT_REDIRECT_URL = "public:home"
 
+# Session persistante — rester connecté entre les visites (renouvelée à chaque requête).
+SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=60 * 60 * 24 * 365)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = True
+CSRF_COOKIE_AGE = SESSION_COOKIE_AGE
+
 # Requis pour le popup Google / Firebase Auth (sinon la popup charge et ne revient jamais)
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
 CSRF_TRUSTED_ORIGINS = env.list(
     "CSRF_TRUSTED_ORIGINS",
     default=["http://127.0.0.1:8000", "http://localhost:8000"],
 )
+CSRF_FAILURE_VIEW = "core.views.csrf.csrf_failure"
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_HTTPONLY = False
 
 # Derrière Nginx (Webuzo) : faire confiance au proto HTTPS transmis.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = env.bool("USE_X_FORWARDED_HOST", default=not DEBUG)
+if DEBUG:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 if not DEBUG:
     SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
     CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
@@ -182,10 +199,29 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.tasks.expire_subscriptions_and_boosts",
         "schedule": crontab(minute="*/15"),
     },
+    "process-scheduled-campaigns": {
+        "task": "core.tasks.process_scheduled_campaigns",
+        "schedule": crontab(minute="*"),
+    },
 }
 
 # Intégrations
-# Paiement CinetPay (https://app.cinetpay.com)
+# Paiement — NabooPay (https://platform.naboopay.com) ou CinetPay (legacy)
+PAYMENT_PROVIDER = env("PAYMENT_PROVIDER", default="")  # naboopay | cinetpay | auto
+NABOOPAY_API_KEY = env("NABOOPAY_API_KEY", default="")
+NABOOPAY_WEBHOOK_SECRET = env("NABOOPAY_WEBHOOK_SECRET", default="")
+NABOOPAY_BASE_URL = env("NABOOPAY_BASE_URL", default="https://api.naboopay.com")
+NABOOPAY_CURRENCY = env("NABOOPAY_CURRENCY", default="XOF")
+NABOOPAY_METHODS = env("NABOOPAY_METHODS", default="wave,orange_money")
+NABOOPAY_FEES_CUSTOMER_SIDE = env.bool("NABOOPAY_FEES_CUSTOMER_SIDE", default=False)
+# URL publique HTTPS pour success_url / error_url NabooPay (prod ou ngrok). Vide = SITE_URL.
+NABOOPAY_PUBLIC_SITE_URL = env("NABOOPAY_PUBLIC_SITE_URL", default="")
+NABOOPAY_PRODUCTION_SITE_URL = env(
+    "NABOOPAY_PRODUCTION_SITE_URL",
+    default="https://timalove.goo-bridge.com",
+)
+NGROK_URL = env("NGROK_URL", default="")
+# CinetPay — back-office marchand https://app.cinetpay.com (Intégrations)
 CINETPAY_APIKEY = env("CINETPAY_APIKEY", default="")
 CINETPAY_SITE_ID = env("CINETPAY_SITE_ID", default="")
 CINETPAY_SECRET_KEY = env("CINETPAY_SECRET_KEY", default="")
@@ -200,6 +236,7 @@ RECAPTCHA_SITE_KEY = env("RECAPTCHA_SITE_KEY", default="")
 RECAPTCHA_SECRET_KEY = env("RECAPTCHA_SECRET_KEY", default="")
 MEDIA_CDN_URL = env("MEDIA_CDN_URL", default="")
 
+from core.utils.public_hosts import extend_hosts  # noqa: E402
 from core.utils.site_url import resolve_public_site_url  # noqa: E402
 
 SITE_URL = resolve_public_site_url(
@@ -207,6 +244,18 @@ SITE_URL = resolve_public_site_url(
     debug=DEBUG,
     allowed_hosts=ALLOWED_HOSTS,
 )
+
+from urllib.parse import urlparse  # noqa: E402
+
+for _public_url in (NABOOPAY_PUBLIC_SITE_URL, NGROK_URL):
+    if _public_url:
+        extend_hosts(_public_url, allowed_hosts=ALLOWED_HOSTS, csrf_origins=CSRF_TRUSTED_ORIGINS)
+
+_site_origin = urlparse(SITE_URL)
+if _site_origin.scheme and _site_origin.netloc:
+    _origin = f"{_site_origin.scheme}://{_site_origin.netloc}"
+    if _origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_origin)
 FREE_MESSAGES_LIMIT_DEFAULT = 5
 FREE_SWIPES_PER_DAY_DEFAULT = 20
 FREE_LIKES_PER_DAY_DEFAULT = 20

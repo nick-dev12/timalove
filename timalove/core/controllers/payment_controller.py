@@ -11,8 +11,13 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
-from core.controllers import cinetpay_controller, notification_controller, site_settings_controller
-from core.models import Profile, Subscription, Transaction
+from core.controllers import (
+    cinetpay_controller,
+    naboopay_controller,
+    notification_controller,
+    site_settings_controller,
+)
+from core.models import Profile, PromoCodeRedemption, Subscription, Transaction
 from core.models.choices import (
     NotificationType,
     SubscriptionStatus,
@@ -37,29 +42,72 @@ TIER_DURATIONS = {
 }
 
 
+def duration_for_tier(tier: str) -> timedelta:
+    days = site_settings_controller.duration_days_for_plan(tier)
+    return timedelta(days=days)
+
+
 def price_for_tier(tier: str) -> int:
     prices = site_settings_controller.get("subscription_prices") or {}
     return int(prices.get(tier, 0))
 
 
 def _site_url() -> str:
+    for key in ("NABOOPAY_PUBLIC_SITE_URL", "NGROK_URL"):
+        override = (getattr(settings, key, "") or "").strip().rstrip("/")
+        if override:
+            return override
     return (getattr(settings, "SITE_URL", "") or "http://127.0.0.1:8000").rstrip("/")
 
 
+def _provider() -> str:
+    explicit = (getattr(settings, "PAYMENT_PROVIDER", "") or "").strip().lower()
+    if explicit in {"naboopay", "cinetpay"}:
+        return explicit
+    if naboopay_controller.is_configured():
+        return "naboopay"
+    if cinetpay_controller.is_configured():
+        return "cinetpay"
+    return ""
+
+
+def _provider_configured() -> bool:
+    provider = _provider()
+    if provider == "naboopay":
+        return naboopay_controller.is_configured()
+    if provider == "cinetpay":
+        return cinetpay_controller.is_configured()
+    return False
+
+
 def _notify_url() -> str:
+    if _provider() == "naboopay":
+        return f"{_site_url()}{reverse('api:naboo_webhook')}"
     return f"{_site_url()}{reverse('api:cinetpay_notify')}"
 
 
-def _return_url(order_id: str) -> str:
-    return f"{_site_url()}{reverse('api:payments_confirm')}?order_id={order_id}"
+def _error_return_url(order_id: str) -> str:
+    return f"{_return_url(order_id)}&status=error"
 
 
-def _simulate_url(order_id: str) -> str:
-    return f"{_return_url(order_id)}&simulate=1"
+def _naboo_order_id(tx: Transaction) -> str:
+    details = tx.payment_details or {}
+    return str(details.get("naboo_order_id") or tx.order_id)
+
+
+def _resolve_internal_order_id(external_id: str) -> str | None:
+    external_id = (external_id or "").strip()
+    if not external_id:
+        return None
+    tx = Transaction.objects.filter(order_id=external_id).values_list("order_id", flat=True).first()
+    if tx:
+        return tx
+    tx = Transaction.objects.filter(payment_details__naboo_order_id=external_id).values_list("order_id", flat=True).first()
+    return tx
 
 
 def _can_simulate() -> bool:
-    return bool(getattr(settings, "PAYMENT_SIMULATION", False)) and not cinetpay_controller.is_configured()
+    return bool(getattr(settings, "PAYMENT_SIMULATION", False)) and not _provider_configured()
 
 
 def _is_local_site() -> bool:
@@ -94,13 +142,64 @@ def _order_marked_simulated(order_id: str) -> bool:
     return bool(isinstance(details, dict) and details.get("mode") == "simulate")
 
 
+def _return_url(order_id: str) -> str:
+    return f"{_site_url()}{reverse('api:payments_confirm')}?order_id={order_id}"
+
+
+def _simulate_url(order_id: str) -> str:
+    return f"{_return_url(order_id)}&simulate=1"
+
+
 def _start_provider_checkout(tx: Transaction, profile: Profile | None, description: str, extra: dict | None = None) -> dict:
+    provider = _provider()
     details = dict(tx.payment_details or {})
-    details["provider"] = "cinetpay"
+    details["provider"] = provider or "simulate"
     if _can_simulate():
         return _simulated_checkout(tx, details, reason="no_provider_keys")
-    if not cinetpay_controller.is_configured():
+    if not _provider_configured():
         return {"ok": False, "error": "Paiement indisponible pour le moment.", "message": "Paiement indisponible pour le moment."}
+
+    if provider == "naboopay":
+        result = naboopay_controller.initialize(
+            amount=tx.amount,
+            description=description,
+            success_url=_return_url(tx.order_id),
+            error_url=_error_return_url(tx.order_id),
+            profile=profile,
+            extra=extra,
+        )
+        if not result.get("ok"):
+            if result.get("network") and _allow_local_simulation():
+                logger.warning("[naboopay] API injoignable — simulation locale pour %s.", tx.order_id)
+                return _simulated_checkout(tx, details, reason="network")
+            tx.status = TransactionStatus.FAILED
+            details["error"] = result.get("error")
+            tx.payment_details = details
+            tx.save(update_fields=["status", "payment_details", "updated_at"])
+            err = result.get("error") or "Impossible d’ouvrir le paiement."
+            return {"ok": False, "error": err, "message": err}
+
+        naboo_order_id = result.get("order_id") or tx.order_id
+        charged = int(result.get("amount") or tx.amount)
+        if charged != tx.amount:
+            tx.amount = charged
+        details.update(
+            {
+                "naboo_order_id": naboo_order_id,
+                "checkout_url": result.get("checkout_url"),
+                "currency": naboopay_controller.currency(),
+            }
+        )
+        tx.payment_details = details
+        tx.save(update_fields=["amount", "payment_details", "updated_at"])
+        return {
+            "ok": True,
+            "order_id": tx.order_id,
+            "amount": tx.amount,
+            "checkout_url": result["checkout_url"],
+            "transaction_id": str(tx.id),
+            "simulated": False,
+        }
 
     result = cinetpay_controller.initialize(
         transaction_id=tx.order_id,
@@ -144,17 +243,35 @@ def _start_provider_checkout(tx: Transaction, profile: Profile | None, descripti
     }
 
 
-def create_checkout(profile: Profile, tier: str, payment_method: str | None = None) -> dict:
-    from core.controllers import subscription_controller
+def create_checkout(profile: Profile, tier: str, payment_method: str | None = None, promo_code: str | None = None) -> dict:
+    from core.controllers import monetization_controller, subscription_controller
 
     if tier not in SubscriptionTier.values or tier == SubscriptionTier.FREE:
         return {"ok": False, "error": "Offre invalide.", "message": "Offre invalide."}
     if tier not in subscription_controller.plans_catalog_for(profile):
         return {"ok": False, "error": "Offre non disponible pour votre profil.", "message": "Offre non disponible."}
-    amount = price_for_tier(tier)
-    if amount <= 0:
+    original_amount = price_for_tier(tier)
+    amount = original_amount
+    discount = 0
+    promo = None
+    if promo_code:
+        try:
+            promo = monetization_controller.validate_promo_for_checkout(promo_code, tier=tier)
+            amount, discount = monetization_controller.discounted_amount(original_amount, promo)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc), "message": str(exc)}
+    if amount <= 0 and original_amount <= 0:
         return {"ok": False, "error": "Tarif introuvable.", "message": "Tarif introuvable."}
     order_id = f"sub_{uuid.uuid4().hex[:16]}"
+    payment_details: dict = {"provider": _provider() or "simulate", "tier": tier, "original_amount": original_amount}
+    if promo:
+        payment_details.update(
+            {
+                "promo_code": promo.code,
+                "promo_id": str(promo.id),
+                "discount_amount": discount,
+            }
+        )
     tx = Transaction.objects.create(
         user=profile,
         order_id=order_id,
@@ -163,24 +280,56 @@ def create_checkout(profile: Profile, tier: str, payment_method: str | None = No
         type=TransactionType.SUBSCRIPTION,
         status=TransactionStatus.PENDING,
         plan_tier=tier,
-        payment_details={"provider": "cinetpay", "tier": tier},
+        payment_details=payment_details,
     )
     label = dict(SubscriptionTier.choices).get(tier, "Abonnement TimaLove")
-    return _start_provider_checkout(tx, profile, f"TimaLove — {label}")
+    result = _start_provider_checkout(tx, profile, f"TimaLove — {label}")
+    if result.get("ok") and promo:
+        result["promo_code"] = promo.code
+        result["discount_amount"] = discount
+        result["original_amount"] = original_amount
+    return result
 
 
-def create_boost_checkout(profile: Profile, days: int = 7) -> dict:
-    amount = 5000
+def create_boost_checkout(profile: Profile, days: int | None = None, promo_code: str | None = None) -> dict:
+    from core.controllers import monetization_controller, site_settings_controller
+
+    original_amount = site_settings_controller.default_boost_pack_price()
+    amount = original_amount
+    discount = 0
+    promo = None
+    if promo_code:
+        try:
+            promo = monetization_controller.validate_promo_for_checkout(promo_code, for_boost=True)
+            amount, discount = monetization_controller.discounted_amount(original_amount, promo)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc), "message": str(exc)}
+    if days is None:
+        days = site_settings_controller.boost_pack_duration_days()
     order_id = f"boost_{uuid.uuid4().hex[:16]}"
+    payment_details: dict = {"provider": _provider() or "simulate", "days": days, "original_amount": original_amount}
+    if promo:
+        payment_details.update(
+            {
+                "promo_code": promo.code,
+                "promo_id": str(promo.id),
+                "discount_amount": discount,
+            }
+        )
     tx = Transaction.objects.create(
         user=profile,
         order_id=order_id,
         amount=amount,
         type=TransactionType.BOOST,
         status=TransactionStatus.PENDING,
-        payment_details={"provider": "cinetpay", "days": days},
+        payment_details=payment_details,
     )
-    return _start_provider_checkout(tx, profile, f"TimaLove — Boost {days} jours")
+    result = _start_provider_checkout(tx, profile, f"TimaLove — Boost {days} jours")
+    if result.get("ok") and promo:
+        result["promo_code"] = promo.code
+        result["discount_amount"] = discount
+        result["original_amount"] = original_amount
+    return result
 
 
 def checkout_transaction(tx: Transaction, profile: Profile | None, description: str, extra: dict | None = None) -> dict:
@@ -195,7 +344,17 @@ def confirm_order(order_id: str, *, simulate: bool = False) -> tuple[bool, str]:
             return False, "Simulation de paiement refusée."
         return fulfill_order(order_id, provider_ref="simulate")
 
-    check = cinetpay_controller.check(order_id)
+    try:
+        tx = Transaction.objects.get(order_id=order_id)
+    except Transaction.DoesNotExist:
+        return False, "Transaction introuvable."
+
+    provider = (tx.payment_details or {}).get("provider") or _provider()
+    if provider == "naboopay":
+        check = naboopay_controller.check(_naboo_order_id(tx))
+    else:
+        check = cinetpay_controller.check(order_id)
+
     if not check.get("accepted"):
         return False, str(check.get("error") or "Paiement non confirmé.")
     return fulfill_order(
@@ -213,6 +372,36 @@ def handle_notify(payload: dict, x_token: str | None = None) -> tuple[bool, str]
     if secret and x_token and not cinetpay_controller.hmac_matches(payload, x_token):
         logger.warning("[cinetpay] HMAC invalide pour %s — vérification API quand même.", order_id)
     return confirm_order(order_id, simulate=False)
+
+
+def handle_naboopay_notify(payload: dict, raw_body: bytes, signature: str | None = None) -> tuple[bool, str]:
+    if naboopay_controller.webhook_secret_configured():
+        if not naboopay_controller.verify_signature_raw(raw_body, signature):
+            logger.warning("[naboopay] Signature webhook invalide.")
+            return False, "Signature invalide."
+
+    external_id = (payload.get("order_id") or "").strip()
+    status = str(payload.get("transaction_status") or "").lower()
+    if not external_id:
+        return False, "order_id manquant."
+
+    if status not in naboopay_controller.ACCEPTED_STATUSES:
+        return True, f"Ignoré ({status or 'inconnu'})"
+
+    internal_id = _resolve_internal_order_id(external_id)
+    if not internal_id:
+        logger.warning("[naboopay] Transaction inconnue pour order_id=%s", external_id)
+        return False, "Transaction introuvable."
+
+    return fulfill_order(
+        internal_id,
+        provider_ref=external_id,
+        extra={
+            "payment_method": payload.get("selected_payment_method"),
+            "webhook": payload,
+            "provider": "naboopay",
+        },
+    )
 
 
 @transaction.atomic
@@ -235,7 +424,7 @@ def fulfill_order(order_id: str, provider_ref: str | None = None, extra: dict | 
     profile = tx.user
 
     if tx.type == TransactionType.SUBSCRIPTION and tx.plan_tier:
-        duration = TIER_DURATIONS.get(tx.plan_tier, timedelta(days=30))
+        duration = duration_for_tier(tx.plan_tier)
         starts = timezone.now()
         ends = starts + duration
         sub = Subscription.objects.create(
@@ -289,6 +478,23 @@ def fulfill_order(order_id: str, provider_ref: str | None = None, extra: dict | 
         coaching = tx.coaching_request
         coaching.payment_status = TransactionStatus.PAID
         coaching.save(update_fields=["payment_status", "updated_at"])
+
+    promo_id = (details or {}).get("promo_id")
+    if promo_id and tx.status == TransactionStatus.PAID:
+        from core.controllers import monetization_controller
+        from core.models import PromoCode
+
+        promo = PromoCode.objects.filter(pk=promo_id).first()
+        if promo and not PromoCodeRedemption.objects.filter(transaction=tx).exists():
+            try:
+                monetization_controller.record_promo_redemption(
+                    promo,
+                    profile,
+                    transaction_obj=tx,
+                    discount_amount=int((details or {}).get("discount_amount") or 0),
+                )
+            except ValueError:
+                pass
 
     tx.save()
     return True, "Paiement confirmé."

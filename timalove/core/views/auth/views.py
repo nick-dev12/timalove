@@ -40,6 +40,8 @@ def _wants_json(request) -> bool:
 
 
 def _after_login_path(request, profile) -> str:
+    if profile and profile.is_admin:
+        return _safe_next(request) or reverse("public:explorer")
     if not auth_controller.is_profile_complete(profile):
         nxt = _safe_next(request)
         if nxt:
@@ -72,7 +74,9 @@ def _auth_gate_context(request, **extra):
             (Religion.MUSULMANE, "Musulman"),
             (Religion.AUTRE, "Autre"),
         ],
-        "oauth_incomplete": bool(profile and not auth_controller.is_profile_complete(profile)),
+        "oauth_incomplete": bool(
+            profile and not profile.is_admin and not auth_controller.is_profile_complete(profile)
+        ),
         "signup_prefill": json.dumps(signup_controller.profile_prefill(profile) if profile else {}, ensure_ascii=False),
     }
     ctx.update(extra)
@@ -83,15 +87,20 @@ def _auth_gate_context(request, **extra):
 @require_http_methods(["GET", "POST"])
 def connexion(request):
     profile = getattr(request.user, "profile", None) if request.user.is_authenticated else None
+    if request.user.is_authenticated and profile and profile.is_admin:
+        dest = _safe_next(request) or reverse("public:explorer")
+        if request.method == "POST" and _wants_json(request):
+            return JsonResponse({"ok": True, "redirect": dest})
+        return redirect(dest)
     if request.user.is_authenticated and auth_controller.is_profile_complete(profile):
         if request.method == "POST" and _wants_json(request):
             return JsonResponse({"ok": True, "redirect": _after_login_path(request, profile)})
         return redirect(_safe_next(request) or "public:explorer")
 
     show_form = request.GET.get("form") == "1"
-    login_mode = request.POST.get("login_mode") or request.GET.get("tab") or "phone"
+    login_mode = request.POST.get("login_mode") or request.GET.get("tab") or ""
     if login_mode not in {"phone", "email"}:
-        login_mode = "phone"
+        login_mode = ""
 
     if request.method == "POST" and not request.user.is_authenticated:
         identifier = (
@@ -112,7 +121,12 @@ def connexion(request):
             return JsonResponse({"ok": False, "message": msg}, status=400)
         messages.error(request, msg)
 
-    oauth_incomplete = bool(request.user.is_authenticated and profile and not auth_controller.is_profile_complete(profile))
+    oauth_incomplete = bool(
+        request.user.is_authenticated
+        and profile
+        and not profile.is_admin
+        and not auth_controller.is_profile_complete(profile)
+    )
     return render(
         request,
         "auth/connexion.html",
@@ -171,6 +185,8 @@ def completer_profil(request):
     profile = getattr(request.user, "profile", None)
     if not profile:
         return redirect("auth:connexion")
+    if profile.is_admin:
+        return redirect(_safe_next(request) or reverse("public:explorer"))
     if profile.is_profile_complete:
         return redirect(_safe_next(request) or "public:explorer")
     nxt = _safe_next(request)
@@ -194,4 +210,9 @@ def mot_de_passe_oublie(request):
 
 def deconnexion(request):
     auth_controller.logout_user(request)
-    return redirect("public:explorer")
+    for key in ("explorer_seed", "explorer_served", "explorer_queue", "admin_2fa_verified"):
+        request.session.pop(key, None)
+    nxt = _safe_next(request)
+    if nxt:
+        return redirect(nxt)
+    return redirect("public:home")

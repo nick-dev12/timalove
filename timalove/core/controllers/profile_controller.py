@@ -26,6 +26,7 @@ DEFAULT_FILTERS = {
     "country": "",
     "verified_only": False,
     "online_only": False,
+    "max_distance_km": 0,
 }
 
 DEFAULT_NOTIF_PREFS = {
@@ -69,7 +70,15 @@ def get_own(profile: Profile) -> Profile:
 def filters_for(profile: Profile) -> dict:
     raw = profile.discover_filters if isinstance(profile.discover_filters, dict) else {}
     out = dict(DEFAULT_FILTERS)
-    out.update({k: raw[k] for k in DEFAULT_FILTERS if k in raw})
+    stored_radius = raw.get("max_distance_km") if isinstance(raw, dict) else None
+    if stored_radius not in (None, ""):
+        try:
+            out["max_distance_km"] = max(0, int(stored_radius))
+        except (TypeError, ValueError):
+            out["max_distance_km"] = 0
+    else:
+        out["max_distance_km"] = 0
+    out.update({k: raw[k] for k in DEFAULT_FILTERS if k in raw and k != "max_distance_km"})
     try:
         out["age_min"] = max(18, min(99, int(out["age_min"] or 18)))
         out["age_max"] = max(out["age_min"], min(99, int(out["age_max"] or 60)))
@@ -209,71 +218,36 @@ def _price_label(amount: int) -> str:
 def subscription_plans_for(profile: Profile) -> list[dict]:
     from core.controllers import site_settings_controller, subscription_controller
 
-    prices = site_settings_controller.get("subscription_prices") or {}
-    catalog = [
-        {
-            "id": SubscriptionTier.PREMIUM_1M,
-            "label": "Premium",
-            "duration_label": "1 mois",
-            "benefits": [
-                "Messagerie illimitée",
-                "5× plus visible dans l’explorer",
-                "Photos et audio illimités",
-                "Historique et likes reçus complets",
-            ],
-            "is_featured": True,
-            "badge": "Le plus populaire",
-            "is_vip": False,
-            "male_only": True,
-        },
-        {
-            "id": SubscriptionTier.VIP_1M,
-            "label": "VIP",
-            "duration_label": "1 mois",
-            "benefits": [
-                "Tous les avantages Premium",
-                "10× plus visible · profils complets prioritaires",
-                "Badge VIP doré",
-                "Liker n’importe quel profil",
-                "Accepter ou refuser les demandes de discussion",
-            ],
-            "is_featured": False,
-            "is_vip": True,
-            "male_only": True,
-        },
-        {
-            "id": SubscriptionTier.PASS_FEMME,
-            "label": "Pass Femme Premium VIP",
-            "duration_label": "15 jours",
-            "benefits": [
-                "Tous les avantages Premium et VIP",
-                "10× plus visible · suggestions ×10",
-                "Badge doré · photos et audio illimités",
-                "Accepter ou refuser les demandes de discussion",
-            ],
-            "is_featured": True,
-            "badge": "Offre femmes",
-            "is_vip": True,
-            "female_only": True,
-        },
-    ]
+    benefits_by_kind = {
+        "premium": list(site_settings_controller.DEFAULT_PLAN_FEATURES["premium"]),
+        "vip": list(site_settings_controller.DEFAULT_PLAN_FEATURES["vip"]),
+        "pass_femme": list(site_settings_controller.DEFAULT_PLAN_FEATURES["pass_femme"]),
+    }
     allowed = set(subscription_controller.plans_catalog_for(profile))
+    prices = site_settings_controller.get("subscription_prices") or {}
     plans: list[dict] = []
-    for item in catalog:
-        if item["id"] not in allowed:
+    for plan_id, meta in site_settings_controller.get_subscription_plans().items():
+        if not meta.get("active", True):
             continue
-        if item.get("female_only") and profile.gender != Gender.FEMALE:
+        if plan_id not in allowed:
             continue
-        if item.get("male_only") and profile.gender == Gender.FEMALE:
-            continue
-        amount = int(prices.get(item["id"], 0))
+        kind = meta.get("tier_kind") or "premium"
+        amount = int(prices.get(plan_id) or meta.get("price") or 0)
+        benefits = meta.get("features") or benefits_by_kind.get(kind, benefits_by_kind["premium"])
         plans.append(
             {
-                **item,
+                "id": plan_id,
+                "label": meta.get("label") or plan_id,
+                "duration_label": meta.get("duration_label") or "",
+                "benefits": benefits,
+                "is_featured": bool(meta.get("is_featured")),
+                "badge": meta.get("badge") or "",
+                "is_vip": kind in {"vip", "pass_femme"},
                 "price": amount,
                 "price_label": _price_label(amount),
             }
         )
+    plans.sort(key=lambda item: (not item.get("is_featured"), item["price"]))
     return plans
 
 
@@ -296,7 +270,7 @@ def account_context(profile: Profile) -> dict:
 
 
 def settings_context(profile: Profile) -> dict:
-    from core.controllers import payment_controller
+    from core.controllers import payment_controller, site_settings_controller
 
     plans = subscription_plans_for(profile)
     status = payment_controller.payment_status(profile)
@@ -313,7 +287,7 @@ def settings_context(profile: Profile) -> dict:
         "plans": plans,
         "visibilities": LastSeenVisibility.choices,
         "notif_prefs": notification_prefs_for(profile),
-        "boost_price_label": "5\u202f000 FCFA",
+        "boost_price_label": _price_label(site_settings_controller.default_boost_pack_price()),
         **account_context(profile),
     }
 
@@ -364,9 +338,6 @@ def update_profile(profile: Profile, data: dict) -> Profile:
 
 def update_filters(profile: Profile, data: dict) -> dict:
     current = filters_for(profile)
-    gender = data.get("gender") or ""
-    if gender not in {"", "all", Gender.MALE, Gender.FEMALE}:
-        gender = current["gender"]
     religion = data.get("religion") or ""
     if religion and religion not in {c.value for c in Religion}:
         religion = current["religion"]
@@ -378,7 +349,7 @@ def update_filters(profile: Profile, data: dict) -> dict:
     filters = {
         "age_min": age_min,
         "age_max": age_max,
-        "gender": gender,
+        "gender": "",
         "religion": religion,
         "country": (data.get("country") or "").strip()[:120],
         "verified_only": bool(data.get("verified_only")),
@@ -504,11 +475,7 @@ def apply_opposite_gender_filter(qs, viewer: Profile | None):
 
 def apply_discover_filters(qs, viewer: Profile):
     filters = filters_for(viewer)
-    gender = filters.get("gender") or ""
-    if gender in {Gender.MALE, Gender.FEMALE}:
-        qs = qs.filter(gender=gender)
-    elif gender != "all" and viewer.gender:
-        qs = apply_opposite_gender_filter(qs, viewer)
+    qs = apply_opposite_gender_filter(qs, viewer)
     if filters.get("religion"):
         qs = qs.filter(religion=filters["religion"])
     if filters.get("country"):
@@ -520,6 +487,25 @@ def apply_discover_filters(qs, viewer: Profile):
     if filters["age_min"] > 18 or filters["age_max"] < 99:
         oldest, youngest = dob_bounds(filters["age_min"], filters["age_max"])
         qs = qs.filter(date_of_birth__gt=oldest, date_of_birth__lte=youngest)
+    max_km = filters.get("max_distance_km")
+    try:
+        max_km = int(max_km) if max_km not in (None, "") else 0
+    except (TypeError, ValueError):
+        max_km = 0
+    if max_km > 0 and viewer.latitude is not None and viewer.longitude is not None:
+        from decimal import Decimal
+
+        delta = Decimal(str(max_km / 111.0))
+        lat = Decimal(str(viewer.latitude))
+        lon = Decimal(str(viewer.longitude))
+        qs = qs.filter(
+            latitude__isnull=False,
+            longitude__isnull=False,
+            latitude__gte=lat - delta,
+            latitude__lte=lat + delta,
+            longitude__gte=lon - delta,
+            longitude__lte=lon + delta,
+        )
     return qs
 
 
@@ -544,6 +530,7 @@ def landing_members(limit: int = 6) -> list[Profile]:
         Profile.objects.filter(
             registration_status=RegistrationStatus.APPROVED,
             is_hidden=False,
+            is_shadowbanned=False,
             role="member",
         )
         .exclude(photo_url__isnull=True)

@@ -627,6 +627,69 @@
     plansModal.querySelectorAll("[data-upgrade-plans-close]").forEach(function (el) {
       el.addEventListener("click", hidePlansModal);
     });
+
+    const promoInput = plansModal.querySelector("[data-upgrade-promo-code]");
+    const promoFeedback = plansModal.querySelector("[data-upgrade-promo-feedback]");
+    const promoApply = plansModal.querySelector("[data-upgrade-promo-apply]");
+
+    function setPromoFeedback(message, isError) {
+      if (!promoFeedback) return;
+      promoFeedback.hidden = !message;
+      promoFeedback.textContent = message || "";
+      promoFeedback.classList.toggle("is-error", Boolean(isError));
+    }
+
+    function currentPromoCode() {
+      return (promoInput && promoInput.value.trim()) || "";
+    }
+
+    if (promoApply) {
+      promoApply.addEventListener("click", function () {
+        const code = currentPromoCode();
+        if (!code) {
+          setPromoFeedback("Saisissez un code promo.", true);
+          return;
+        }
+        const tierBtn = plansModal.querySelector("[data-checkout]");
+        const tier = tierBtn && tierBtn.getAttribute("data-checkout");
+        if (!tier) {
+          setPromoFeedback("Aucune formule disponible pour le moment.", true);
+          return;
+        }
+        promoApply.disabled = true;
+        fetch("/api/payments/promo/validate/", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf(),
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: JSON.stringify({ promo_code: code, tier: tier }),
+        })
+          .then(function (res) {
+            return res.json().then(function (payload) {
+              if (!res.ok || !payload.ok) {
+                throw new Error((payload && payload.message) || "Code promo invalide.");
+              }
+              return payload;
+            });
+          })
+          .then(function (data) {
+            setPromoFeedback(
+              "Code " + data.code + " appliqué : −" + data.discount_percent + " % (" + data.final_amount + " FCFA).",
+              false
+            );
+          })
+          .catch(function (err) {
+            setPromoFeedback(err.message || "Code promo invalide.", true);
+          })
+          .finally(function () {
+            promoApply.disabled = false;
+          });
+      });
+    }
+
     plansModal.addEventListener("click", function (event) {
       const btn = event.target.closest("[data-checkout]");
       if (!btn || btn.disabled) return;
@@ -638,6 +701,9 @@
         plansStatus.hidden = true;
         plansStatus.textContent = "";
       }
+      const payload = { tier: btn.getAttribute("data-checkout") };
+      const promoCode = currentPromoCode();
+      if (promoCode) payload.promo_code = promoCode;
       fetch("/api/payments/checkout/", {
         method: "POST",
         credentials: "same-origin",
@@ -646,7 +712,7 @@
           "X-CSRFToken": csrf(),
           "X-Requested-With": "XMLHttpRequest",
         },
-        body: JSON.stringify({ tier: btn.getAttribute("data-checkout") }),
+        body: JSON.stringify(payload),
       })
         .then(function (res) {
           return res.json().then(function (payload) {
@@ -746,6 +812,10 @@
         showLimitPopup();
         return;
       }
+      if (form.getAttribute("data-text-enabled") === "0") {
+        toast("Les messages texte sont temporairement désactivés.");
+        return;
+      }
       const content = input.value.trim();
       const sendBtn = form.querySelector(".msg__send");
       if (sendBtn) sendBtn.disabled = true;
@@ -782,6 +852,7 @@
     const voiceBtn = event.target.closest('[data-msg-tool="voice"]');
     if (voiceBtn) {
       event.preventDefault();
+      if (voiceBtn.hidden) return;
       if (form && form.getAttribute("data-quota-locked") === "1") {
         showLimitPopup();
         return;
@@ -792,6 +863,7 @@
     const photoBtn = event.target.closest('[data-msg-tool="photos"]');
     if (photoBtn && photoInput) {
       event.preventDefault();
+      if (photoBtn.hidden) return;
       if (form && form.getAttribute("data-quota-locked") === "1") {
         showLimitPopup();
         return;

@@ -30,6 +30,10 @@
     return m ? decodeURIComponent(m[1]) : "";
   }
 
+  function selfieRequired() {
+    return document.body.dataset.selfieVerify !== "0";
+  }
+
   function csrf() {
     return cookie("csrftoken");
   }
@@ -526,8 +530,8 @@
       return {
         step: 4,
         photo_url: profileUrl,
-        verification_photo_url: verifyUrl,
-        face_match_score: matchScore,
+        verification_photo_url: selfieRequired() ? verifyUrl : "",
+        face_match_score: selfieRequired() ? matchScore : "",
       };
     }
 

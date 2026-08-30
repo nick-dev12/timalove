@@ -1,0 +1,169 @@
+{% extends "layouts/admin.html" %}
+{% load static admin_tags %}
+{% block subtitle %}
+<p class="adm__subtitle">Sécurisez l'accès à la console et tracez chaque action de l'équipe</p>
+{% endblock %}
+{% block content %}
+<div class="adm-tabs" role="tablist">
+  <a href="?tab=equipe" class="adm-tabs__link{% if tab == 'equipe' %} is-active{% endif %}">Équipe admin</a>
+  <a href="?tab=audit" class="adm-tabs__link{% if tab == 'audit' %} is-active{% endif %}">Journal d'audit</a>
+</div>
+
+{% if tab == 'equipe' %}
+<div class="adm-stats adm-stats--compact adm-stats--users">
+  <article class="adm-stat adm-stat--accent"><span class="adm-stat__label">Total équipe</span><strong class="adm-stat__value">{{ staff_summary.total }}</strong></article>
+  <article class="adm-stat"><span class="adm-stat__label">Super admins</span><strong class="adm-stat__value">{{ staff_summary.super_admins }}</strong></article>
+  <article class="adm-stat"><span class="adm-stat__label">Administrateurs</span><strong class="adm-stat__value">{{ staff_summary.admins }}</strong></article>
+  <article class="adm-stat"><span class="adm-stat__label">Modérateurs</span><strong class="adm-stat__value">{{ staff_summary.moderators }}</strong></article>
+  <article class="adm-stat"><span class="adm-stat__label">Support</span><strong class="adm-stat__value">{{ staff_summary.support }}</strong></article>
+</div>
+
+{% if can_manage_staff %}
+<div class="adm-mon-toolbar adm-mon-toolbar--solo">
+  <button class="adm-btn adm-btn--primary" type="button" data-mon-open="staff-create">Créer un compte staff</button>
+</div>
+
+<div class="adm-sheet" id="staff-create" hidden data-mon-sheet>
+  <div class="adm-sheet__bar">
+    <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-close>Fermer</button>
+    <h2 class="adm-sheet__title">Créer un compte staff</h2>
+  </div>
+  <div class="adm-sheet__body">
+    <form method="post" class="adm-sheet__form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_staff">
+      <div class="adm-grid-2 adm-grid-2--compact">
+        <div class="adm-field">
+          <label class="adm-label" for="staff-email">Email</label>
+          <input class="adm-input" id="staff-email" type="email" name="email" required autocomplete="off">
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="staff-role">Rôle</label>
+          <select class="adm-select" id="staff-role" name="role" required>
+            {% for value, label in staff_roles %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="staff-first">Prénom</label>
+          <input class="adm-input" id="staff-first" type="text" name="first_name" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="staff-last">Nom</label>
+          <input class="adm-input" id="staff-last" type="text" name="last_name" required>
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="staff-password">Mot de passe temporaire</label>
+          <input class="adm-input" id="staff-password" type="password" name="password" minlength="10" required autocomplete="new-password">
+          <p class="adm-hint">Minimum 10 caractères.</p>
+        </div>
+      </div>
+      <button class="adm-btn adm-btn--primary" type="submit">Créer le compte</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="adm-card adm-card--flush-mobile">
+  <h2 class="adm-card__title">Membres de l'équipe</h2>
+  <div class="adm-table-wrap adm-table-wrap--stackable">
+    <table class="adm-table adm-table--stackable">
+      <thead>
+        <tr>
+          <th>Membre</th>
+          <th>Rôle</th>
+          <th>Email</th>
+          {% if can_manage_staff %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for member in staff_members %}
+        <tr>
+          <td data-label="Membre">
+            <strong>{{ member.display_name|default:member.first_name }}</strong>
+            <span class="adm-table__meta">{{ member|profile_ref }}</span>
+          </td>
+          <td data-label="Rôle"><span class="adm-badge adm-badge--role">{{ member.role|staff_role_label }}</span></td>
+          <td data-label="Email">{{ member.email|mask_email }}</td>
+          {% if can_manage_staff %}
+          <td class="adm-table__actions" data-label="">
+            {% if member.id != request.user.profile.id %}
+            <form method="post" class="adm-inline-form">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="update_role">
+              <input type="hidden" name="profile_id" value="{{ member.id }}">
+              <select class="adm-select adm-select--sm" name="role" onchange="this.form.submit()">
+                {% for value, label in staff_roles %}
+                <option value="{{ value }}"{% if member.role == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </form>
+            <form method="post" class="adm-inline-form" onsubmit="return confirm('Désactiver ce compte staff ?');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="deactivate_staff">
+              <input type="hidden" name="profile_id" value="{{ member.id }}">
+              <button class="adm-btn adm-btn--ghost adm-btn--sm adm-btn--danger" type="submit">Désactiver</button>
+            </form>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{% if can_manage_staff %}4{% else %}3{% endif %}"><div class="adm-empty">Aucun membre staff configuré.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if tab == 'audit' %}
+<div class="adm-stats adm-stats--compact adm-stats--duo">
+  <article class="adm-stat"><span class="adm-stat__label">Total entrées</span><strong class="adm-stat__value">{{ audit_summary.total }}</strong></article>
+  <article class="adm-stat adm-stat--accent"><span class="adm-stat__label">Aujourd'hui</span><strong class="adm-stat__value">{{ audit_summary.today }}</strong></article>
+</div>
+
+<form method="get" class="adm-members-toolbar">
+  <input type="hidden" name="tab" value="audit">
+  <label class="adm-label" for="audit-search">Rechercher</label>
+  <div class="adm-members-search-row">
+    <input class="adm-input" id="audit-search" type="search" name="q" value="{{ request.GET.q }}" placeholder="Action, utilisateur, message…">
+    <select class="adm-select" id="audit-action" name="action" aria-label="Filtrer par type d'action">
+      {% for value, label in audit_action_filters %}
+      <option value="{{ value }}"{% if current_audit_action == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Filtrer</button>
+  </div>
+</form>
+
+<div class="adm-card">
+  <div class="adm-audit-list">
+    {% for entry in audit_page %}
+    <article class="adm-audit-item">
+      <p class="adm-audit-item__message">{{ entry.message }}</p>
+      <p class="adm-audit-item__meta">
+        {{ entry.created_at|date:"d/m/Y à H:i" }}
+        {% if entry.ip_address %} · {{ entry.ip_address }}{% endif %}
+        {% if entry.action %} · {{ entry.action }}{% endif %}
+      </p>
+    </article>
+    {% empty %}
+    <p class="adm-empty">Aucune entrée dans le journal d'audit.</p>
+    {% endfor %}
+  </div>
+  {% if audit_page.has_other_pages %}
+  <div class="adm-pagination">
+    {% if audit_page.has_previous %}
+    <a class="adm-btn adm-btn--ghost adm-btn--sm" href="?tab=audit&page={{ audit_page.previous_page_number }}&q={{ request.GET.q }}&action={{ current_audit_action }}">Précédent</a>
+    {% endif %}
+    <span class="adm-pagination__info">Page {{ audit_page.number }} / {{ audit_page.paginator.num_pages }}</span>
+    {% if audit_page.has_next %}
+    <a class="adm-btn adm-btn--ghost adm-btn--sm" href="?tab=audit&page={{ audit_page.next_page_number }}&q={{ request.GET.q }}&action={{ current_audit_action }}">Suivant</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

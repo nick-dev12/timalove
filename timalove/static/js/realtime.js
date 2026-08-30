@@ -214,6 +214,9 @@
 
   function kindMeta(payload) {
     const kind = payload.kind || payload.type || "";
+    if (kind === "marketing") {
+      return { kicker: "TimaLove", cta: "Découvrir", icon: "♥" };
+    }
     if (kind === "new_match") {
       return { kicker: "C’est un match", cta: "Écrire", icon: "♥" };
     }
@@ -250,14 +253,35 @@
     root.querySelector("[data-live-close]").addEventListener("click", function (event) {
       event.preventDefault();
       event.stopPropagation();
+      const deliveryId = root.getAttribute("data-delivery-id");
       hidePopup();
+      if (deliveryId) {
+        void postCrmAction("dismiss", deliveryId);
+      }
     });
     root.querySelector("[data-live-open]").addEventListener("click", function () {
       const url = root.getAttribute("data-url");
+      const deliveryId = root.getAttribute("data-delivery-id");
       hidePopup();
+      if (deliveryId) {
+        void postCrmAction("click", deliveryId);
+      }
       if (url) window.location.href = url;
     });
     return root;
+  }
+
+  function postCrmAction(action, deliveryId) {
+    return fetch("/api/crm/popup/", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": csrf(),
+      },
+      body: JSON.stringify({ action: action, delivery_id: deliveryId }),
+    }).catch(function () {});
   }
 
   function hidePopup() {
@@ -269,9 +293,29 @@
 
   function showPopup(payload) {
     const root = ensurePopup();
+    const kind = payload.kind || payload.type || "";
     const meta = kindMeta(payload);
-    const name = payload.related_user_name || payload.title || "TimaLove";
     const photoEl = root.querySelector("[data-live-photo]");
+    if (kind === "marketing") {
+      if (payload.image_url) {
+        photoEl.innerHTML = '<img src="' + payload.image_url + '" alt="">';
+      } else {
+        photoEl.innerHTML = "<span>" + meta.icon + "</span>";
+      }
+      root.querySelector("[data-live-kicker]").textContent = meta.kicker;
+      root.querySelector("[data-live-title]").textContent = payload.title || "TimaLove";
+      root.querySelector("[data-live-text]").textContent = payload.message || "";
+      root.querySelector("[data-live-cta]").textContent = meta.cta;
+      root.setAttribute("data-url", normalizeNotifUrl(payload.url || "/"));
+      root.setAttribute("data-delivery-id", payload.delivery_id || "");
+      root.setAttribute("data-kind", kind);
+      root.hidden = false;
+      window.clearTimeout(popupTimer);
+      popupTimer = window.setTimeout(hidePopup, POPUP_MS);
+      if (payload.delivery_id) void postCrmAction("open", payload.delivery_id);
+      return;
+    }
+    const name = payload.related_user_name || payload.title || "TimaLove";
     if (payload.related_user_photo) {
       photoEl.innerHTML = '<img src="' + payload.related_user_photo + '" alt="">';
     } else {
@@ -282,11 +326,14 @@
     root.querySelector("[data-live-text]").textContent = payload.message || "";
     root.querySelector("[data-live-cta]").textContent = meta.cta;
     root.setAttribute("data-url", normalizeNotifUrl(payload.url || "/"));
-    root.setAttribute("data-kind", payload.kind || payload.type || "");
+    root.removeAttribute("data-delivery-id");
+    root.setAttribute("data-kind", kind || "");
     root.hidden = false;
     window.clearTimeout(popupTimer);
     popupTimer = window.setTimeout(hidePopup, POPUP_MS);
   }
+
+  window.timaloveShowLivePopup = showPopup;
 
   function isTestNotification(payload) {
     const kind = payload.kind || payload.type || "";

@@ -1,0 +1,29 @@
+{% load admin_tags %}
+{% for tx in page_obj %}
+<tr>
+  <td data-label="ID transaction"><code class="adm-plan-id" title="{{ tx.order_id }}">#{{ tx.id.hex|slice:":8" }}</code></td>
+  <td data-label="Utilisateur"><code class="adm-plan-id">{{ tx.user|profile_ref }}</code></td>
+  <td data-label="Prestataire">{{ tx|tx_provider }}</td>
+  <td data-label="Montant"><strong>{{ tx.amount|floatformat:0 }}</strong></td>
+  <td data-label="Devise">{{ tx.currency|default:"XOF" }}</td>
+  <td data-label="Produit">{{ tx|tx_product }}</td>
+  <td data-label="Statut">
+    <span class="adm-badge adm-badge--{{ tx.status|tx_status_badge }}">{{ tx|tx_status_admin }}</span>
+  </td>
+  <td data-label="Date">{{ tx.created_at|date:"d/m/Y H:i" }}</td>
+  <td class="adm-table__actions" data-label="">
+    {% if tx.status == 'paid' %}
+    <form method="post" class="adm-inline-form" data-confirm="Confirmer le remboursement de cette transaction ?">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="refund">
+      <input type="hidden" name="id" value="{{ tx.id }}">
+      <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Rembourser</button>
+    </form>
+    {% else %}
+    <span class="adm-table-muted">—</span>
+    {% endif %}
+  </td>
+</tr>
+{% empty %}
+<tr><td colspan="9"><div class="adm-empty">Aucune transaction pour ces filtres</div></td></tr>
+{% endfor %}

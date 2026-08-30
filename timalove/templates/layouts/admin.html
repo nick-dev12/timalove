@@ -1,27 +1,115 @@
-{% extends "layouts/base.html" %}
+{% extends "layouts/admin_base.html" %}
+
 {% load static %}
-{% block body %}
-<div class="admin-shell">
-  <aside class="admin-sidebar">
-    <div class="brand brand-mark" style="color:white;margin-bottom:1.5rem;">
-      <span>Tima<span class="brand-accent">Love</span></span>
-      <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
-    </div>
-    <a href="{% url 'admin_panel:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
-    <a href="{% url 'admin_panel:inscriptions' %}">Inscriptions</a>
-    <a href="{% url 'admin_panel:activites' %}">Activités</a>
-    <a href="{% url 'admin_panel:coaching' %}">Coaching</a>
-    <a href="{% url 'admin_panel:paiements' %}">Paiements</a>
-    <a href="{% url 'admin_panel:avis' %}">Avis</a>
-    <a href="{% url 'admin_panel:signalements' %}">Signalements</a>
-    <a href="{% url 'admin_panel:monitoring' %}">Monitoring</a>
-    <a href="{% url 'admin_panel:parametres' %}">Paramètres</a>
-    <a href="{% url 'auth:deconnexion' %}" style="margin-top:2rem;">Déconnexion</a>
-  </aside>
-  <div class="admin-main">
-    <h1>{{ title }}</h1>
-    {% if messages %}{% for message in messages %}<div class="alert alert-{{ message.tags }}">{{ message }}</div>{% endfor %}{% endif %}
-    {% block content %}{% endblock %}
-  </div>
-</div>
+
+{% block body_class %}admin-panel-page{% endblock %}
+
+{% block head %}
+
+<link rel="stylesheet" href="{% static 'css/admin-panel.css' %}?v=20260830adm4">
+
 {% endblock %}
+
+{% block body %}
+
+<div class="adm" data-admin-shell>
+
+  <div class="adm__backdrop" data-admin-nav-close hidden></div>
+
+  <aside class="adm__sidebar" data-admin-sidebar>
+
+    <div class="adm__brand">
+
+      <span class="adm__brand-mark" aria-hidden="true">T</span>
+
+      <div>
+
+        <span class="adm__brand-name">TimaLove</span>
+
+        <span class="adm__brand-sub">{{ admin_staff_role|default:"Super Admin" }}</span>
+
+      </div>
+
+    </div>
+
+    <nav class="adm__nav" aria-label="Navigation administrateur">
+
+      {% for section in admin_nav_sections %}
+      <p class="adm__nav-label">{{ section.label }}</p>
+      {% for link in section.links %}
+      <a href="{% url link.url_name %}" class="adm__nav-link{% if request.resolver_match.url_name == link.key or link.key == 'membres' and request.resolver_match.url_name == 'membre_detail' or link.key == 'signalements' and request.resolver_match.url_name == 'signalement_detail' %} is-active{% endif %}">
+        <span class="adm__nav-icon" aria-hidden="true">{{ link.icon }}</span> {{ link.label }}
+        {% if link.key == 'signalements' and admin_nav_badges.signalements %}<span class="adm__nav-badge adm__nav-badge--danger">{{ admin_nav_badges.signalements }}</span>{% endif %}
+      </a>
+      {% endfor %}
+      {% endfor %}
+
+    </nav>
+
+    <div class="adm__sidebar-foot">
+
+      <a href="{% url 'public:home' %}" class="adm__nav-link adm__nav-link--ghost"><span class="adm__nav-icon" aria-hidden="true">↗</span> Voir le site</a>
+
+      <a href="{% url 'auth:deconnexion' %}" class="adm__nav-link adm__nav-link--danger"><span class="adm__nav-icon" aria-hidden="true">⎋</span> Déconnexion</a>
+
+    </div>
+
+  </aside>
+
+  <div class="adm__main">
+
+    <header class="adm__topbar">
+
+      <button type="button" class="adm__menu-btn" data-admin-nav-open aria-label="Ouvrir le menu">
+
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
+
+      </button>
+
+      <div class="adm__topbar-copy">
+
+        <p class="adm__breadcrumb">TimaLove / Admin / {{ title }}</p>
+
+        <h1 class="adm__title">{{ title }}</h1>
+
+        {% block subtitle %}{% endblock %}
+
+      </div>
+
+      <div class="adm__topbar-actions">
+
+        <span class="adm__topbar-date">{{ "now"|date:"d/m/Y" }}</span>
+
+      </div>
+
+    </header>
+
+    {% if messages %}
+
+    <div class="adm__alerts">
+
+      {% for message in messages %}
+
+      <div class="adm__alert adm__alert--{{ message.tags|default:'info' }}">{{ message }}</div>
+
+      {% endfor %}
+
+    </div>
+
+    {% endif %}
+
+    <div class="adm__content">
+
+      {% block content %}{% endblock %}
+
+    </div>
+
+  </div>
+
+</div>
+
+<script src="{% static 'js/admin-panel.js' %}?v=20260829city1" defer></script>
+
+{% endblock %}
+
+

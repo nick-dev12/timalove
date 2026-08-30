@@ -65,6 +65,7 @@ class Transaction(models.Model):
     )
     order_id = models.CharField(max_length=120, unique=True)
     amount = models.PositiveIntegerField()
+    currency = models.CharField(max_length=8, default="XOF")
     payment_method = models.CharField(max_length=30, choices=PaymentMethod.choices, blank=True, null=True)
     type = models.CharField(max_length=30, choices=TransactionType.choices)
     status = models.CharField(
@@ -91,6 +92,7 @@ class Transaction(models.Model):
     plan_tier = models.CharField(max_length=30, choices=SubscriptionTier.choices, blank=True, null=True)
     subscription_end_date = models.DateTimeField(blank=True, null=True)
     paid_at = models.DateTimeField(blank=True, null=True)
+    refunded_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -219,6 +221,33 @@ class BannedIdentity(models.Model):
         ]
 
 
+class PhotoBlacklist(models.Model):
+    """Empreinte de photo signalée — liste noire modération."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    photo_hash = models.CharField(max_length=64, unique=True)
+    source_url = models.TextField(blank=True, default="")
+    profile = models.ForeignKey(
+        Profile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="blacklisted_photos",
+    )
+    report = models.ForeignKey(
+        "Report",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="blacklisted_photos",
+    )
+    reason = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class Testimonial(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     author_name = models.CharField(max_length=120)
@@ -248,3 +277,41 @@ class SiteSetting(models.Model):
 
     def __str__(self) -> str:
         return self.key
+
+
+class PromoCode(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=40, unique=True)
+    plan_tier = models.CharField(max_length=30, blank=True, default="")
+    discount_percent = models.PositiveSmallIntegerField(default=10)
+    expires_at = models.DateTimeField(blank=True, null=True)
+    max_uses = models.PositiveIntegerField(blank=True, null=True)
+    usage_count = models.PositiveIntegerField(default=0)
+    active = models.BooleanField(default=True)
+    note = models.CharField(max_length=200, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return self.code
+
+
+class PromoCodeRedemption(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    promo = models.ForeignKey(PromoCode, on_delete=models.CASCADE, related_name="redemptions")
+    profile = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True)
+    transaction = models.ForeignKey(
+        Transaction,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="promo_redemptions",
+    )
+    discount_amount = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]

@@ -53,6 +53,6 @@
     const cta = event.target.closest("#commencer-cta");
     if (!cta) return;
     event.preventDefault();
-    start(cta.getAttribute("data-href") || "/explorer/");
+    start(cta.getAttribute("data-href") || "/connexion/");
   });
 })();

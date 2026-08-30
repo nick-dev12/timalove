@@ -95,7 +95,7 @@ class PaymentFulfillTests(TestCase):
             self.assertFalse(cinetpay_controller.hmac_matches(payload, "bad"))
 
 
-@override_settings(CINETPAY_APIKEY="test-key", CINETPAY_SITE_ID="123", PAYMENT_SIMULATION=True, DEBUG=True)
+@override_settings(CINETPAY_APIKEY="test-key", CINETPAY_SITE_ID="123", NABOOPAY_API_KEY="", PAYMENT_PROVIDER="cinetpay", PAYMENT_SIMULATION=True, DEBUG=True)
 class PaymentNetworkFallbackTests(TestCase):
     def setUp(self):
         site_settings_controller.seed_defaults()
@@ -156,9 +156,9 @@ class SubscriptionPricesMergeTests(TestCase):
         self.assertEqual(prices["eternite"], 29900)
         profile = make_profile("prix@test.com", Gender.MALE, "Prix")
         plans = {item["id"]: item for item in profile_controller.subscription_plans_for(profile)}
-        self.assertEqual(plans["journee_amoureuse"]["price"], 1000)
-        self.assertEqual(plans["pass_amour"]["price"], 4500)
-        self.assertEqual(payment_controller.price_for_tier("journee_amoureuse"), 1000)
+        self.assertEqual(plans["premium_1m"]["price"], 9000)
+        self.assertEqual(plans["vip_1m"]["price"], 20000)
+        self.assertEqual(payment_controller.price_for_tier("premium_1m"), 9000)
 
     def test_seed_defaults_persists_missing_keys(self):
         site_settings_controller.set_value("subscription_prices", {"vip_1m": 20000})
@@ -438,6 +438,30 @@ class LikesMessagingFlowTests(TestCase):
         feed = likes_controller.feed_context(self.p1)
         ids = {item["id"] for item in feed["likes"]}
         self.assertNotIn(str(self.p2.id), ids)
+
+    def test_open_conversation_requires_outgoing_like(self):
+        """Sans like envoyé : impossible d'ouvrir une conversation."""
+        self._login(self.u1)
+        denied = self.client.post(
+            "/api/messages/open/",
+            data='{"partner_id": "%s"}' % self.p2.id,
+            content_type="application/json",
+        )
+        self.assertEqual(denied.status_code, 400)
+        self.assertFalse(denied.json()["ok"])
+        self.assertEqual(denied.json()["code"], "like_required")
+
+        from core.controllers import swipe_controller
+
+        swipe_controller.record_swipe(self.p1, self.p2.id, "like")
+        allowed = self.client.post(
+            "/api/messages/open/",
+            data='{"partner_id": "%s"}' % self.p2.id,
+            content_type="application/json",
+        )
+        self.assertEqual(allowed.status_code, 200)
+        self.assertTrue(allowed.json()["ok"])
+        self.assertIn("/discussions/", allowed.json()["thread_url"])
 
     def test_send_compressed_chat_image(self):
         from io import BytesIO
@@ -856,16 +880,13 @@ class FreemiumQuotaTests(TestCase):
         self.assertIn("5 messages", msg)
 
     def test_daily_swipe_and_like_limits(self):
-        site_settings_controller.set_value("free_swipes_per_day", 1)
         site_settings_controller.set_value("free_likes_per_day", 1)
         first = swipe_controller.record_swipe(self.free, self.p2.id, "pass")
         self.assertTrue(first["ok"])
-        blocked = swipe_controller.record_swipe(self.free, self.p3.id, "pass")
-        self.assertFalse(blocked["ok"])
-        self.assertEqual(blocked.get("code"), "swipe_limit")
+        second_pass = swipe_controller.record_swipe(self.free, self.p3.id, "pass")
+        self.assertTrue(second_pass["ok"])
 
-        site_settings_controller.set_value("free_swipes_per_day", 20)
-        like1 = swipe_controller.record_swipe(self.free, self.p3.id, "like")
+        like1 = swipe_controller.record_swipe(self.free, self.p2.id, "like")
         self.assertTrue(like1["ok"])
         extra = make_profile("quota4@test.com", Gender.FEMALE, "Sokhna")
         like2 = swipe_controller.record_swipe(self.free, extra.id, "like")
@@ -907,6 +928,59 @@ class FreemiumQuotaTests(TestCase):
         visible_names = sum(1 for name in ("Awa", "Fatou", "Sokhna") if name in html)
         self.assertGreaterEqual(visible_names, 2)
 
+    def test_disabled_message_quota_is_unlimited(self):
+        from core.controllers import quota_controller
+
+        site_settings_controller.set_value("quota_messages_enabled", False)
+        site_settings_controller.set_value("free_messages_limit", 1)
+        self._match(self.free, self.p2)
+        ok1, _, _ = message_controller.send_text(self.free, self.p2.id, "Un")
+        ok2, _, _ = message_controller.send_text(self.free, self.p2.id, "Deux")
+        self.assertTrue(ok1 and ok2)
+        self.assertIsNone(quota_controller.messages_remaining(self.free))
+
+    def test_likes_received_cap_can_be_disabled(self):
+        site_settings_controller.set_value("quota_likes_visible_enabled", False)
+        extra = make_profile("lockvis@test.com", Gender.FEMALE, "Sokhna")
+        extra.photo_url = "https://example.com/photo.webp"
+        extra.onboarding_completed = True
+        extra.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+        swipe_controller.record_swipe(self.p2, self.free.id, "like")
+        swipe_controller.record_swipe(self.p3, self.free.id, "like")
+        swipe_controller.record_swipe(extra, self.free.id, "like")
+        self.client.force_login(self.free.user)
+        page = self.client.get("/likes/")
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, "is-locked")
+
+    def test_quota_period_month_and_save_from_post(self):
+        from core.controllers import quota_controller
+
+        saved = quota_controller.save_limits_from_post(
+            {
+                "quota_period": "month",
+                "free_messages_limit": "8",
+                "free_likes_per_day": "12",
+                "free_swipes_per_day": "15",
+                "free_likes_visible": "3",
+                "free_history_visible": "6",
+                "quota_messages_enabled": "on",
+                "quota_likes_enabled": "on",
+                "quota_swipes_enabled": "on",
+                "quota_likes_visible_enabled": "on",
+                "quota_history_visible_enabled": "on",
+                "freemium_limits_enabled": "on",
+            }
+        )
+        self.assertEqual(saved["period"], "month")
+        self.assertEqual(saved["messages_limit"], 8)
+        self.assertEqual(saved["likes_limit"], 12)
+        self.assertEqual(saved["swipes_limit"], 15)
+        self.assertEqual(saved["likes_visible"], 3)
+        self.assertTrue(saved["enabled"])
+        start = quota_controller.period_start()
+        self.assertEqual(start.day, 1)
+
     def test_subscription_entitlements(self):
         from core.controllers import subscription_controller
         from core.models.choices import SubscriptionStatus, SubscriptionTier
@@ -919,6 +993,13 @@ class FreemiumQuotaTests(TestCase):
         self.free.save(update_fields=["subscription_tier", "updated_at"])
         self.assertEqual(subscription_controller.visibility_multiplier(self.free), 10)
         self.assertTrue(subscription_controller.can_bypass_gender_filter(self.free))
+        femme = make_profile("plans-femme@test.com", Gender.FEMALE, "Awa")
+        ids = subscription_controller.plans_catalog_for(femme)
+        self.assertEqual(ids, ["pass_femme"])
+        homme_ids = subscription_controller.plans_catalog_for(self.free)
+        self.assertIn("premium_1m", homme_ids)
+        self.assertIn("vip_1m", homme_ids)
+        self.assertNotIn("pass_femme", homme_ids)
 
     def test_auto_ban_after_reports(self):
         from core.controllers import moderation_controller
@@ -927,8 +1008,7 @@ class FreemiumQuotaTests(TestCase):
         target = make_profile("bad@test.com", Gender.MALE, "Bad")
         r1 = make_profile("r1@test.com", Gender.FEMALE, "R1")
         r2 = make_profile("r2@test.com", Gender.FEMALE, "R2")
-        r3 = make_profile("r3@test.com", Gender.FEMALE, "R3")
-        for rep in (r1, r2, r3):
+        for rep in (r1, r2):
             moderation_controller.create_report(
                 rep,
                 {
@@ -939,4 +1019,49 @@ class FreemiumQuotaTests(TestCase):
             )
         target.refresh_from_db()
         self.assertIsNotNone(target.banned_at)
+        self.assertTrue(Profile.objects.filter(pk=target.pk).exists())
+
+
+class SearchFeatureFlagsTests(TestCase):
+    def test_search_bars_enabled_by_default(self):
+        from core.controllers import app_config_controller
+
+        flags = app_config_controller.feature_flags()
+        self.assertTrue(flags["explorer_search_enabled"])
+        self.assertTrue(flags["history_search_enabled"])
+        self.assertTrue(flags["messages_search_enabled"])
+
+    def test_admin_can_disable_search_bars(self):
+        from core.controllers import app_config_controller
+
+        app_config_controller.save_features_from_post({})
+        flags = app_config_controller.feature_flags()
+        self.assertFalse(flags["explorer_search_enabled"])
+        self.assertFalse(flags["history_search_enabled"])
+        self.assertFalse(flags["messages_search_enabled"])
+
+        app_config_controller.save_features_from_post(
+            {
+                "text_messages_enabled": "on",
+                "voice_messages_enabled": "on",
+                "image_messages_enabled": "on",
+                "explorer_search_enabled": "on",
+                "history_search_enabled": "on",
+                "messages_search_enabled": "on",
+            }
+        )
+        flags = app_config_controller.feature_flags()
+        self.assertTrue(flags["explorer_search_enabled"])
+        self.assertTrue(flags["history_search_enabled"])
+        self.assertTrue(flags["messages_search_enabled"])
+
+    def test_explorer_renders_search_bar(self):
+        profile = make_profile("searchbar@test.com", Gender.FEMALE, "Aicha")
+        profile.onboarding_completed = True
+        profile.save(update_fields=["onboarding_completed"])
+        self.client.force_login(profile.user)
+        r = self.client.get("/explorer/")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "data-explorer-search")
+        self.assertContains(r, "Rechercher un profil")
 

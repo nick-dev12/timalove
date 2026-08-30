@@ -199,11 +199,13 @@ def save_step_3(profile: Profile, data: dict) -> tuple[bool, str]:
 
 
 def save_step_4(profile: Profile, data: dict) -> tuple[bool, str]:
+    from core.controllers import app_config_controller
+
     photo = (data.get("photo_url") or profile.photo_url or "").strip()
     verification = (data.get("verification_photo_url") or profile.verification_photo_url or "").strip()
     if not photo:
         return False, "Ajoutez une photo de profil."
-    if not verification:
+    if app_config_controller.selfie_verification_required() and not verification:
         return False, "Prenez une photo de vérification en direct."
 
     score = data.get("face_match_score")
@@ -212,14 +214,17 @@ def save_step_4(profile: Profile, data: dict) -> tuple[bool, str]:
     except (TypeError, ValueError):
         score = profile.face_match_score
 
-    if score is not None and score < FACE_MATCH_THRESHOLD:
+    if app_config_controller.selfie_verification_required() and score is not None and score < FACE_MATCH_THRESHOLD:
         return False, "Les visages ne correspondent pas assez. Reprenez le selfie face caméra."
 
     profile.photo_url = photo
-    profile.verification_photo_url = verification
-    profile.face_match_score = score
-    if score is not None and score >= FACE_MATCH_THRESHOLD:
-        profile.is_verified = True
+    if verification:
+        profile.verification_photo_url = verification
+        profile.face_match_score = score
+        if score is not None and score >= FACE_MATCH_THRESHOLD:
+            profile.is_verified = True
+    elif not app_config_controller.selfie_verification_required():
+        profile.is_verified = False
     profile.onboarding_step = 4
     profile.onboarding_completed = True
     profile.registration_status = RegistrationStatus.APPROVED

@@ -66,6 +66,13 @@ def is_banned(email: str | None = None, phone: str | None = None) -> bool:
     return False
 
 
+def persist_session(request) -> None:
+    """Prolonge la session Django (cookie) pour rester connecté entre les visites."""
+    from django.conf import settings
+
+    request.session.set_expiry(getattr(settings, "SESSION_COOKIE_AGE", 60 * 60 * 24 * 365))
+
+
 def login_user(request, identifier: str, password: str, mode: str = "email") -> tuple[bool, str]:
     mode = (mode or "email").strip().lower()
     if mode == "phone":
@@ -78,6 +85,7 @@ def _finish_login(request, user) -> tuple[bool, str]:
     if profile and profile.banned_at:
         return False, "Ce compte a été banni."
     login(request, user)
+    persist_session(request)
     if profile:
         from django.utils import timezone
 
@@ -268,6 +276,7 @@ def login_or_register_oauth(
         return False, "Ce compte a été banni.", False
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    persist_session(request)
     from django.utils import timezone
 
     profile.is_online = True

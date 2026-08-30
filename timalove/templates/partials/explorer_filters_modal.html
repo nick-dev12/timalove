@@ -1,0 +1,46 @@
+{% if user.is_authenticated and discover_filters %}
+<div id="explorer-filters-modal" class="explorer-filters-modal" hidden>
+  <div class="explorer-filters-modal__stage">
+    <button type="button" class="explorer-filters-modal__backdrop" data-explorer-filters-close aria-label="Fermer"></button>
+    <div class="explorer-filters-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="explorer-filters-title">
+      <header class="explorer-filters-modal__head">
+        <h2 id="explorer-filters-title">Filtres de découverte</h2>
+        <button type="button" class="explorer-filters-modal__close" data-explorer-filters-close aria-label="Fermer">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+        </button>
+      </header>
+      <p class="explorer-filters-modal__lead">Ces filtres s’appliquent à l’explorer et aux profils proposés.</p>
+      <form class="visit-form explorer-filters-modal__form" data-explorer-filters-form>
+        <div class="visit-form__row">
+          <label class="visit-form__field"><span>Âge minimum</span><input name="age_min" type="number" min="18" max="99" value="{{ discover_filters.age_min }}"></label>
+          <label class="visit-form__field"><span>Âge maximum</span><input name="age_max" type="number" min="18" max="99" value="{{ discover_filters.age_max }}"></label>
+        </div>
+        <label class="visit-form__field">
+          <span>Religion</span>
+          <select name="religion">
+            <option value="" {% if not discover_filters.religion %}selected{% endif %}>Toutes</option>
+            {% for value, label in religions %}
+            <option value="{{ value }}"{% if discover_filters.religion == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="visit-form__field">
+          <span>Pays</span>
+          <select name="country">
+            <option value="" {% if not discover_filters.country %}selected{% endif %}>Tous les pays</option>
+            {% for c in countries %}
+            <option value="{{ c }}"{% if discover_filters.country == c %} selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="visit-form__check"><input type="checkbox" name="verified_only"{% if discover_filters.verified_only %} checked{% endif %}> Uniquement les profils vérifiés</label>
+        <label class="visit-form__check"><input type="checkbox" name="online_only"{% if discover_filters.online_only %} checked{% endif %}> Uniquement les membres en ligne</label>
+      </form>
+      <footer class="explorer-filters-modal__foot">
+        <p class="explorer-filters-modal__msg" data-explorer-filters-msg hidden></p>
+        <button type="button" class="btn btn-primary" data-explorer-filters-save>Appliquer</button>
+      </footer>
+    </div>
+  </div>
+</div>
+{% endif %}

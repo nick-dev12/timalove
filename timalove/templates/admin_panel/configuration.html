@@ -1,0 +1,241 @@
+{% extends "layouts/admin.html" %}
+{% block subtitle %}
+<p class="adm__subtitle">Réglages algorithmiques, fonctionnalités et paramètres système de l'application</p>
+{% endblock %}
+{% block content %}
+<nav class="adm-tabs adm-tabs--multi" aria-label="Sections configuration">
+  <a class="adm-tabs__link{% if tab == 'algorithm' %} is-active{% endif %}" href="?tab=algorithm">Algorithme & quotas</a>
+  <a class="adm-tabs__link{% if tab == 'features' %} is-active{% endif %}" href="?tab=features">Fonctionnalités</a>
+  <a class="adm-tabs__link{% if tab == 'system' %} is-active{% endif %}" href="?tab=system">Système</a>
+</nav>
+
+{% if tab == 'algorithm' %}
+<form method="post" class="adm-sections">{% csrf_token %}
+  <input type="hidden" name="action" value="save_algorithm">
+  <section class="adm-card">
+    <div class="adm-card__head">
+      <h2 class="adm-card__title">Restrictions freemium</h2>
+      <p class="adm-card__lead">Limites appliquées aux hommes sans abonnement. Les femmes et les abonnés Premium / VIP ne sont jamais restreints. Désactivez une ligne pour la rendre illimitée.</p>
+    </div>
+
+    <label class="adm-config-toggle adm-config-toggle--master">
+      <input type="checkbox" name="freemium_limits_enabled"{% if quotas.enabled %} checked{% endif %}>
+      <span class="adm-config-toggle__body">
+        <strong>Activer les restrictions</strong>
+        <span>Interrupteur général : si désactivé, aucun quota n’est appliqué dans l’application.</span>
+      </span>
+    </label>
+
+    <fieldset class="adm-period">
+      <legend class="adm-label">Fenêtre de comptage</legend>
+      <div class="adm-period__choices">
+        <label class="adm-period__choice">
+          <input type="radio" name="quota_period" value="day"{% if quotas.period != 'month' %} checked{% endif %}>
+          <span>Par jour</span>
+        </label>
+        <label class="adm-period__choice">
+          <input type="radio" name="quota_period" value="month"{% if quotas.period == 'month' %} checked{% endif %}>
+          <span>Par mois</span>
+        </label>
+      </div>
+      <p class="adm-period__hint">Les compteurs (messages, likes envoyés, swipes) se réinitialisent à minuit ou le 1er du mois selon ce choix.</p>
+    </fieldset>
+
+    <div class="adm-quota-list">
+      <div class="adm-quota-row">
+        <label class="adm-quota-row__toggle">
+          <input type="checkbox" name="quota_messages_enabled"{% if quotas.messages_enabled %} checked{% endif %}>
+          <span class="adm-quota-row__copy">
+            <strong>Messages gratuits</strong>
+            <span>Nombre de messages envoyés (toutes discussions confondues) sur la fenêtre choisie.</span>
+          </span>
+        </label>
+        <input class="adm-input" id="free_messages_limit" type="number" min="0" max="9999" name="free_messages_limit" value="{{ quotas.messages_limit }}" aria-label="Nombre de messages gratuits">
+      </div>
+
+      <div class="adm-quota-row">
+        <label class="adm-quota-row__toggle">
+          <input type="checkbox" name="quota_likes_enabled"{% if quotas.likes_enabled %} checked{% endif %}>
+          <span class="adm-quota-row__copy">
+            <strong>Likes envoyés</strong>
+            <span>Nombre de likes / super-likes qu’un homme gratuit peut envoyer.</span>
+          </span>
+        </label>
+        <input class="adm-input" id="free_likes_per_day" type="number" min="0" max="9999" name="free_likes_per_day" value="{{ quotas.likes_limit }}" aria-label="Nombre de likes envoyés">
+      </div>
+
+      <div class="adm-quota-row">
+        <label class="adm-quota-row__toggle">
+          <input type="checkbox" name="quota_swipes_enabled"{% if quotas.swipes_enabled %} checked{% endif %}>
+          <span class="adm-quota-row__copy">
+            <strong>Swipes / profils vus</strong>
+            <span>Nombre de profils parcourus dans l’explorer (like, super-like ou passer).</span>
+          </span>
+        </label>
+        <input class="adm-input" id="free_swipes_per_day" type="number" min="0" max="9999" name="free_swipes_per_day" value="{{ quotas.swipes_limit }}" aria-label="Nombre de swipes">
+      </div>
+
+      <div class="adm-quota-row">
+        <label class="adm-quota-row__toggle">
+          <input type="checkbox" name="quota_likes_visible_enabled"{% if quotas.likes_visible_enabled %} checked{% endif %}>
+          <span class="adm-quota-row__copy">
+            <strong>Likes reçus visibles</strong>
+            <span>Nombre de profils qui vous ont liké révélés ; les autres restent verrouillés.</span>
+          </span>
+        </label>
+        <input class="adm-input" id="free_likes_visible" type="number" min="0" max="9999" name="free_likes_visible" value="{{ quotas.likes_visible }}" aria-label="Nombre de likes reçus visibles">
+      </div>
+
+      <div class="adm-quota-row">
+        <label class="adm-quota-row__toggle">
+          <input type="checkbox" name="quota_history_visible_enabled"{% if quotas.history_visible_enabled %} checked{% endif %}>
+          <span class="adm-quota-row__copy">
+            <strong>Historique visible</strong>
+            <span>Nombre de profils déjà likés visibles dans l’historique.</span>
+          </span>
+        </label>
+        <input class="adm-input" id="free_history_visible" type="number" min="0" max="9999" name="free_history_visible" value="{{ quotas.history_visible }}" aria-label="Nombre de profils d’historique visibles">
+      </div>
+    </div>
+  </section>
+
+  <button class="adm-btn adm-btn--primary" type="submit">Enregistrer les restrictions</button>
+</form>
+{% endif %}
+
+{% if tab == 'features' %}
+<form method="post" class="adm-sections" data-features-autosave>{% csrf_token %}
+  <input type="hidden" name="action" value="save_features">
+  <section class="adm-card">
+    <div class="adm-card__head">
+      <h2 class="adm-card__title">Fonctionnalités On / Off</h2>
+      <p class="adm-card__lead">Cochez ou décochez : le changement s’applique immédiatement dans l’application, sans redéploiement.</p>
+    </div>
+    <div class="adm-config-toggles">
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="text_messages_enabled"{% if app_config.text_messages_enabled %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>Message texte</strong>
+          <span>Envoi de messages écrits dans les discussions</span>
+        </span>
+      </label>
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="voice_messages_enabled"{% if app_config.voice_messages_enabled %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>Message vocal</strong>
+          <span>Enregistrement et envoi de vocaux dans les discussions</span>
+        </span>
+      </label>
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="image_messages_enabled"{% if app_config.image_messages_enabled %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>Envoi d’image</strong>
+          <span>Photos dans les discussions</span>
+        </span>
+      </label>
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="selfie_verification_enabled"{% if app_config.selfie_verification_enabled %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>Vérification automatique par selfie</strong>
+          <span>Selfie obligatoire à l’inscription et certification du profil</span>
+        </span>
+      </label>
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="explorer_search_enabled"{% if app_config.explorer_search_enabled %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>Recherche — Explorer</strong>
+          <span>Barre de recherche en temps réel sur la page Explorer</span>
+        </span>
+      </label>
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="history_search_enabled"{% if app_config.history_search_enabled %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>Recherche — Historique</strong>
+          <span>Barre de recherche en temps réel parmi les profils likés</span>
+        </span>
+      </label>
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="messages_search_enabled"{% if app_config.messages_search_enabled %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>Recherche — Messages</strong>
+          <span>Barre de recherche en temps réel dans la liste des discussions</span>
+        </span>
+      </label>
+    </div>
+    <p class="adm-feature-status" data-features-status hidden></p>
+  </section>
+</form>
+{% endif %}
+
+{% if tab == 'system' %}
+<div class="adm-sections">
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="save_maintenance">
+    <section class="adm-card adm-card--warn">
+      <div class="adm-card__head">
+        <h2 class="adm-card__title">Mode maintenance</h2>
+        <p class="adm-card__lead">Redirige tous les visiteurs (sauf admins) vers la page de maintenance.</p>
+      </div>
+      <label class="adm-check"><input type="checkbox" name="maintenance_mode"{% if settings.maintenance_mode %} checked{% endif %}> Activer le mode maintenance global</label>
+      <div class="adm-field">
+        <label class="adm-label" for="maintenance_message">Message affiché</label>
+        <textarea class="adm-textarea" id="maintenance_message" name="maintenance_message" rows="3">{{ settings.maintenance_message }}</textarea>
+      </div>
+      <div class="adm-card__actions">
+        <button class="adm-btn adm-btn--primary" type="submit">Enregistrer la maintenance</button>
+      </div>
+    </section>
+  </form>
+
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="save_registrations">
+    <section class="adm-card">
+      <div class="adm-card__head">
+        <h2 class="adm-card__title">Inscriptions</h2>
+        <p class="adm-card__lead">Autorise ou bloque la création de nouveaux comptes.</p>
+      </div>
+      <label class="adm-check"><input type="checkbox" name="registrations_enabled"{% if settings.registrations_enabled %} checked{% endif %}> Inscriptions ouvertes</label>
+      <div class="adm-card__actions">
+        <button class="adm-btn adm-btn--primary" type="submit">Enregistrer les inscriptions</button>
+      </div>
+    </section>
+  </form>
+
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="save_force_update">
+    <section class="adm-card">
+      <div class="adm-card__head">
+        <h2 class="adm-card__title">Force Update — version minimale</h2>
+        <p class="adm-card__lead">Bloque les anciennes versions iOS / Android via l’API (HTTP 426).</p>
+      </div>
+      <label class="adm-check adm-check--spaced"><input type="checkbox" name="force_update_enabled"{% if app_config.force_update_enabled %} checked{% endif %}> Imposer une version minimale</label>
+      <div class="adm-grid-2">
+        <div class="adm-field">
+          <label class="adm-label" for="force_update_ios">Version min. iOS</label>
+          <input class="adm-input" id="force_update_ios" name="force_update_ios" value="{{ app_config.force_update_ios }}" placeholder="Ex. 2.1.0">
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="force_update_android">Version min. Android</label>
+          <input class="adm-input" id="force_update_android" name="force_update_android" value="{{ app_config.force_update_android }}" placeholder="Ex. 2.1.0">
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="force_update_message">Message utilisateur</label>
+          <input class="adm-input" id="force_update_message" name="force_update_message" value="{{ app_config.force_update_message }}">
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="force_update_url_ios">URL App Store</label>
+          <input class="adm-input" id="force_update_url_ios" name="force_update_url_ios" value="{{ app_config.force_update_url_ios }}">
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="force_update_url_android">URL Google Play</label>
+          <input class="adm-input" id="force_update_url_android" name="force_update_url_android" value="{{ app_config.force_update_url_android }}">
+        </div>
+      </div>
+      <div class="adm-card__actions">
+        <button class="adm-btn adm-btn--primary" type="submit">Enregistrer la version minimale</button>
+      </div>
+    </section>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

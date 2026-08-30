@@ -10,6 +10,8 @@ TIER_PREMIUM = "premium"
 TIER_VIP = "vip"
 TIER_PASS_FEMME = "pass_femme"
 
+PLAN_TIER_KINDS = frozenset({TIER_PREMIUM, TIER_VIP, TIER_PASS_FEMME})
+
 PREMIUM_TIERS = frozenset(
     {
         SubscriptionTier.PREMIUM_1M,
@@ -38,17 +40,35 @@ def _active_tier(profile: Profile | None) -> str | None:
     return profile.subscription_tier or None
 
 
+def _tier_kind_for_plan(plan_id: str | None) -> str | None:
+    if not plan_id:
+        return None
+    from core.controllers import site_settings_controller
+
+    meta = site_settings_controller.get_subscription_plans().get(plan_id, {})
+    kind = meta.get("tier_kind")
+    if kind in PLAN_TIER_KINDS:
+        return kind
+    if plan_id in PASS_FEMME_TIERS:
+        return TIER_PASS_FEMME
+    if plan_id in VIP_TIERS:
+        return TIER_VIP
+    if plan_id in PREMIUM_TIERS:
+        return TIER_PREMIUM
+    return TIER_PREMIUM
+
+
 def tier_of(profile: Profile | None) -> str:
     raw = _active_tier(profile)
     if not raw:
         return TIER_FREE
-    if raw in PASS_FEMME_TIERS:
+    kind = _tier_kind_for_plan(raw)
+    if kind == TIER_PASS_FEMME:
         return TIER_PASS_FEMME
-    if raw in VIP_TIERS:
+    if kind == TIER_VIP:
         return TIER_VIP
-    if raw in PREMIUM_TIERS:
+    if kind == TIER_PREMIUM:
         return TIER_PREMIUM
-    # Legacy / inconnu mais payant → premium
     return TIER_PREMIUM
 
 
@@ -87,10 +107,20 @@ def can_send_media(profile: Profile | None) -> bool:
 
 
 def plans_catalog_for(profile: Profile) -> list[str]:
-    """IDs de plans affichables selon le genre."""
-    if profile.gender == Gender.FEMALE:
-        return [SubscriptionTier.PASS_FEMME]
-    return [SubscriptionTier.PREMIUM_1M, SubscriptionTier.VIP_1M]
+    """IDs de plans affichables selon le genre et la configuration admin."""
+    from core.controllers import site_settings_controller
+
+    allowed: list[str] = []
+    for plan_id, meta in site_settings_controller.get_subscription_plans().items():
+        if not meta.get("active", True):
+            continue
+        audience = meta.get("audience", "all")
+        if profile.gender == Gender.FEMALE and audience == "male":
+            continue
+        if profile.gender == Gender.MALE and audience == "female":
+            continue
+        allowed.append(plan_id)
+    return allowed
 
 
 def badge_for(profile: Profile | None) -> str:

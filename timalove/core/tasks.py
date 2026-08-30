@@ -24,3 +24,17 @@ def send_push_notification(notification_id: str, force: bool = False):
     from core.controllers import push_controller
 
     return push_controller.send_for_notification(notification_id, force=force)
+
+
+@shared_task
+def send_marketing_campaign(campaign_id: str):
+    from core.controllers import crm_controller
+
+    return crm_controller.execute_campaign(campaign_id)
+
+
+@shared_task
+def process_scheduled_campaigns():
+    from core.controllers import crm_controller
+
+    return crm_controller.process_due_scheduled_campaigns()

@@ -4,8 +4,11 @@
 {% block body_class %}messages-page{% if is_preview %} is-guest{% endif %}{% endblock %}
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260822h6" defer></script>
-<script src="{% static 'js/messages-thread.js' %}?v=20260822m15" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260826h1" defer></script>
+<script src="{% static 'js/messages-thread.js' %}?v=20260827promo1" defer></script>
+{% if not is_preview %}
+<script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
+{% endif %}
 {% endblock %}
 {% block body %}
 {% include "partials/explorer_atmosphere.html" %}
@@ -162,7 +165,7 @@
       <p class="msg__composer-lock">{{ quota_message|default:"Messagerie désactivée pour cette conversation." }}</p>
     </div>
     {% else %}
-    <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}" data-partner-id="{{ partner_id }}" data-media-url="{% url 'app:discussion_media' partner_id %}" data-quota-locked="{% if quota_locked %}1{% else %}0{% endif %}">
+    <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}" data-partner-id="{{ partner_id }}" data-media-url="{% url 'app:discussion_media' partner_id %}" data-quota-locked="{% if quota_locked %}1{% else %}0{% endif %}" data-text-enabled="{% if app_features.text_messages_enabled %}1{% else %}0{% endif %}">
       {% csrf_token %}
       <div class="msg__record" data-msg-record hidden>
         <button class="msg__tool-ico" type="button" data-msg-record-cancel aria-label="Annuler">
@@ -177,15 +180,15 @@
       </div>
       <label class="msg__field" data-msg-compose>
         <span class="visually-hidden">Message</span>
-        <textarea name="content" rows="1" placeholder="Écrire un message…" autocomplete="off" data-msg-input></textarea>
-        <button class="msg__tool-ico" type="button" data-msg-tool="voice" aria-label="Vocal">
+        <textarea name="content" rows="1" placeholder="{% if app_features.text_messages_enabled %}Écrire un message…{% else %}Les messages texte sont désactivés.{% endif %}" autocomplete="off" data-msg-input{% if not app_features.text_messages_enabled %} disabled{% endif %}></textarea>
+        <button class="msg__tool-ico" type="button" data-msg-tool="voice" aria-label="Vocal"{% if not app_features.voice_messages_enabled %} hidden{% endif %}>
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 15.5a3.2 3.2 0 0 0 3.2-3.2V7.2a3.2 3.2 0 1 0-6.4 0v5.1A3.2 3.2 0 0 0 12 15.5z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6.4 12.4a5.6 5.6 0 0 0 11.2 0M12 18.2v2.2"/></svg>
         </button>
-        <button class="msg__tool-ico" type="button" data-msg-tool="photos" aria-label="Photos">
+        <button class="msg__tool-ico" type="button" data-msg-tool="photos" aria-label="Photos"{% if not app_features.image_messages_enabled %} hidden{% endif %}>
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" d="m3.8 16.2 4.4-4.6 3.2 3.3 2.4-2.5 6.2 6.2"/><circle cx="8.2" cy="9.2" r="1.15" fill="currentColor"/></svg>
         </button>
         <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden data-msg-photo-input>
-        <button class="msg__send" type="submit" aria-label="Envoyer">
+        <button class="msg__send" type="submit" aria-label="Envoyer" data-msg-send-text{% if not app_features.text_messages_enabled %} hidden{% endif %}>
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3.4 11.2 20.2 3.6c.7-.3 1.4.4 1.1 1.1L13.8 21.6c-.3.8-1.5.8-1.8 0l-2.6-7.2-7.2-2.6c-.8-.3-.8-1.5 0-1.8z"/></svg>
         </button>
       </label>
@@ -205,6 +208,9 @@
 {% include "partials/message_report_modal.html" %}
 {% include "partials/message_delete_modal.html" %}
 {% include "partials/profile_modal.html" %}
+{% if not is_preview %}
+{% include "partials/message_invite_modal.html" %}
+{% endif %}
 {% if not is_preview and plans %}
 {% include "partials/upgrade_plans_modal.html" %}
 {% endif %}

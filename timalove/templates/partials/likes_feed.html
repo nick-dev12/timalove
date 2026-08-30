@@ -37,11 +37,11 @@
       {% else %}
       <span class="likes__card-fallback">?</span>
       {% endif %}
-      <span class="likes__lock">Premium</span>
+      <span class="likes__lock">Plan supérieur</span>
     </a>
     <div class="likes__card-bar">
       <strong>Membre</strong>
-      <em>Passez Premium pour voir qui</em>
+      <em>Passez au plan supérieur pour voir qui</em>
     </div>
   </article>
   {% else %}
@@ -101,8 +101,8 @@
 </section>
 {% if locked_count %}
 <section class="likes__upgrade">
-  <p>{% if locked_count == 1 %}Une autre personne vous a liké.{% else %}{{ locked_count }} autres personnes vous ont liké.{% endif %}</p>
-  <a class="likes__cta" href="{% url 'app:parametres' %}">Voir tous les likes</a>
+  <p>Passez au plan supérieur pour voir {% if locked_count == 1 %}ce profil{% else %}ces {{ locked_count }} profils{% endif %}.</p>
+  <a class="likes__cta" href="{% url 'app:parametres' %}">Voir plus</a>
 </section>
 {% endif %}
 <p class="likes__empty-filter" hidden>Aucun profil dans ce filtre.</p>

@@ -36,6 +36,10 @@ def _is_https_url(url: str) -> bool:
 
 
 def _webpush_config(notification: Notification, link: str) -> "messaging.WebpushConfig":
+    return _webpush_config_for_link(link)
+
+
+def _webpush_config_for_link(link: str) -> "messaging.WebpushConfig":
     from firebase_admin import messaging
 
     # Data-only : le SW / onMessage affichent la notif. Un payload `notification`
@@ -56,6 +60,50 @@ def _get_firebase_app():
     if not _firebase_enabled():
         return None
     return get_firebase_app()
+
+
+def _delivery_kwargs(
+    device: PushDevice,
+    *,
+    title: str,
+    body: str,
+    absolute_link: str,
+) -> dict[str, Any]:
+    """Payload d’affichage : data-only sur le web, alerte native sur Android / iOS."""
+    from firebase_admin import messaging
+
+    if device.platform == PushDevice.Platform.WEB:
+        return {"webpush": _webpush_config_for_link(absolute_link)}
+
+    kwargs: dict[str, Any] = {
+        "notification": messaging.Notification(title=title or "TimaLove", body=body or ""),
+    }
+    if device.platform == PushDevice.Platform.ANDROID:
+        kwargs["android"] = messaging.AndroidConfig(
+            priority="high",
+            notification=messaging.AndroidNotification(
+                title=title or "TimaLove",
+                body=body or "",
+                channel_id="timalove_alerts",
+                sound="default",
+                click_action="FLUTTER_NOTIFICATION_CLICK",
+            ),
+        )
+    elif device.platform == PushDevice.Platform.IOS:
+        kwargs["apns"] = messaging.APNSConfig(
+            headers={
+                "apns-priority": "10",
+                "apns-push-type": "alert",
+            },
+            payload=messaging.APNSPayload(
+                aps=messaging.Aps(
+                    alert=messaging.ApsAlert(title=title or "TimaLove", body=body or ""),
+                    sound="default",
+                    badge=1,
+                ),
+            ),
+        )
+    return kwargs
 
 
 def public_config() -> dict[str, Any]:
@@ -167,6 +215,11 @@ def notification_link(notification: Notification) -> str:
 
 def absolute_notification_link(notification: Notification) -> str:
     rel = notification_link(notification)
+    return absolute_notification_link_from_path(rel)
+
+
+def absolute_notification_link_from_path(rel: str) -> str:
+    rel = (rel or "/").strip() or "/"
     if rel.startswith("/"):
         return f"{settings.SITE_URL.rstrip('/')}{rel}"
     return rel
@@ -205,6 +258,7 @@ def send_for_notification(notification_id: str, *, force: bool = False) -> dict[
         "type": notification.type,
         "title": notification.title,
         "message": notification.message,
+        "body": notification.message,
         "url": link,
     }
     if force and notification.type == "profile_approved" and notification.title == "Test TimaLove":
@@ -223,7 +277,12 @@ def send_for_notification(notification_id: str, *, force: bool = False) -> dict[
         message = messaging.Message(
             token=device.token,
             data={k: str(v) for k, v in data.items()},
-            webpush=_webpush_config(notification, absolute_link),
+            **_delivery_kwargs(
+                device,
+                title=notification.title,
+                body=notification.message,
+                absolute_link=absolute_link,
+            ),
         )
         try:
             messaging.send(message, app=app)
@@ -242,3 +301,75 @@ def send_for_notification(notification_id: str, *, force: bool = False) -> dict[
         PushDevice.objects.filter(token__in=stale_tokens).delete()
 
     return {"sent": sent, "failed": failed, "skipped": 0, "errors": errors}
+
+
+def send_campaign_push(
+    *,
+    profile: Profile,
+    title: str,
+    body: str,
+    url: str = "/",
+    image_url: str = "",
+    delivery_id: str = "",
+    campaign_id: str = "",
+) -> dict[str, int]:
+    """Envoie une push marketing FCM sans notification in-app de matching."""
+    if not _firebase_enabled():
+        return {"sent": 0, "failed": 0, "skipped": 1}
+
+    devices = list(PushDevice.objects.filter(profile=profile))
+    if not devices:
+        return {"sent": 0, "failed": 0, "skipped": 1}
+
+    app = _get_firebase_app()
+    if app is None:
+        return {"sent": 0, "failed": 0, "skipped": 1}
+
+    from firebase_admin import messaging
+
+    link = (url or "/").strip() or "/"
+    if not link.startswith("/"):
+        link = "/" + link
+    absolute_link = absolute_notification_link_from_path(link)
+    data = {
+        "type": "marketing",
+        "kind": "marketing",
+        "title": title or "TimaLove",
+        "message": body or "",
+        "body": body or "",
+        "url": link,
+        "delivery_id": delivery_id or "",
+        "campaign_id": campaign_id or "",
+    }
+    if image_url:
+        data["image_url"] = image_url
+
+    sent = 0
+    failed = 0
+    stale_tokens: list[str] = []
+    for device in devices:
+        message = messaging.Message(
+            token=device.token,
+            data={k: str(v) for k, v in data.items()},
+            **_delivery_kwargs(
+                device,
+                title=title or "TimaLove",
+                body=body or "",
+                absolute_link=absolute_link,
+            ),
+        )
+        try:
+            messaging.send(message, app=app)
+            sent += 1
+            PushDevice.objects.filter(pk=device.pk).update(last_used_at=timezone.now())
+        except Exception as exc:
+            failed += 1
+            err_msg = getattr(exc, "message", None) or str(exc)
+            code = getattr(exc, "code", "") or err_msg
+            if any(marker in code for marker in INVALID_TOKEN_ERRORS):
+                stale_tokens.append(device.token)
+            logger.warning("[fcm] campagne token=%s… : %s", device.token[:12], code)
+
+    if stale_tokens:
+        PushDevice.objects.filter(token__in=stale_tokens).delete()
+    return {"sent": sent, "failed": failed, "skipped": 0}

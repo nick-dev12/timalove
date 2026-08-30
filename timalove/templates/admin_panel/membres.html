@@ -1,0 +1,76 @@
+{% extends "layouts/admin.html" %}
+{% load static admin_tags %}
+{% block head %}
+{{ block.super }}
+<script src="{% static 'js/admin-members.js' %}?v=20260826u2" defer></script>
+{% endblock %}
+{% block content %}
+<div class="adm-stats adm-stats--compact adm-stats--users">
+  <article class="adm-stat adm-stat--accent"><span class="adm-stat__label">Actifs</span><strong class="adm-stat__value">{{ summary.active }}</strong></article>
+  <article class="adm-stat"><span class="adm-stat__label">Signalés</span><strong class="adm-stat__value">{{ summary.reported }}</strong></article>
+  <article class="adm-stat"><span class="adm-stat__label">Bannis</span><strong class="adm-stat__value">{{ summary.banned }}</strong></article>
+  <article class="adm-stat"><span class="adm-stat__label">Suspendus</span><strong class="adm-stat__value">{{ summary.blocked }}</strong></article>
+  <article class="adm-stat"><span class="adm-stat__label">Shadowban</span><strong class="adm-stat__value">{{ summary.shadowbanned }}</strong></article>
+</div>
+
+<div class="adm-members-toolbar" data-members-toolbar>
+  <label class="adm-label" for="members-search">Recherche</label>
+  <div class="adm-members-search-row">
+    <input class="adm-input" id="members-search" type="search" name="q" value="{{ q }}" placeholder="Pseudonyme, email, ville, ID…" autocomplete="off" data-members-search>
+    <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-members-clear{% if not q %} hidden{% endif %}>Effacer</button>
+  </div>
+  <div class="adm-inscriptions-filters adm-um-filters">
+    <div class="adm-field">
+      <label class="adm-label" for="members-account-status">Statut compte</label>
+      <select class="adm-select" id="members-account-status" name="account_status" data-members-account-status>
+        <option value="">Tous</option>
+        {% for value, label in account_statuses %}
+        <option value="{{ value }}"{% if account_status == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="adm-field">
+      <label class="adm-label" for="members-subscription">Abonnement</label>
+      <select class="adm-select" id="members-subscription" name="subscription_kind" data-members-subscription>
+        <option value="">Tous</option>
+        {% for value, label in subscription_kinds %}
+        <option value="{{ value }}"{% if subscription_kind == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <p class="adm-members-toolbar__hint" data-members-status aria-live="polite">
+    {% if page_obj.paginator.count %}{{ page_obj|length }} affiché(s) sur {{ page_obj.paginator.count }} utilisateur(s){% else %}Aucun résultat{% endif %}
+  </p>
+</div>
+
+<div class="adm-card adm-card--flush-mobile">
+  <div class="adm-table-wrap adm-table-wrap--stackable">
+    <table class="adm-table adm-table--users adm-table--stackable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Pseudonyme</th>
+          <th>Email</th>
+          <th>Inscription</th>
+          <th>Statut</th>
+          <th>Abonnement</th>
+          <th>Dernier accès</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="members-tbody" data-members-tbody>
+        {% include "admin_panel/partials/membres_rows.html" %}
+      </tbody>
+    </table>
+  </div>
+  <div class="adm-members-more-wrap">
+    <button class="adm-btn adm-btn--primary" type="button" data-members-more{% if not page_obj.has_next %} hidden{% endif %}>Voir plus</button>
+  </div>
+  <template id="members-page-meta"
+    data-has-next="{% if page_obj.has_next %}1{% else %}0{% endif %}"
+    data-next-page="{% if page_obj.has_next %}{{ page_obj.next_page_number }}{% endif %}"
+    data-total="{{ page_obj.paginator.count }}"
+    data-shown="{{ page_obj|length }}"></template>
+</div>
+{% endblock %}

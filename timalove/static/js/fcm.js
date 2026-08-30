@@ -238,6 +238,9 @@
   }
 
   async function enablePush(options) {
+    if (window.__TIMALOVE_NATIVE_APP && window.TimaLoveNative && typeof window.TimaLoveNative.requestNotifications === "function") {
+      return window.TimaLoveNative.requestNotifications();
+    }
     const opts = options || {};
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
       throw new Error("Votre navigateur ne prend pas en charge les notifications.");
@@ -268,6 +271,9 @@
   }
 
   async function initFCM() {
+    if (window.__TIMALOVE_NATIVE_APP) {
+      return;
+    }
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
       return;
     }

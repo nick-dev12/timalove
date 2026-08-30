@@ -45,6 +45,19 @@ def site_config(request):
     return JsonResponse(site_settings_controller.public_config())
 
 
+@require_GET
+def app_config(request):
+    from core.controllers import app_config_controller
+
+    platform = request.GET.get("platform") or request.headers.get("X-TimaLove-Platform") or "web"
+    version = request.GET.get("app_version") or request.headers.get("X-TimaLove-App-Version") or ""
+    payload = app_config_controller.public_app_config()
+    block = app_config_controller.force_update_check(platform=platform, app_version=version) if version else None
+    if block:
+        payload["forceUpdateBlock"] = block
+    return JsonResponse(payload)
+
+
 @login_required
 @require_GET
 def discover_feed(request):
@@ -88,8 +101,9 @@ def likes_incoming(request):
     items = likes_controller.incoming(request.user.profile)
     from core.controllers import quota_controller
 
-    if quota_controller.is_freemium(request.user.profile):
-        items = items[: quota_controller.likes_visible_limit()]
+    visible = quota_controller.likes_visible_cap(request.user.profile)
+    if visible is not None:
+        items = items[:visible]
     return JsonResponse(
         {
             "likes": [
@@ -194,7 +208,10 @@ def messages_open(request):
     partner_id = data.get("partner_id")
     ok, msg, match = message_controller.ensure_conversation(profile, partner_id)
     if not ok:
-        return JsonResponse({"ok": False, "message": msg}, status=400)
+        payload = {"ok": False, "message": msg}
+        if msg == message_controller.LIKE_REQUIRED_MSG:
+            payload["code"] = "like_required"
+        return JsonResponse(payload, status=400)
     return JsonResponse(
         {
             "ok": True,
@@ -330,13 +347,107 @@ def notifications(request):
 @require_POST
 def payments_checkout(request):
     data = _json(request) or request.POST
+    promo_code = (data.get("promo_code") or data.get("promo") or "").strip() or None
     if (data.get("kind") or "") == "boost":
-        result = payment_controller.create_boost_checkout(request.user.profile)
+        result = payment_controller.create_boost_checkout(request.user.profile, promo_code=promo_code)
     else:
-        result = payment_controller.create_checkout(request.user.profile, data.get("tier"))
+        result = payment_controller.create_checkout(
+            request.user.profile,
+            data.get("tier"),
+            promo_code=promo_code,
+        )
     if not result.get("ok"):
         return JsonResponse({"ok": False, "message": result.get("error") or result.get("message") or "Erreur"}, status=400)
     return JsonResponse(result)
+
+
+@login_required
+@require_POST
+def payments_validate_promo(request):
+    from core.controllers import monetization_controller
+
+    data = _json(request) or request.POST
+    code = (data.get("promo_code") or data.get("code") or "").strip()
+    tier = (data.get("tier") or "").strip()
+    kind = (data.get("kind") or "").strip()
+    if not code:
+        return JsonResponse({"ok": False, "message": "Code promo requis."}, status=400)
+    try:
+        if kind == "boost":
+            promo = monetization_controller.validate_promo_for_checkout(code, for_boost=True)
+        elif tier:
+            promo = monetization_controller.validate_promo_for_checkout(code, tier=tier)
+        else:
+            return JsonResponse({"ok": False, "message": "Sélectionnez une offre avant d’appliquer un code."}, status=400)
+        if kind == "boost":
+            from core.controllers import site_settings_controller
+
+            amount = site_settings_controller.default_boost_pack_price()
+        elif tier:
+            amount = payment_controller.price_for_tier(tier)
+        else:
+            return JsonResponse({"ok": False, "message": "Sélectionnez une offre avant d’appliquer un code."}, status=400)
+        final_amount, discount = monetization_controller.discounted_amount(amount, promo)
+        return JsonResponse(
+            {
+                "ok": True,
+                "code": promo.code,
+                "discount_percent": promo.discount_percent,
+                "original_amount": amount,
+                "final_amount": final_amount,
+                "discount_amount": discount,
+            }
+        )
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "message": str(exc)}, status=400)
+
+
+@login_required
+@require_GET
+def crm_popups(request):
+    from core.controllers import crm_controller
+
+    settings = crm_controller.get_crm_settings()
+    poll_seconds = int(settings.get("popup_poll_seconds") or 45)
+    if not settings.get("popups_enabled", True):
+        return JsonResponse({"popups": [], "pollSeconds": poll_seconds})
+    popups = crm_controller.pending_popups(request.user.profile)
+    return JsonResponse(
+        {
+            "popups": popups,
+            "pollSeconds": poll_seconds,
+            "showOnLogin": bool(settings.get("show_on_login", True)),
+            "showOnEveryPage": bool(settings.get("show_on_every_page", True)),
+        }
+    )
+
+
+@login_required
+@require_POST
+def crm_popup_action(request):
+    from core.controllers import crm_controller
+
+    data = _json(request) or request.POST
+    action = (data.get("action") or "").strip()
+    delivery_id = data.get("delivery_id")
+    profile = request.user.profile
+    if action == "dismiss":
+        return JsonResponse({"ok": crm_controller.mark_popup_dismissed(delivery_id, profile)})
+    if action == "open":
+        return JsonResponse({"ok": crm_controller.mark_popup_opened(delivery_id, profile)})
+    if action == "click":
+        campaign = crm_controller.mark_popup_clicked(delivery_id, profile)
+        return JsonResponse({"ok": bool(campaign), "url": (campaign.deep_link if campaign else "/") or "/"})
+    return JsonResponse({"ok": False, "message": "Action invalide."}, status=400)
+
+
+@require_GET
+def crm_track_click(request, delivery_id):
+    from core.controllers import crm_controller
+
+    campaign = crm_controller.mark_popup_clicked(delivery_id)
+    url = (campaign.deep_link if campaign else "/") or "/"
+    return redirect(url)
 
 
 @require_GET
@@ -365,6 +476,21 @@ def cinetpay_notify(request):
     x_token = request.headers.get("x-token") or request.META.get("HTTP_X_TOKEN", "")
     ok, msg = payment_controller.handle_notify(payload, x_token)
     return HttpResponse("OK" if ok else msg, status=200)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def naboopay_webhook(request):
+    if request.method == "GET":
+        return HttpResponse("OK", status=200)
+    raw_body = request.body or b""
+    try:
+        payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+    except json.JSONDecodeError:
+        return HttpResponse("JSON invalide", status=400)
+    signature = request.headers.get("X-Signature") or request.META.get("HTTP_X_SIGNATURE", "")
+    ok, msg = payment_controller.handle_naboopay_notify(payload, raw_body, signature)
+    return HttpResponse("OK" if ok else msg, status=200 if ok else 401)
 
 
 @login_required
@@ -590,6 +716,9 @@ def signup_complete(request):
         ok, msg, created_profile, errors, step = signup_controller.register_from_draft(data)
         if ok and created_profile is not None:
             login(request, created_profile.user, backend="django.contrib.auth.backends.ModelBackend")
+            from core.controllers.auth_controller import persist_session
+
+            persist_session(request)
 
     if not ok:
         return JsonResponse(

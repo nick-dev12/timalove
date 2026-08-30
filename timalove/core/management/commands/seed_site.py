@@ -36,7 +36,7 @@ class Command(BaseCommand):
                 gender=Gender.FEMALE,
                 city="Dakar",
                 country="Sénégal",
-                role=UserRole.ADMIN,
+                role=UserRole.SUPER_ADMIN,
                 registration_status=RegistrationStatus.APPROVED,
                 is_verified=True,
             )
@@ -48,6 +48,6 @@ class Command(BaseCommand):
             user.save()
             profile = getattr(user, "profile", None)
             if profile:
-                profile.role = UserRole.ADMIN
+                profile.role = UserRole.SUPER_ADMIN
                 profile.save(update_fields=["role"])
             self.stdout.write(self.style.WARNING(f"Admin mis à jour: {email}"))

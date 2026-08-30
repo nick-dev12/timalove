@@ -4,13 +4,12 @@
 (function () {
   const form = document.querySelector("[data-msg-search-form]");
   const feed = document.querySelector("[data-msg-feed]");
-  if (!form) return;
+  if (!form && !feed) return;
 
-  const input = form.querySelector("input[type='search']");
-  const clearBtn = form.querySelector("[data-search-clear]");
+  const input = form ? form.querySelector("input[type='search']") : null;
+  const clearBtn = form ? form.querySelector("[data-search-clear]") : null;
   const results = document.getElementById("msg-search-results");
   const emptySearch = document.querySelector("[data-msg-empty-search]");
-  if (!input) return;
 
   let rows = [];
   let refreshTimer = null;
@@ -165,8 +164,8 @@
   }
 
   function filter() {
-    const query = normalize(input.value);
-    if (clearBtn) clearBtn.hidden = !input.value;
+    const query = input ? normalize(input.value) : "";
+    if (clearBtn) clearBtn.hidden = !(input && input.value);
 
     if (!feed) {
       window.clearTimeout(suggestTimer);
@@ -238,7 +237,11 @@
       '" data-msg-card data-msg-search="' +
       escapeHtml(searchHay) +
       '">' +
-      '<span class="msg-list__avatar" aria-hidden="true">' +
+      '<span class="msg-list__avatar" data-profile-modal="' +
+      escapeHtml(item.partner_id) +
+      '" role="button" tabindex="0" aria-label="Voir le profil de ' +
+      escapeHtml(item.partner_name) +
+      '">' +
       avatarInner +
       onlineDot +
       "</span>" +
@@ -304,11 +307,13 @@
     });
   }
 
-  input.addEventListener("input", filter);
-  input.addEventListener("search", filter);
-  input.addEventListener("focus", filter);
+  if (input) {
+    input.addEventListener("input", filter);
+    input.addEventListener("search", filter);
+    input.addEventListener("focus", filter);
+  }
 
-  if (clearBtn) {
+  if (clearBtn && input) {
     clearBtn.addEventListener("click", function () {
       input.value = "";
       filter();
@@ -317,23 +322,25 @@
     });
   }
 
-  form.addEventListener("click", function (event) {
-    if (event.target.closest("[data-search-clear]")) return;
-    if (event.target.closest(".explorer-search__hit--thread")) {
-      closeSuggestions();
-    }
-  });
+  if (form) {
+    form.addEventListener("click", function (event) {
+      if (event.target.closest("[data-search-clear]")) return;
+      if (event.target.closest(".explorer-search__hit--thread")) {
+        closeSuggestions();
+      }
+    });
 
-  document.addEventListener("click", function (event) {
-    if (!form.contains(event.target)) closeSuggestions();
-  });
+    document.addEventListener("click", function (event) {
+      if (!form.contains(event.target)) closeSuggestions();
+    });
 
-  document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape") {
-      closeSuggestions();
-      input.blur();
-    }
-  });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        closeSuggestions();
+        input && input.blur();
+      }
+    });
+  }
 
   if (feed) {
     feed.addEventListener("click", function (event) {

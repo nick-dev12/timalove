@@ -386,7 +386,7 @@ def _validate_identity(data: dict, channel: str, profile: Profile | None) -> dic
 def _validate_socio(data: dict) -> dict[str, str]:
     errors: dict[str, str] = {}
     if (data.get("gender") or "") not in {Gender.MALE, Gender.FEMALE}:
-        errors["gender"] = "Choisissez Homme ou Femme."
+        errors["gender"] = "Le genre est obligatoire. Choisissez Homme ou Femme."
     if (data.get("religion") or "") not in _RELIGION_VALUES:
         errors["religion"] = "Sélectionnez votre religion."
     country = (data.get("country") or "").strip()

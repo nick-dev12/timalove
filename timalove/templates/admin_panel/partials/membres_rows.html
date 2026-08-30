@@ -1,0 +1,24 @@
+{% load admin_tags %}
+{% for member in page_obj %}
+<tr>
+  <td data-label="ID"><code class="adm-plan-id">#{{ member.id.hex|slice:":8" }}</code></td>
+  <td data-label="Pseudonyme">
+    <strong>{{ member|member_pseudo }}</strong>
+    {% if member.is_verified %}<span class="adm-badge adm-badge--ok adm-badge--xs">Certifié</span>{% endif %}
+  </td>
+  <td data-label="Email">{{ member.email|mask_email }}</td>
+  <td data-label="Inscription">{{ member.created_at|date:"d/m/Y" }}</td>
+  <td data-label="Statut">
+    {% with status=member|member_status_label %}
+    <span class="adm-badge adm-badge--{% if status == 'Actif' %}ok{% elif status == 'Banni' %}danger{% elif status == 'Shadowban' %}muted{% else %}warn{% endif %}">{{ status }}</span>
+    {% endwith %}
+  </td>
+  <td data-label="Abonnement">{{ member|member_sub_label }}</td>
+  <td data-label="Dernier accès">{{ member|member_last_access }}</td>
+  <td class="adm-table__actions" data-label="">
+    <a class="adm-btn adm-btn--primary adm-btn--sm" href="{% url 'admin_panel:membre_detail' member.id %}">Fiche</a>
+  </td>
+</tr>
+{% empty %}
+<tr><td colspan="8"><div class="adm-empty">Aucun utilisateur trouvé</div></td></tr>
+{% endfor %}

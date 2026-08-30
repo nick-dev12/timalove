@@ -1,0 +1,24 @@
+{% extends "layouts/admin_base.html" %}
+{% load static %}
+{% block body_class %}admin-panel-page{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/admin-panel.css' %}?v=20260826a2">
+{% endblock %}
+{% block body %}
+<div class="adm-login">
+  <div class="adm-login__card">
+    <h1 class="adm-login__brand">Vérification 2FA</h1>
+    <p class="adm-login__lead">Saisissez le code de votre application d'authentification pour continuer.</p>
+    {% if messages %}{% for message in messages %}<div class="adm__alert adm__alert--{{ message.tags|default:'info' }}" style="margin-bottom:1rem;">{{ message }}</div>{% endfor %}{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="adm-field">
+        <label class="adm-label" for="tfa-verify">Code à 6 chiffres</label>
+        <input class="adm-input" id="tfa-verify" type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus>
+      </div>
+      <button class="adm-btn adm-btn--primary" type="submit" style="width:100%;">Valider</button>
+    </form>
+    <p class="adm-login__hint"><a href="{% url 'admin_panel:admin_2fa_setup' %}">Reconfigurer la 2FA</a></p>
+  </div>
+</div>
+{% endblock %}

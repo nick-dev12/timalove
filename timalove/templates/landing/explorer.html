@@ -1,15 +1,27 @@
 {% extends "layouts/base.html" %}
 {% load static %}
 {% block title %}Explorer{% endblock %}
-{% block body_class %}explorer-page{% if not user.is_authenticated %} is-guest{% endif %}{% endblock %}
+{% block body_class %}explorer-page{% if not user.is_authenticated %} is-guest{% endif %}{% if app_features.explorer_search_enabled %} has-explorer-search{% endif %}{% if swipe_quota and swipe_quota.is_freemium and swipe_quota.show_explorer_quota %} has-explorer-quota{% endif %}{% endblock %}
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html:has(body.explorer-page), body.explorer-page { height: 100dvh; overflow: hidden; }
+  body.explorer-page { display: flex; flex-direction: column; background: #FDF5F0; color: #2D1F22; }
+  body.explorer-page .explorer { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  body.explorer-page .explorer__chrome, body.explorer-page .explorer__bottom { opacity: 1 !important; visibility: visible !important; }
+</style>
 <script src="{% static 'js/explorer-like-burst.js' %}?v=20260821b4" defer></script>
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260825h1" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260826h2" defer></script>
 {% if user.is_authenticated %}
-<script src="{% static 'js/message-invite.js' %}?v=20260821m5" defer></script>
+<script src="{% static 'js/explorer-filters.js' %}?v=20260826f1" defer></script>
+{% endif %}
+{% if app_features.explorer_search_enabled %}
+<script src="{% static 'js/explorer-search.js' %}?v=20260826s1" defer></script>
+{% endif %}
+{% if user.is_authenticated %}
+<script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
 <script src="{% static 'js/explorer-match.js' %}?v=20260821c1" defer></script>
-<script src="{% static 'js/explorer-swipe.js' %}?v=20260822s7" defer></script>
+<script src="{% static 'js/explorer-swipe.js' %}?v=20260826s9" defer></script>
 {% else %}
 <script src="{% static 'js/explorer-match.js' %}?v=20260821c1" defer></script>
 {% endif %}
@@ -64,7 +76,6 @@
         {% if user.is_authenticated %}
         <a href="{% url 'public:accueil' %}">En savoir plus</a>
         <a href="{% url 'public:coaching' %}">Coaching individuel</a>
-        <a href="{% url 'public:temoignages' %}">Témoignages</a>
         <a href="{% url 'public:contact' %}">Contact</a>
         <a href="{% url 'auth:deconnexion' %}">Déconnexion</a>
         {% else %}
@@ -72,7 +83,6 @@
         <a href="{% url 'auth:connexion' %}">Se connecter</a>
         <a href="{% url 'public:accueil' %}">En savoir plus</a>
         <a href="{% url 'public:coaching' %}">Coaching individuel</a>
-        <a href="{% url 'public:temoignages' %}">Témoignages</a>
         <a href="{% url 'public:contact' %}">Contact</a>
         {% endif %}
       </nav>
@@ -82,19 +92,27 @@
       <img src="{% static 'images/logo.webp' %}" alt="" width="36" height="36">
     </a>
     <div class="explorer__top-actions">
+      {% if user.is_authenticated %}
+      <button type="button" class="explorer__icon-btn explorer__filters-btn" data-explorer-filters-open aria-label="Filtres de découverte">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4V6zm3 5h10v2H7v-2zm4 5h2v2h-2v-2z"/></svg>
+      </button>
+      {% endif %}
       <a class="explorer__coach" href="{% url 'public:coaching' %}" aria-label="Coaching individuel">
         <span class="explorer__coach-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 2.2 13.4 7 18.2 8.2 13.4 9.4 12 14.2 10.6 9.4 5.8 8.2 10.6 7 12 2.2zM19.2 13.2 20 15.8 22.6 16.6 20 17.4 19.2 20 18.4 17.4 15.8 16.6 18.4 15.8 19.2 13.2zM5.4 13.8 6 16 8.2 16.6 6 17.2 5.4 19.4 4.8 17.2 2.6 16.6 4.8 16 5.4 13.8z"/></svg>
         </span>
         <span class="explorer__coach-label">Coaching</span>
       </a>
-      {% include "partials/explorer_bell.html" %}
     </div>
   </header>
 
-  {% if swipe_quota and swipe_quota.is_freemium %}
-  <p class="explorer__quota" data-quota-label>
-    {{ swipe_quota.swipes_left }} profil{{ swipe_quota.swipes_left|pluralize }} · {{ swipe_quota.likes_left }} like{{ swipe_quota.likes_left|pluralize }} restant{{ swipe_quota.likes_left|pluralize }} aujourd’hui
+  {% if app_features.explorer_search_enabled %}
+  {% url 'public:explorer_search' as explorer_search_url %}
+  {% include "partials/explorer_search_bar.html" with search_url=explorer_search_url search_placeholder="Rechercher un profil…" search_label="Rechercher un profil" %}
+  {% endif %}
+  {% if swipe_quota and swipe_quota.is_freemium and swipe_quota.show_explorer_quota %}
+  <p class="explorer__quota" data-quota-label data-period-label="{{ swipe_quota.period_label }}">
+    {% if swipe_quota.swipes_left != None %}{{ swipe_quota.swipes_left }} profil{{ swipe_quota.swipes_left|pluralize }}{% endif %}{% if swipe_quota.swipes_left != None and swipe_quota.likes_left != None %} · {% endif %}{% if swipe_quota.likes_left != None %}{{ swipe_quota.likes_left }} like{{ swipe_quota.likes_left|pluralize }} restant{{ swipe_quota.likes_left|pluralize }}{% endif %} {{ swipe_quota.period_label }}
   </p>
   {% endif %}
   </div>
@@ -124,30 +142,15 @@
   if (!feed || !sentinel) return;
 
   const REVEAL_MS = 380;
-  const PRELOAD_AHEAD = 3;
   let fetching = false;
   let paging = false;
   let gestureLock = 0;
   let wheelFrame = 0;
+  let touchY0 = null;
   const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
 
   function slideList() {
     return Array.from(feed.querySelectorAll(".explorer__slide"));
-  }
-
-  function currentIndex() {
-    const list = slideList();
-    const top = feed.scrollTop;
-    let best = 0;
-    let dist = Infinity;
-    list.forEach(function (el, i) {
-      const d = Math.abs(el.offsetTop - top);
-      if (d < dist) {
-        dist = d;
-        best = i;
-      }
-    });
-    return best;
   }
 
   function clearTimer(slide) {
@@ -171,55 +174,42 @@
     }, REVEAL_MS);
   }
 
-  function maybePrefetch() {
-    if (fetching || feed.dataset.hasMore !== "true") return;
-    const list = slideList();
-    const idx = currentIndex();
-    if (idx >= list.length - PRELOAD_AHEAD) loadMore();
+  function clearSlides() {
+    slideList().forEach(function (slide) {
+      clearTimer(slide);
+      slide.remove();
+    });
   }
 
-  function goTo(index) {
-    const list = slideList();
-    if (index < 0) return;
-    if (index >= list.length) {
-      loadMore().then(function (loaded) {
-        if (loaded && index < slideList().length) goTo(index);
-      });
-      return;
-    }
+  function showSlide(slide) {
+    if (!slide) return;
+    feed.scrollTop = 0;
     paging = true;
-    list[index].scrollIntoView({ behavior: "auto", block: "start" });
-    startReveal(list[index]);
+    slide.scrollIntoView({ behavior: "auto", block: "start" });
+    startReveal(slide);
     if (window.timaloveMatchScore) {
       window.timaloveMatchScore.scanVisible(feed);
     }
     window.setTimeout(function () {
       paging = false;
-      maybePrefetch();
     }, 280);
   }
 
-  function goNext(force) {
-    const i = currentIndex();
-    const cur = slideList()[i];
-    if (!force && cur && cur.dataset.ready !== "true") return;
-    goTo(i + 1);
-  }
-
-  function goPrev() {
-    const i = currentIndex();
-    const cur = slideList()[i];
-    if (cur && cur.dataset.ready !== "true") return;
-    loadBack();
-  }
-
-  function loadBack() {
-    if (fetching || feed.dataset.hasMore !== "true") {
+  function fetchFreshSlide(direction) {
+    if (fetching) {
       return Promise.resolve(false);
     }
+    if (feed.dataset.hasMore !== "true") {
+      return Promise.resolve(false);
+    }
+
     fetching = true;
     const url = new URL(feed.dataset.loadUrl, window.location.origin);
-    url.searchParams.set("direction", "back");
+    url.searchParams.set("limit", "1");
+    if (direction === "back") {
+      url.searchParams.set("direction", "back");
+    }
+
     return fetch(url.toString(), {
       credentials: "same-origin",
       headers: { "HX-Request": "true", "X-Requested-With": "XMLHttpRequest" },
@@ -237,15 +227,12 @@
           feed.dataset.hasMore = "false";
           return false;
         }
-        const anchor = feed.querySelector(".explorer__slide") || sentinel;
-        feed.insertBefore(slide, anchor);
+
+        clearSlides();
+        feed.insertBefore(slide, sentinel);
         observeSlides();
-        paging = true;
-        slide.scrollIntoView({ behavior: "auto", block: "start" });
-        startReveal(slide);
-        window.setTimeout(function () {
-          paging = false;
-        }, 280);
+        showSlide(slide);
+
         if (meta) {
           feed.dataset.nextOffset = meta.dataset.nextOffset || feed.dataset.nextOffset || "0";
           feed.dataset.hasMore = meta.dataset.hasMore || "false";
@@ -259,9 +246,22 @@
         fetching = false;
       });
   }
+
+  function goNext(force) {
+    const cur = slideList()[0];
+    if (!force && cur && cur.dataset.ready !== "true") return;
+    fetchFreshSlide("next");
+  }
+
+  function goPrev() {
+    const cur = slideList()[0];
+    if (cur && cur.dataset.ready !== "true") return;
+    fetchFreshSlide("back");
+  }
+
   function onGesture(direction) {
     const now = Date.now();
-    if (paging || now - gestureLock < 420) return;
+    if (paging || fetching || now - gestureLock < 420) return;
     gestureLock = now;
     if (direction > 0) goNext();
     else goPrev();
@@ -275,14 +275,14 @@
         if (wheelFrame || Math.abs(event.deltaY) < 18) return;
         wheelFrame = window.requestAnimationFrame(function () {
           wheelFrame = 0;
-          onGesture(event.deltaY);
+          onGesture(event.deltaY > 0 ? 1 : -1);
         });
       },
       { passive: false }
     );
 
     document.addEventListener("keydown", function (event) {
-      if (event.target.closest("input, textarea, [contenteditable]")) return;
+      if (event.target.closest("input, textarea, select, [contenteditable]")) return;
       if (["ArrowDown", "PageDown", " "].indexOf(event.key) !== -1) {
         event.preventDefault();
         onGesture(1);
@@ -292,6 +292,27 @@
         onGesture(-1);
       }
     });
+  } else {
+    feed.addEventListener(
+      "touchstart",
+      function (event) {
+        if (event.touches.length !== 1) return;
+        touchY0 = event.touches[0].clientY;
+      },
+      { passive: true }
+    );
+
+    feed.addEventListener(
+      "touchend",
+      function (event) {
+        if (touchY0 === null) return;
+        const dy = event.changedTouches[0].clientY - touchY0;
+        touchY0 = null;
+        if (Math.abs(dy) < 42) return;
+        onGesture(dy < 0 ? 1 : -1);
+      },
+      { passive: true }
+    );
   }
 
   function bindPhotoNav(slide) {
@@ -347,89 +368,48 @@
     { root: feed, threshold: [0.55, 0.75] }
   );
 
-  function loadMore() {
-    if (fetching || feed.dataset.hasMore !== "true") {
-      return Promise.resolve(false);
-    }
-    fetching = true;
-    const url = new URL(feed.dataset.loadUrl, window.location.origin);
-
-    return fetch(url.toString(), {
-      credentials: "same-origin",
-      headers: { "HX-Request": "true", "X-Requested-With": "XMLHttpRequest" },
-    })
-      .then(function (r) {
-        if (!r.ok) throw new Error("feed");
-        return r.text();
-      })
-      .then(function (html) {
-        const tmp = document.createElement("div");
-        tmp.innerHTML = html.trim();
-        const slides = tmp.querySelectorAll(".explorer__slide");
-        const meta = tmp.querySelector("[data-explorer-meta]");
-        if (!slides.length) {
-          feed.dataset.hasMore = "false";
-          return false;
-        }
-        slides.forEach(function (slide) {
-          feed.insertBefore(slide, sentinel);
-        });
-        observeSlides();
-        if (window.timaloveMatchScore) {
-          window.timaloveMatchScore.scan(feed);
-        }
-        if (meta) {
-          feed.dataset.nextOffset = meta.dataset.nextOffset || feed.dataset.nextOffset || "0";
-          feed.dataset.hasMore = meta.dataset.hasMore || "false";
-        } else {
-          feed.dataset.hasMore = "false";
-        }
-        return true;
-      })
-      .catch(function () {
-        feed.dataset.hasMore = "false";
-        return false;
-      })
-      .finally(function () {
-        fetching = false;
-      });
-  }
-
   observeSlides();
   if (window.timaloveMatchScore) {
     window.timaloveMatchScore.scanVisible(feed);
   }
-  const first = slideList()[0];
-  if (first) startReveal(first);
 
-  if ("IntersectionObserver" in window && sentinel) {
-    const sentinelObserver = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) maybePrefetch();
-        });
-      },
-      { root: feed, rootMargin: "120px 0px 240px 0px", threshold: 0.01 }
-    );
-    sentinelObserver.observe(sentinel);
+  const slidesOnLoad = slideList();
+  if (slidesOnLoad.length > 1) {
+    slidesOnLoad.slice(1).forEach(function (slide) {
+      clearTimer(slide);
+      slide.remove();
+    });
   }
-
-  feed.addEventListener(
-    "scroll",
-    function () {
-      if (paging) return;
-      maybePrefetch();
-    },
-    { passive: true }
-  );
+  const first = slideList()[0];
+  if (first) {
+    feed.scrollTop = 0;
+    startReveal(first);
+  }
 
   window.timaloveExplorer = {
     goNext: function () {
       goNext(true);
+    },
+    consume: function (profileId) {
+      const wanted = String(profileId || "");
+      const list = slideList();
+      let slide = null;
+      list.forEach(function (el) {
+        if (String(el.getAttribute("data-profile-id") || "") === wanted) {
+          slide = el;
+        }
+      });
+      if (!slide) slide = list[0] || null;
+      if (slide) {
+        clearTimer(slide);
+        slide.remove();
+      }
+      fetchFreshSlide("next");
     },
   };
 })();
 </script>
 {% include "partials/message_invite_modal.html" %}
 {% include "partials/profile_modal.html" %}
+{% include "partials/explorer_filters_modal.html" %}
 {% endblock %}

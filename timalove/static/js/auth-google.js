@@ -38,6 +38,9 @@
     const panel = document.querySelector("[data-auth-panel]");
     const form = document.querySelector("[data-auth-form]");
     const statusEl = document.querySelector("[data-auth-status]");
+    const modal = document.querySelector("[data-auth-login-modal]");
+    const modalStatusEl = document.querySelector("[data-auth-modal-status]");
+    const modalTitle = document.querySelector("[data-auth-modal-title]");
     const modeInput = document.querySelector("[data-auth-mode]");
     const phoneInput = document.getElementById("auth-phone");
     const emailInput = document.getElementById("auth-email");
@@ -51,30 +54,82 @@
       return modeInput?.value === "email" ? "email" : "phone";
     }
 
+    function openLoginModal(mode) {
+      setTab(mode);
+      if (modalTitle) {
+        modalTitle.textContent =
+          mode === "email" ? "Connexion par email" : "Connexion par téléphone";
+      }
+      if (modal) {
+        modal.hidden = false;
+        modal.setAttribute("aria-hidden", "false");
+        document.body.classList.add("is-auth-login-modal");
+      }
+      form?.classList.remove("is-idle");
+      setStatus(modalStatusEl, "", false);
+    }
+
+    function closeLoginModal() {
+      if (modal) {
+        modal.hidden = true;
+        modal.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("is-auth-login-modal");
+      }
+      form?.classList.add("is-idle");
+      setStatus(modalStatusEl, "", false);
+      document.querySelectorAll("[data-auth-method]").forEach((btn) => {
+        btn.classList.remove("is-active");
+      });
+      if (phoneInput) phoneInput.required = false;
+      if (emailInput) emailInput.required = false;
+      const passwordInput = document.getElementById("auth-password");
+      if (passwordInput) passwordInput.required = false;
+      if (modeInput) modeInput.value = "";
+    }
+
     function setTab(mode) {
       const next = mode === "email" ? "email" : "phone";
       if (modeInput) modeInput.value = next;
-      document.querySelectorAll("[data-auth-tab]").forEach((tab) => {
-        const on = tab.getAttribute("data-auth-tab") === next;
-        tab.classList.toggle("is-active", on);
-        tab.setAttribute("aria-selected", on ? "true" : "false");
+      document.querySelectorAll("[data-auth-method]").forEach((btn) => {
+        btn.classList.toggle("is-active", btn.getAttribute("data-auth-method") === next);
       });
       document.querySelectorAll("[data-auth-pane]").forEach((pane) => {
         const on = pane.getAttribute("data-auth-pane") === next;
         pane.classList.toggle("is-hidden", !on);
       });
+      const passwordInput = document.getElementById("auth-password");
       if (phoneInput) phoneInput.required = next === "phone";
       if (emailInput) emailInput.required = next === "email";
-      if (next === "phone") phoneInput?.focus();
-      else emailInput?.focus();
+      if (passwordInput) passwordInput.required = true;
+      window.setTimeout(() => {
+        if (next === "phone") phoneInput?.focus();
+        else emailInput?.focus();
+      }, 40);
     }
 
+    document.querySelectorAll("[data-auth-method]").forEach((btn) => {
+      btn.addEventListener("click", () => openLoginModal(btn.getAttribute("data-auth-method")));
+    });
     document.querySelectorAll("[data-auth-tab]").forEach((tab) => {
-      tab.addEventListener("click", () => setTab(tab.getAttribute("data-auth-tab")));
+      tab.addEventListener("click", () => openLoginModal(tab.getAttribute("data-auth-tab")));
+    });
+    document.querySelectorAll("[data-auth-login-close]").forEach((el) => {
+      el.addEventListener("click", closeLoginModal);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && modal && !modal.hidden) closeLoginModal();
     });
 
-    const initialMode = panel?.getAttribute("data-login-mode") || "phone";
-    setTab(initialMode);
+    const initialMode = panel?.getAttribute("data-login-mode") || "";
+    if (initialMode === "email" || initialMode === "phone") {
+      openLoginModal(initialMode);
+    } else {
+      form?.classList.add("is-idle");
+      if (phoneInput) phoneInput.required = false;
+      if (emailInput) emailInput.required = false;
+      const passwordInput = document.getElementById("auth-password");
+      if (passwordInput) passwordInput.required = false;
+    }
 
     if (phoneInput && window.intlTelInput) {
       iti = window.intlTelInput(phoneInput, {
@@ -95,6 +150,10 @@
     form?.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (busy) return;
+      if (!modeInput?.value || (modeInput.value !== "email" && modeInput.value !== "phone")) {
+        setStatus(modalStatusEl, "Choisissez email ou numéro pour continuer.", true);
+        return;
+      }
       if (currentMode() === "phone") {
         if (iti) {
           const utilsReady = typeof window.intlTelInputUtils !== "undefined";
@@ -104,7 +163,7 @@
             typeof iti.isValidNumber === "function" &&
             !iti.isValidNumber()
           ) {
-            setStatus(statusEl, "Indiquez un numéro de téléphone valide.", true);
+            setStatus(modalStatusEl, "Indiquez un numéro de téléphone valide.", true);
             phoneInput.focus();
             return;
           }
@@ -114,7 +173,7 @@
         }
       }
       busy = true;
-      setStatus(statusEl, "Connexion en cours…", false);
+      setStatus(modalStatusEl, "Connexion en cours…", false);
       try {
         const payload = new FormData(form);
         if (currentMode() === "email") payload.delete("phone");
@@ -140,9 +199,9 @@
           else window.location.href = href;
           return;
         }
-        setStatus(statusEl, data.message || "Identifiants incorrects.", true);
+        setStatus(modalStatusEl, data.message || "Identifiants incorrects.", true);
       } catch (err) {
-        setStatus(statusEl, err.message || "Connexion interrompue. Réessayez.", true);
+        setStatus(modalStatusEl, err.message || "Connexion interrompue. Réessayez.", true);
       } finally {
         busy = false;
       }

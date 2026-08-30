@@ -1,0 +1,275 @@
+{% extends "layouts/admin.html" %}
+{% block subtitle %}
+<p class="adm__subtitle">Push et popups in-app — envoyés aux membres selon le canal et le segment choisis</p>
+{% endblock %}
+{% block content %}
+<div class="adm-stats adm-stats--compact adm-stats--quad">
+  <article class="adm-stat adm-stat--accent"><span class="adm-stat__label">Campagnes</span><strong class="adm-stat__value">{{ summary.total }}</strong><span class="adm-stat__meta">créées</span></article>
+  <article class="adm-stat"><span class="adm-stat__label">Programmées</span><strong class="adm-stat__value">{{ summary.scheduled }}</strong><span class="adm-stat__meta">en attente d’envoi</span></article>
+  <article class="adm-stat"><span class="adm-stat__label">Envoyées</span><strong class="adm-stat__value">{{ summary.sent }}</strong><span class="adm-stat__meta">{{ summary.delivered }} destinataire{{ summary.delivered|pluralize }}</span></article>
+  <article class="adm-stat"><span class="adm-stat__label">Ouverture</span><strong class="adm-stat__value">{{ summary.open_rate }}%</strong><span class="adm-stat__meta">clics {{ summary.click_rate }}%</span></article>
+</div>
+
+<nav class="adm-tabs" aria-label="Sections communication">
+  <a class="adm-tabs__link{% if tab == 'campaigns' or tab == 'create' %} is-active{% endif %}" href="?tab=campaigns">Campagnes</a>
+  <a class="adm-tabs__link{% if tab == 'settings' %} is-active{% endif %}" href="?tab=settings">Paramètres</a>
+</nav>
+
+{% if tab == 'campaigns' or tab == 'create' %}
+<section class="adm-mon-section">
+  <div class="adm-mon-toolbar">
+    <div>
+      <h2 class="adm-mon-toolbar__title">Campagnes</h2>
+      <p class="adm-mon-toolbar__lead">Aperçu tel que les membres le voient. L’envoi immédiat part en arrière-plan.</p>
+    </div>
+    <button class="adm-btn adm-btn--primary" type="button" data-mon-open="campaign-create">Nouvelle campagne</button>
+  </div>
+
+  {% if campaigns %}
+  <div class="adm-campaign-list">
+    {% for campaign in campaigns %}
+    <article class="adm-campaign-preview adm-offer--{{ campaign.channel }}">
+      <div class="adm-campaign-preview__live" aria-label="Aperçu popup membre">
+        <div class="live-popup live-popup--admin-preview" data-kind="marketing">
+          <div class="live-popup__card">
+            <span class="live-popup__photo" aria-hidden="true">
+              {% if campaign.image_url %}
+              <img src="{{ campaign.image_url }}" alt="">
+              {% else %}
+              <span>✉</span>
+              {% endif %}
+            </span>
+            <span class="live-popup__copy">
+              <span class="live-popup__kicker">{{ campaign.get_channel_display }}</span>
+              <strong class="live-popup__title">{{ campaign.title }}</strong>
+              <span class="live-popup__text">{{ campaign.body }}</span>
+            </span>
+            <span class="live-popup__cta">Voir</span>
+          </div>
+        </div>
+      </div>
+      <div class="adm-campaign-preview__meta">
+        <div class="adm-campaign-preview__row">
+          <span class="adm-badge adm-badge--{% if campaign.status == 'sent' %}ok{% elif campaign.status == 'scheduled' %}warn{% elif campaign.status == 'cancelled' %}danger{% elif campaign.status == 'sending' %}warn{% else %}muted{% endif %}">{{ campaign.get_status_display }}</span>
+          <span class="adm-campaign-preview__name">{{ campaign.name }}</span>
+        </div>
+        <p class="adm-offer__meta">
+          {{ campaign.recipients_count }} destinataire{{ campaign.recipients_count|pluralize }}
+          {% if campaign.delivered_count %} · {{ campaign.delivered_count }} livré{{ campaign.delivered_count|pluralize }}{% endif %}
+          · {{ campaign.created_at|date:"d/m/Y H:i" }}
+        </p>
+        {% if campaign.scheduled_at and campaign.status == 'scheduled' %}
+        <p class="adm-offer__meta">Envoi prévu le {{ campaign.scheduled_at|date:"d/m/Y H:i" }}</p>
+        {% endif %}
+        <div class="adm-offer__actions">
+          {% if campaign.status == 'draft' or campaign.status == 'scheduled' %}
+          <form method="post" class="adm-inline-form">{% csrf_token %}
+            <input type="hidden" name="action" value="launch_campaign">
+            <input type="hidden" name="campaign_id" value="{{ campaign.id }}">
+            <button class="adm-btn adm-btn--primary adm-btn--sm" type="submit">Envoyer maintenant</button>
+          </form>
+          <form method="post" class="adm-inline-form" onsubmit="return confirm('Annuler cette campagne ?');">{% csrf_token %}
+            <input type="hidden" name="action" value="cancel_campaign">
+            <input type="hidden" name="campaign_id" value="{{ campaign.id }}">
+            <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Annuler</button>
+          </form>
+          {% elif campaign.status == 'sent' or campaign.status == 'cancelled' %}
+          <form method="post" class="adm-inline-form" onsubmit="return confirm('Republicer cette campagne maintenant ?');">{% csrf_token %}
+            <input type="hidden" name="action" value="republish_campaign">
+            <input type="hidden" name="campaign_id" value="{{ campaign.id }}">
+            <button class="adm-btn adm-btn--primary adm-btn--sm" type="submit">Republicer</button>
+          </form>
+          {% elif campaign.status == 'sending' %}
+          <span class="adm-hint">Envoi en cours…</span>
+          {% endif %}
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="adm-empty adm-empty--card">
+    <p>Aucune campagne pour le moment.</p>
+    <button class="adm-btn adm-btn--primary" type="button" data-mon-open="campaign-create">Créer la première campagne</button>
+  </div>
+  {% endif %}
+</section>
+
+<div class="adm-sheet" id="campaign-create"{% if tab != 'create' %} hidden{% endif %} data-mon-sheet>
+  <div class="adm-sheet__bar">
+    <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-close>Fermer</button>
+    <h2 class="adm-sheet__title">Nouvelle campagne</h2>
+  </div>
+  <div class="adm-sheet__body">
+    <form method="post" class="adm-sheet__form" enctype="multipart/form-data" data-campaign-form>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_campaign">
+      <p class="adm-sheet__hint">Push et/ou popup in-app. L’envoi immédiat part en arrière-plan.</p>
+      <div class="adm-grid-2 adm-grid-2--compact">
+        <div class="adm-field">
+          <label class="adm-label" for="crm-name">Nom interne</label>
+          <input class="adm-input" id="crm-name" name="name" required placeholder="Ex. Relance inactifs">
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="crm-channel">Canal de diffusion</label>
+          <select class="adm-select" id="crm-channel" name="channel">
+            {% for value, label in channels %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="crm-title">Titre affiché</label>
+          <input class="adm-input" id="crm-title" name="title" required placeholder="Titre vu par les membres" data-campaign-title>
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="crm-body">Message</label>
+          <textarea class="adm-input" id="crm-body" name="body" rows="3" required placeholder="Texte de la campagne" data-campaign-body></textarea>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="crm-send-mode">Quand envoyer</label>
+          <select class="adm-select" id="crm-send-mode" name="send_mode" data-campaign-send-mode>
+            {% for value, label in send_modes %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="adm-field" data-campaign-scheduled-wrap hidden>
+          <label class="adm-label" for="crm-scheduled">Programmation</label>
+          <input class="adm-input" id="crm-scheduled" type="datetime-local" name="scheduled_at">
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="crm-image-file">Image (optionnelle)</label>
+          <input class="adm-input" id="crm-image-file" type="file" name="image_file" accept="image/jpeg,image/png,image/webp,image/gif" data-campaign-image>
+          <p class="adm-hint">JPG, PNG ou WebP · 8 Mo max. Aperçu ci-dessous.</p>
+          <div class="adm-campaign-image-preview" data-campaign-image-preview hidden>
+            <img alt="Aperçu campagne" data-campaign-image-img>
+            <button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" data-campaign-image-clear>Retirer</button>
+          </div>
+        </div>
+        <div class="adm-field adm-field--full">
+          <p class="adm-label">Aperçu membre</p>
+          <div class="live-popup live-popup--admin-preview" data-kind="marketing" data-campaign-live-preview>
+            <div class="live-popup__card">
+              <span class="live-popup__photo" data-campaign-live-photo aria-hidden="true"><span>✉</span></span>
+              <span class="live-popup__copy">
+                <span class="live-popup__kicker">Campagne</span>
+                <strong class="live-popup__title" data-campaign-live-title>Titre de la campagne</strong>
+                <span class="live-popup__text" data-campaign-live-text>Votre message apparaîtra ici.</span>
+              </span>
+              <span class="live-popup__cta">Voir</span>
+            </div>
+          </div>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="seg-gender">Segment — genre</label>
+          <select class="adm-select" id="seg-gender" name="seg_gender">
+            <option value="">Tous</option>
+            <option value="male">Hommes</option>
+            <option value="female">Femmes</option>
+          </select>
+        </div>
+        <div class="adm-field">
+          <div class="adm-city-picker" data-city-picker data-cities-url="{% url 'admin_panel:communications_cities' %}">
+            <label class="adm-label" for="seg-city-input">Segment — ville</label>
+            <input type="hidden" name="seg_city" id="seg-city" value="" data-city-value>
+            <div class="adm-city-picker__control">
+              <input
+                class="adm-input adm-city-picker__input"
+                id="seg-city-input"
+                type="search"
+                placeholder="Toutes les villes"
+                autocomplete="off"
+                spellcheck="false"
+                data-city-search
+                role="combobox"
+                aria-expanded="false"
+                aria-controls="seg-city-list"
+                aria-autocomplete="list"
+              >
+              <button type="button" class="adm-city-picker__clear" data-city-clear hidden aria-label="Effacer la ville">×</button>
+            </div>
+            <ul class="adm-city-picker__list" id="seg-city-list" data-city-list hidden role="listbox" aria-label="Villes enregistrées">
+              <li class="adm-city-picker__option is-selected" role="option" data-city-option data-city-name="">Toutes les villes</li>
+              {% for city in platform_cities %}
+              <li class="adm-city-picker__option" role="option" data-city-option data-city-name="{{ city.name }}" data-city-count="{{ city.count }}">
+                <span class="adm-city-picker__name">{{ city.name }}</span>
+                <span class="adm-city-picker__count">{{ city.count }} membre{{ city.count|pluralize }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+            <p class="adm-hint" data-city-hint>Toutes les villes si aucune sélection. Tapez pour filtrer la liste en temps réel.</p>
+          </div>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="seg-inactive">Inactifs depuis (jours)</label>
+          <input class="adm-input" id="seg-inactive" type="number" min="1" name="seg_inactive_days">
+        </div>
+      </div>
+      <button class="adm-btn adm-btn--primary" type="submit">Créer et envoyer</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if tab == 'settings' %}
+<section class="adm-mon-section">
+  <div class="adm-mon-toolbar">
+    <div>
+      <h2 class="adm-mon-toolbar__title">Paramètres de diffusion</h2>
+      <p class="adm-mon-toolbar__lead">Ces interrupteurs contrôlent ce que les membres reçoivent réellement.</p>
+    </div>
+  </div>
+  <form method="post" class="adm-settings-grid">{% csrf_token %}
+    <input type="hidden" name="action" value="save_settings">
+    <section class="adm-card">
+      <div class="adm-card__head">
+        <h3 class="adm-card__title">Canaux</h3>
+        <p class="adm-card__lead">Désactiver un canal bloque toutes les campagnes de ce type.</p>
+      </div>
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="popups_enabled"{% if crm_settings.popups_enabled %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>Popups in-app</strong>
+          <span>Affiche les campagnes dans l’application (bandeau live).</span>
+        </span>
+      </label>
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="marketing_push_enabled"{% if crm_settings.marketing_push_enabled %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>Push marketing</strong>
+          <span>Notifications système (FCM) pour les membres qui ont autorisé les push.</span>
+        </span>
+      </label>
+    </section>
+    <section class="adm-card">
+      <div class="adm-card__head">
+        <h3 class="adm-card__title">Affichage des popups</h3>
+        <p class="adm-card__lead">Quand le popup apparaît chez le membre connecté.</p>
+      </div>
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="show_on_login"{% if crm_settings.show_on_login %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>À la connexion</strong>
+          <span>Une fois par session si « chaque page » est désactivé.</span>
+        </span>
+      </label>
+      <label class="adm-config-toggle">
+        <input type="checkbox" name="show_on_every_page"{% if crm_settings.show_on_every_page %} checked{% endif %}>
+        <span class="adm-config-toggle__body">
+          <strong>Sur chaque page</strong>
+          <span>Le membre voit le popup tant qu’il ne l’a pas ouvert ou fermé.</span>
+        </span>
+      </label>
+      <div class="adm-field">
+        <label class="adm-label" for="popup-poll">Intervalle de vérification (secondes)</label>
+        <input class="adm-input" id="popup-poll" type="number" min="15" name="popup_poll_seconds" value="{{ crm_settings.popup_poll_seconds }}">
+      </div>
+    </section>
+    <div class="adm-card__actions">
+      <button class="adm-btn adm-btn--primary" type="submit">Enregistrer les paramètres</button>
+    </div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

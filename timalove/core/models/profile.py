@@ -14,6 +14,7 @@ from .choices import (
     RegistrationStatus,
     RelationshipIntent,
     Religion,
+    STAFF_ROLES,
     SubscriptionStatus,
     SubscriptionTier,
     UserRole,
@@ -87,6 +88,7 @@ class Profile(models.Model):
     likes_inbox_seen_at = models.DateTimeField(blank=True, null=True)
     is_online = models.BooleanField(default=False)
     is_hidden = models.BooleanField(default=False)
+    is_shadowbanned = models.BooleanField(default=False)
     last_seen_visibility = models.CharField(
         max_length=20,
         choices=LastSeenVisibility.choices,
@@ -157,8 +159,16 @@ class Profile(models.Model):
         )
 
     @property
+    def is_staff_member(self) -> bool:
+        return self.role in STAFF_ROLES
+
+    @property
     def is_admin(self) -> bool:
-        return self.role == UserRole.ADMIN
+        return self.is_staff_member
+
+    @property
+    def is_super_admin(self) -> bool:
+        return self.role == UserRole.SUPER_ADMIN
 
     @property
     def has_active_subscription(self) -> bool:

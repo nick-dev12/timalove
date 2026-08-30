@@ -1,8 +1,28 @@
-﻿{% extends "layouts/auth.html" %}
-{% block auth_content %}
-<form method="post">{% csrf_token %}
-  <div class="form-group"><label class="form-label">Email admin</label><input class="form-input" type="email" name="email" required></div>
-  <div class="form-group"><label class="form-label">Mot de passe</label><input class="form-input" type="password" name="password" required></div>
-  <button class="btn btn-primary btn-block" type="submit">Accéder</button>
-</form>
+{% extends "layouts/admin_base.html" %}
+{% load static %}
+{% block body_class %}admin-panel-page{% endblock %}
+{% block head %}
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<link rel="stylesheet" href="{% static 'css/admin-panel.css' %}?v=20260826a2">
+{% endblock %}
+{% block body %}
+<div class="adm-login">
+  <div class="adm-login__card">
+    <h1 class="adm-login__brand">TimaLove Admin</h1>
+    <p class="adm-login__lead">Espace privé réservé aux administrateurs</p>
+    {% if messages %}{% for message in messages %}<div class="adm__alert adm__alert--{{ message.tags|default:'info' }}" style="margin-bottom:1rem;">{{ message }}</div>{% endfor %}{% endif %}
+    <form method="post" action="{% url 'admin_panel:connexion' %}">
+      {% csrf_token %}
+      <div class="adm-field">
+        <label class="adm-label" for="admin-email">Email administrateur</label>
+        <input class="adm-input" id="admin-email" type="email" name="email" autocomplete="username" required>
+      </div>
+      <div class="adm-field">
+        <label class="adm-label" for="admin-password">Mot de passe</label>
+        <input class="adm-input" id="admin-password" type="password" name="password" autocomplete="current-password" required>
+      </div>
+      <button class="adm-btn adm-btn--primary" type="submit" style="width:100%;">Accéder au panneau</button>
+    </form>
+  </div>
+</div>
 {% endblock %}

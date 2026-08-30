@@ -21,6 +21,7 @@ def feed_for(viewer: Profile, limit: int = 20) -> list[Profile]:
         Profile.objects.filter(
             registration_status=RegistrationStatus.APPROVED,
             is_hidden=False,
+            is_shadowbanned=False,
             role=UserRole.MEMBER,
         )
         .exclude(pk=viewer.pk)

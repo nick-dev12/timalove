@@ -1,0 +1,37 @@
+{% extends "layouts/admin_base.html" %}
+{% load static %}
+{% block body_class %}admin-panel-page{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/admin-panel.css' %}?v=20260826a2">
+{% endblock %}
+{% block body %}
+<div class="adm-login">
+  <div class="adm-login__card adm-login__card--wide">
+    <h1 class="adm-login__brand">Authentification 2FA</h1>
+    <p class="adm-login__lead">Configurez l'authentification à deux facteurs pour sécuriser votre accès admin.</p>
+    {% if messages %}{% for message in messages %}<div class="adm__alert adm__alert--{{ message.tags|default:'info' }}" style="margin-bottom:1rem;">{{ message }}</div>{% endfor %}{% endif %}
+
+    <ol class="adm-2fa-steps">
+      <li>Ajoutez ce secret dans votre application d'authentification (Google Authenticator, Authy…) :
+        <code class="adm-code">{{ secret }}</code>
+      </li>
+      <li>Ou scannez cette URI :
+        <code class="adm-code adm-code--break">{{ provisioning_uri }}</code>
+      </li>
+      <li>Saisissez le code à 6 chiffres pour confirmer l'activation.</li>
+    </ol>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="adm-field">
+        <label class="adm-label" for="tfa-code">Code de vérification</label>
+        <input class="adm-input" id="tfa-code" type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+      </div>
+      <button class="adm-btn adm-btn--primary" type="submit" style="width:100%;">Activer la 2FA</button>
+    </form>
+    {% if not require_2fa %}
+    <p class="adm-login__hint"><a href="{% url 'admin_panel:dashboard' %}">Accéder au panel sans 2FA</a></p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

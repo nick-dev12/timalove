@@ -8,10 +8,10 @@
 <script type="application/json" id="signup-prefill">{{ signup_prefill|safe }}</script>
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.6.0/build/js/intlTelInput.min.js"></script>
 <script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
-<script src="{% static 'js/fcm.js' %}?v=20260821fcm3" defer></script>
-<script src="{% static 'js/auth-signup.js' %}?v=20260821su2" defer></script>
-<script src="{% static 'js/auth-google.js' %}?v=20260822a8" defer></script>
-<script src="{% static 'js/commencer-transit.js' %}?v=20260815su2" defer></script>
+<script src="{% static 'js/fcm.js' %}?v=20260826fcm2" defer></script>
+<script src="{% static 'js/auth-signup.js' %}?v=20260827su1" defer></script>
+<script src="{% static 'js/auth-google.js' %}?v=20260830login1" defer></script>
+<script src="{% static 'js/commencer-transit.js' %}?v=20260826t1" defer></script>
 {% endblock %}
 {% block body %}
 <div class="auth-hearts" data-auth-hearts aria-hidden="true">
@@ -34,13 +34,20 @@
 </div>
 
 <main class="auth-gate">
-  {% include "partials/btn_back.html" with href="/explorer/" extra_class="auth-gate__home" %}
+  {% include "partials/btn_back.html" with href="/" extra_class="auth-gate__home" %}
+
+  {% if user.is_authenticated and oauth_incomplete %}
+  <div class="auth-gate__session-banner" role="status">
+    <p>Vous êtes déjà connecté avec une session incomplète.</p>
+    <a class="auth-gate__session-reset" href="{% url 'auth:deconnexion' %}?next=/connexion/">Se déconnecter et recommencer</a>
+  </div>
+  {% endif %}
 
   <div
     class="explorer-gate__panel auth-gate__panel"
     data-auth-panel
     data-open-signup="{{ open_signup|yesno:'true,false' }}"
-    data-login-mode="{{ login_mode|default:'phone' }}"
+    data-login-mode="{{ login_mode|default:'' }}"
     data-oauth-incomplete="{{ oauth_incomplete|yesno:'true,false' }}"
     data-next="{{ next_url|default:'' }}"
   >
@@ -80,41 +87,18 @@
 
       <p class="auth-gate__or">ou</p>
 
-      <form class="auth-gate__form is-visible" method="post" action="{% url 'auth:connexion' %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}" data-auth-form novalidate>
-        {% csrf_token %}
-        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
-        <input type="hidden" name="login_mode" value="{{ login_mode|default:'phone' }}" data-auth-mode>
+      <div class="explorer-gate__actions auth-gate__choice">
+        <button type="button" class="explorer-gate__social explorer-gate__social--google" data-auth-method="email">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 6h16v12H4z"/><path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 7l8 6 8-6"/></svg>
+          Continuer avec mon email
+        </button>
+        <button type="button" class="explorer-gate__social explorer-gate__social--google" data-auth-method="phone">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="currentColor" d="M11 19h2v1h-2z"/></svg>
+          Continuer avec mon numéro
+        </button>
+      </div>
 
-        <div class="auth-gate__tabs" role="tablist" aria-label="Mode de connexion">
-          <button type="button" class="auth-gate__tab{% if login_mode != 'email' %} is-active{% endif %}" data-auth-tab="phone" role="tab" aria-selected="{% if login_mode != 'email' %}true{% else %}false{% endif %}">Téléphone</button>
-          <button type="button" class="auth-gate__tab{% if login_mode == 'email' %} is-active{% endif %}" data-auth-tab="email" role="tab" aria-selected="{% if login_mode == 'email' %}true{% else %}false{% endif %}">Email</button>
-        </div>
-
-        <div class="form-group auth-gate__pane{% if login_mode == 'email' %} is-hidden{% endif %}" data-auth-pane="phone">
-          <label class="form-label" for="auth-phone">Numéro de téléphone</label>
-          <input class="form-input" id="auth-phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="77 123 45 67" {% if login_mode != 'email' %}required{% endif %}>
-          <input type="hidden" name="phone" value="" data-auth-phone-e164>
-        </div>
-        <div class="form-group auth-gate__pane{% if login_mode != 'email' %} is-hidden{% endif %}" data-auth-pane="email">
-          <label class="form-label" for="auth-email">Email</label>
-          <input class="form-input" id="auth-email" type="email" name="email" autocomplete="username" placeholder="vous@email.com" {% if login_mode == 'email' %}required{% endif %}>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="auth-password">Mot de passe</label>
-          <div class="signup-password">
-            <input class="form-input" id="auth-password" type="password" name="password" required autocomplete="current-password" placeholder="••••••••">
-              <button type="button" class="signup-password__toggle" data-password-toggle="auth-password" aria-label="Afficher le mot de passe">
-                <svg class="signup-password__eye signup-password__eye--show" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-                <svg class="signup-password__eye signup-password__eye--hide" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M3 3l18 18M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.5-1.3M6.5 6.8C4 8.4 2 12 2 12s3.6 7 10 7c2.1 0 3.9-.6 5.4-1.5M14.5 5.4C13.7 5.1 12.9 5 12 5 5.6 5 2 12 2 12"/></svg>
-              </button>
-          </div>
-        </div>
-        <button class="explorer-gate__primary auth-gate__submit" type="submit">Se connecter</button>
-        <button type="button" class="explorer-gate__ghost auth-gate__signup-btn" data-auth-open-signup>Créer mon compte</button>
-        <p class="auth-gate__links">
-          <a href="{% url 'auth:mot_de_passe_oublie' %}">Mot de passe oublié ?</a>
-        </p>
-      </form>
+      <button type="button" class="explorer-gate__ghost auth-gate__signup-btn" data-auth-open-signup>Créer mon compte</button>
     </div>
 
     <div data-auth-view="choice" hidden>
@@ -235,8 +219,8 @@
           <p class="signup-lead">{{ signup_copy.socio.lead }}</p>
           <div class="form-group">
             <label class="form-label" for="signup-gender">Je suis</label>
-            <select class="form-select" id="signup-gender" data-field="gender">
-              <option value="" disabled selected>Sélectionnez</option>
+            <select class="form-select" id="signup-gender" data-field="gender" required>
+              <option value="" disabled selected>Sélectionnez votre genre</option>
               <option value="male">Homme</option>
               <option value="female">Femme</option>
             </select>
@@ -418,6 +402,48 @@
     </div>
 
     <p class="explorer-gate__note">Gratuit · Vérifié · Orienté mariage</p>
+  </div>
+
+  <div class="auth-gate__modal" id="auth-login-modal" hidden data-auth-login-modal aria-hidden="true">
+    <div class="auth-gate__modal-backdrop" data-auth-login-close tabindex="-1"></div>
+    <div class="auth-gate__modal-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-login-modal-title">
+      <header class="auth-gate__modal-head">
+        <h2 class="auth-gate__modal-title" id="auth-login-modal-title" data-auth-modal-title>Se connecter</h2>
+        <button type="button" class="auth-gate__modal-close" data-auth-login-close aria-label="Fermer">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+        </button>
+      </header>
+      <p class="auth-gate__status auth-gate__status--modal" data-auth-modal-status hidden></p>
+      <form class="auth-gate__form is-idle" method="post" action="{% url 'auth:connexion' %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}" data-auth-form novalidate>
+        {% csrf_token %}
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+        <input type="hidden" name="login_mode" value="" data-auth-mode>
+
+        <div class="form-group auth-gate__pane is-hidden" data-auth-pane="phone">
+          <label class="form-label" for="auth-phone">Numéro de téléphone</label>
+          <input class="form-input" id="auth-phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="77 123 45 67">
+          <input type="hidden" name="phone" value="" data-auth-phone-e164>
+        </div>
+        <div class="form-group auth-gate__pane is-hidden" data-auth-pane="email">
+          <label class="form-label" for="auth-email">Email</label>
+          <input class="form-input" id="auth-email" type="email" name="email" autocomplete="username" placeholder="vous@email.com">
+        </div>
+        <div class="form-group" data-auth-credentials>
+          <label class="form-label" for="auth-password">Mot de passe</label>
+          <div class="signup-password">
+            <input class="form-input" id="auth-password" type="password" name="password" autocomplete="current-password" placeholder="••••••••">
+            <button type="button" class="signup-password__toggle" data-password-toggle="auth-password" aria-label="Afficher le mot de passe">
+              <svg class="signup-password__eye signup-password__eye--show" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+              <svg class="signup-password__eye signup-password__eye--hide" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M3 3l18 18M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.5-1.3M6.5 6.8C4 8.4 2 12 2 12s3.6 7 10 7c2.1 0 3.9-.6 5.4-1.5M14.5 5.4C13.7 5.1 12.9 5 12 5 5.6 5 2 12 2 12"/></svg>
+            </button>
+          </div>
+        </div>
+        <button class="explorer-gate__primary auth-gate__submit" type="submit" data-auth-submit>Se connecter</button>
+      </form>
+      <p class="auth-gate__links auth-gate__links--center auth-gate__links--modal">
+        <a href="{% url 'auth:mot_de_passe_oublie' %}">Mot de passe oublié ?</a>
+      </p>
+    </div>
   </div>
 </main>
 {% include "partials/commencer_transit.html" %}

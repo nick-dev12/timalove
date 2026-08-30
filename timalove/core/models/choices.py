@@ -22,7 +22,20 @@ class RelationshipIntent(models.TextChoices):
 
 class UserRole(models.TextChoices):
     MEMBER = "member", "Membre"
-    ADMIN = "admin", "Admin"
+    SUPER_ADMIN = "super_admin", "Super administrateur"
+    ADMIN = "admin", "Administrateur"
+    MODERATOR = "moderator", "Modérateur"
+    SUPPORT = "support", "Support client"
+
+
+STAFF_ROLES = frozenset(
+    {
+        UserRole.SUPER_ADMIN,
+        UserRole.ADMIN,
+        UserRole.MODERATOR,
+        UserRole.SUPPORT,
+    }
+)
 
 
 class RegistrationStatus(models.TextChoices):
@@ -84,18 +97,23 @@ class NotificationType(models.TextChoices):
     PROFILE_REJECTED = "profile_rejected", "Profil rejeté"
     NEW_REGISTRATION = "new_registration", "Nouvelle inscription"
     BOOST_ACTIVATED = "boost_activated", "Boost activé"
+    MODERATION_WARNING = "moderation_warning", "Avertissement modération"
 
 
 class PaymentMethod(models.TextChoices):
     WAVE = "wave", "Wave"
     ORANGE_MONEY = "orange_money", "Orange Money"
     CB = "cb", "Carte bancaire"
+    STRIPE = "stripe", "Stripe"
+    APPLE_PAY = "apple_pay", "Apple Pay"
+    GOOGLE_PAY = "google_pay", "Google Pay"
 
 
 class TransactionType(models.TextChoices):
     SUBSCRIPTION = "subscription", "Abonnement"
     COACHING = "coaching", "Coaching"
     BOOST = "boost", "Boost"
+    SUPER_LIKE = "super_like", "Super-Like"
 
 
 class TransactionStatus(models.TextChoices):
@@ -103,6 +121,7 @@ class TransactionStatus(models.TextChoices):
     PAID = "paid", "Payé"
     FAILED = "failed", "Échoué"
     REFUNDED = "refunded", "Remboursé"
+    DISPUTE = "dispute", "Litige / Chargeback"
 
 
 class CoachingStatus(models.TextChoices):
@@ -141,10 +160,11 @@ class LastSeenVisibility(models.TextChoices):
 
 
 class ReportReason(models.TextChoices):
-    FAKE_PROFILE = "fake_profile", "Faux profil"
+    FAKE_PROFILE = "fake_profile", "Faux profil / Bot"
     HARASSMENT = "harassment", "Harcèlement"
-    INAPPROPRIATE_CONTENT = "inappropriate_content", "Contenu inapproprié"
-    SCAM = "scam", "Arnaque"
+    HATE_SPEECH = "hate_speech", "Propos haineux"
+    INAPPROPRIATE_CONTENT = "inappropriate_content", "Photos inappropriées"
+    SCAM = "scam", "Demande d'argent"
     SPAM = "spam", "Spam"
     OTHER = "other", "Autre"
     PLATFORM = "platform", "Plateforme"

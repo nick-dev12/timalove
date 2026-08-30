@@ -265,8 +265,8 @@ def feed_context(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> dict:
     likes_list = incoming_cards(profile, limit=limit)
     total = count_incoming(profile)
     locked_count = 0
-    if quota_controller.is_freemium(profile):
-        visible = quota_controller.likes_visible_limit()
+    visible = quota_controller.likes_visible_cap(profile)
+    if visible is not None:
         extra = likes_list[visible:]
         likes_list = likes_list[:visible] + [_lock_incoming_card(item) for item in extra]
         locked_count = max(0, total - visible)
@@ -279,9 +279,9 @@ def feed_context(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> dict:
         "grid": likes_list,
         "pending_count": total,
         "has_matches": has_matches,
-        "has_more": total > len(likes_list) and not quota_controller.is_freemium(profile),
+        "has_more": total > len(likes_list) and visible is None,
         "locked_count": locked_count,
-        "likes_restricted": quota_controller.is_freemium(profile),
+        "likes_restricted": visible is not None,
     }
 
 
@@ -293,8 +293,10 @@ def has_super_liked(profile: Profile, other_id) -> bool:
     return Swipe.objects.filter(swiper=profile, swiped_id=other_id, is_super_like=True).exists()
 
 
-def _serialize_outgoing(swipe: Swipe, matched_ids: set) -> dict:
+def _serialize_outgoing(swipe: Swipe, matched_ids: set) -> dict | None:
     other = swipe.swiped
+    if other is None:
+        return None
     location_parts = [p for p in (other.city, other.country) if p]
     return {
         "id": str(other.pk),
@@ -335,7 +337,7 @@ def outgoing(profile: Profile, limit: int = PAGE_SIZE, offset: int = 0) -> dict:
     has_more = len(swipes) > limit
     swipes = swipes[:limit]
     matched_ids = _matched_ids(profile)
-    items = [_serialize_outgoing(swipe, matched_ids) for swipe in swipes]
+    items = [row for swipe in swipes if (row := _serialize_outgoing(swipe, matched_ids))]
     locked_extra = 0
     if hist_limit is not None and offset == 0:
         visible_cap = hist_limit

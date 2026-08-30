@@ -1,0 +1,469 @@
+{% extends "layouts/admin.html" %}
+{% load admin_tags %}
+{% block subtitle %}
+<p class="adm__subtitle">Formules, packs in-app et codes promo — visibles immédiatement dans l’application</p>
+{% endblock %}
+{% block content %}
+<div class="adm-stats adm-stats--compact adm-stats--monetisation">
+  <article class="adm-stat adm-stat--accent"><span class="adm-stat__label">Formules actives</span><strong class="adm-stat__value">{{ active_plans }}</strong><span class="adm-stat__meta">/ {{ total_plans }} configurées</span></article>
+  <article class="adm-stat"><span class="adm-stat__label">Codes promo</span><strong class="adm-stat__value">{{ promo_stats.total }}</strong><span class="adm-stat__meta">{{ promo_stats.active }} actif(s)</span></article>
+  <article class="adm-stat"><span class="adm-stat__label">Utilisations promo</span><strong class="adm-stat__value">{{ promo_stats.total_uses }}</strong><span class="adm-stat__meta">paiements réussis</span></article>
+</div>
+
+<nav class="adm-tabs adm-tabs--section" aria-label="Sections monétisation">
+  <a class="adm-tabs__link{% if tab == 'plans' %} is-active{% endif %}" href="?tab=plans">Formules d'abonnement</a>
+  <a class="adm-tabs__link{% if tab == 'promos' %} is-active{% endif %}" href="?tab=promos">Codes promo</a>
+</nav>
+
+{% if tab == 'plans' %}
+<section class="adm-mon-section">
+  <div class="adm-mon-toolbar">
+    <div>
+      <h2 class="adm-mon-toolbar__title">Formules configurées</h2>
+      <p class="adm-mon-toolbar__lead">Tarifs affichés au profil et au paiement. Chaque carte est une offre distincte.</p>
+    </div>
+    {% if available_tiers %}
+    <button class="adm-btn adm-btn--primary" type="button" data-mon-open="plan-add">Ajouter une formule</button>
+    {% endif %}
+  </div>
+
+  {% if plan_rows %}
+  <div class="adm-offer-grid">
+    {% for plan in plan_rows %}
+    <article class="adm-offer adm-offer--{{ plan.tier_kind }}{% if not plan.active %} is-off{% endif %}">
+      <header class="adm-offer__head">
+        <span class="adm-offer__kind">{% if plan.tier_kind == 'vip' %}VIP{% elif plan.tier_kind == 'pass_femme' %}Pass Femme{% else %}Premium{% endif %}</span>
+        <div class="adm-offer__badges">
+          {% if plan.is_featured %}<span class="adm-badge adm-badge--vip">Vedette</span>{% endif %}
+          <span class="adm-badge adm-badge--{% if plan.active %}ok{% else %}muted{% endif %}">{% if plan.active %}Actif{% else %}Inactif{% endif %}</span>
+        </div>
+      </header>
+      <h3 class="adm-offer__title">{{ plan.label }}</h3>
+      <p class="adm-offer__price">{{ plan.price|fcfa }}</p>
+      <p class="adm-offer__meta">{{ plan.duration_label }} · {{ plan.duration_days }} jour{{ plan.duration_days|pluralize }} · <code>{{ plan.id }}</code></p>
+      {% if plan.badge %}<p class="adm-offer__badge-text">{{ plan.badge }}</p>{% endif %}
+      {% if plan.features %}
+      <ul class="adm-offer__features">
+        {% for feat in plan.features|slice:":6" %}<li>{{ feat }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      <div class="adm-offer__actions">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-open="plan-edit-{{ plan.id }}">Modifier</button>
+        {% if plan_rows|length > 1 %}
+        <form method="post" class="adm-inline-form" onsubmit="return confirm('Supprimer cette formule ?');">{% csrf_token %}
+          <input type="hidden" name="action" value="delete_plan">
+          <input type="hidden" name="plan_id" value="{{ plan.id }}">
+          <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Supprimer</button>
+        </form>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="adm-empty adm-empty--card">Aucune formule configurée.{% if available_tiers %} Ajoutez la première offre.{% endif %}</div>
+  {% endif %}
+</section>
+
+{% if available_tiers %}
+<div class="adm-sheet" id="plan-add" hidden data-mon-sheet>
+  <div class="adm-sheet__bar">
+    <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-close>Fermer</button>
+    <h2 class="adm-sheet__title">Nouvelle formule</h2>
+  </div>
+  <div class="adm-sheet__body">
+    <form method="post" class="adm-sheet__form">{% csrf_token %}
+      <input type="hidden" name="action" value="add_plan">
+      <div class="adm-grid-2 adm-grid-2--compact">
+        <div class="adm-field">
+          <label class="adm-label" for="new_plan_id">Offre</label>
+          <select class="adm-select" id="new_plan_id" name="new_plan_id" required>
+            {% for tier_id, tier_label in available_tiers %}
+            <option value="{{ tier_id }}">{{ tier_label }} · {{ tier_id }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="new_label">Nom affiché</label>
+          <input class="adm-input" id="new_label" name="new_label" required placeholder="Ex. Premium 1 mois">
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="new_price">Prix (FCFA)</label>
+          <input class="adm-input" id="new_price" type="number" min="0" step="1" name="new_price" value="0" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="new_duration_label">Durée affichée</label>
+          <input class="adm-input" id="new_duration_label" name="new_duration_label" required placeholder="Ex. 1 mois">
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="new_duration_days">Durée (jours)</label>
+          <input class="adm-input" id="new_duration_days" type="number" min="1" step="1" name="new_duration_days" value="30" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="new_tier_kind">Type d’avantages</label>
+          <select class="adm-select" id="new_tier_kind" name="new_tier_kind" required>
+            {% for kind_id, kind_label in tier_kinds %}
+            <option value="{{ kind_id }}">{{ kind_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="new_features">Fonctionnalités débloquées (1 par ligne)</label>
+          <textarea class="adm-input adm-input--features" id="new_features" name="new_features" rows="3" placeholder="Messagerie illimitée"></textarea>
+        </div>
+      </div>
+      <div class="adm-plans-add__checks">
+        <label class="adm-check adm-check--sm"><input type="checkbox" name="new_active" checked> Formule active</label>
+        <label class="adm-check adm-check--sm"><input type="checkbox" name="new_featured"> Mettre en avant</label>
+      </div>
+      <button class="adm-btn adm-btn--primary" type="submit">Ajouter la formule</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% for plan in plan_rows %}
+<div class="adm-sheet" id="plan-edit-{{ plan.id }}" hidden data-mon-sheet>
+  <div class="adm-sheet__bar">
+    <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-close>Fermer</button>
+    <h2 class="adm-sheet__title">Modifier · {{ plan.label }}</h2>
+  </div>
+  <div class="adm-sheet__body">
+    <form method="post" class="adm-sheet__form">{% csrf_token %}
+      <input type="hidden" name="action" value="save_plans">
+      <input type="hidden" name="plan_id" value="{{ plan.id }}">
+      <div class="adm-grid-2 adm-grid-2--compact">
+        <div class="adm-field">
+          <label class="adm-label" for="label_{{ plan.id }}">Nom affiché</label>
+          <input class="adm-input" id="label_{{ plan.id }}" name="label_{{ plan.id }}" value="{{ plan.label }}" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="price_{{ plan.id }}">Prix (FCFA)</label>
+          <input class="adm-input" id="price_{{ plan.id }}" type="number" min="0" name="price_{{ plan.id }}" value="{{ plan.price }}" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="duration_{{ plan.id }}">Durée affichée</label>
+          <input class="adm-input" id="duration_{{ plan.id }}" name="duration_{{ plan.id }}" value="{{ plan.duration_label }}" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="duration_days_{{ plan.id }}">Durée (jours)</label>
+          <input class="adm-input" id="duration_days_{{ plan.id }}" type="number" min="1" name="duration_days_{{ plan.id }}" value="{{ plan.duration_days }}" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="tier_kind_{{ plan.id }}">Type d’avantages</label>
+          <select class="adm-select" id="tier_kind_{{ plan.id }}" name="tier_kind_{{ plan.id }}">
+            {% for kind_id, kind_label in tier_kinds %}
+            <option value="{{ kind_id }}"{% if plan.tier_kind == kind_id %} selected{% endif %}>{{ kind_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="badge_{{ plan.id }}">Badge</label>
+          <input class="adm-input" id="badge_{{ plan.id }}" name="badge_{{ plan.id }}" value="{{ plan.badge }}">
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="features_{{ plan.id }}">Fonctionnalités (1 par ligne)</label>
+          <textarea class="adm-input adm-input--features" id="features_{{ plan.id }}" name="features_{{ plan.id }}" rows="3">{{ plan.features|join_lines }}</textarea>
+        </div>
+      </div>
+      <div class="adm-plans-add__checks">
+        <label class="adm-check adm-check--sm"><input type="checkbox" name="active_{{ plan.id }}"{% if plan.active %} checked{% endif %}> Actif</label>
+        <label class="adm-check adm-check--sm"><input type="checkbox" name="featured_{{ plan.id }}"{% if plan.is_featured %} checked{% endif %}> Vedette</label>
+      </div>
+      <button class="adm-btn adm-btn--primary" type="submit">Enregistrer la formule</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if tab == 'packs' %}
+<section class="adm-mon-section">
+  <div class="adm-mon-toolbar">
+    <div>
+      <h2 class="adm-mon-toolbar__title">Packs in-app</h2>
+      <p class="adm-mon-toolbar__lead">Boosts, super-likes et rewinds achetés à l’unité dans l’application.</p>
+    </div>
+    <button class="adm-btn adm-btn--primary" type="button" data-mon-open="pack-add">Ajouter un pack</button>
+  </div>
+
+  {% if pack_rows %}
+  <div class="adm-offer-grid">
+    {% for pack in pack_rows %}
+    <article class="adm-offer adm-offer--{{ pack.pack_type }}{% if not pack.active %} is-off{% endif %}">
+      <header class="adm-offer__head">
+        <span class="adm-offer__kind">{% if pack.pack_type == 'super_like' %}Super-Like{% elif pack.pack_type == 'rewind' %}Rewind{% else %}Boost{% endif %}</span>
+        <span class="adm-badge adm-badge--{% if pack.active %}ok{% else %}muted{% endif %}">{% if pack.active %}Actif{% else %}Inactif{% endif %}</span>
+      </header>
+      <h3 class="adm-offer__title">{{ pack.label }}</h3>
+      <p class="adm-offer__price">{{ pack.price|fcfa }}</p>
+      <p class="adm-offer__meta">{{ pack.quantity }} unité{{ pack.quantity|pluralize }}{% if pack.duration_days %} · {{ pack.duration_days }} j{% endif %} · <code>{{ pack.id }}</code></p>
+      {% if pack.description %}<p class="adm-offer__desc">{{ pack.description }}</p>{% endif %}
+      <div class="adm-offer__actions">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-open="pack-edit-{{ pack.id }}">Modifier</button>
+        {% if pack.id not in catalog_pack_ids %}
+        <form method="post" class="adm-inline-form" onsubmit="return confirm('Supprimer ce pack ?');">{% csrf_token %}
+          <input type="hidden" name="action" value="delete_pack">
+          <input type="hidden" name="pack_id" value="{{ pack.id }}">
+          <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Supprimer</button>
+        </form>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="adm-empty adm-empty--card">Aucun pack configuré.</div>
+  {% endif %}
+</section>
+
+<div class="adm-sheet" id="pack-add" hidden data-mon-sheet>
+  <div class="adm-sheet__bar">
+    <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-close>Fermer</button>
+    <h2 class="adm-sheet__title">Nouveau pack</h2>
+  </div>
+  <div class="adm-sheet__body">
+    <form method="post" class="adm-sheet__form">{% csrf_token %}
+      <input type="hidden" name="action" value="add_pack">
+      <div class="adm-grid-2 adm-grid-2--compact">
+        <div class="adm-field">
+          <label class="adm-label" for="new_pack_id">Identifiant</label>
+          <input class="adm-input" id="new_pack_id" name="new_pack_id" required placeholder="ex. boost_14d" pattern="[a-z][a-z0-9_]{1,29}">
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="new_pack_label">Nom affiché</label>
+          <input class="adm-input" id="new_pack_label" name="new_pack_label" required placeholder="Ex. Boost 14 jours">
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="new_pack_type">Type</label>
+          <select class="adm-select" id="new_pack_type" name="new_pack_type">
+            {% for type_id, type_label in pack_types %}
+            <option value="{{ type_id }}">{{ type_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="new_pack_price">Prix (FCFA)</label>
+          <input class="adm-input" id="new_pack_price" type="number" min="0" name="new_pack_price" value="0" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="new_pack_qty">Quantité</label>
+          <input class="adm-input" id="new_pack_qty" type="number" min="1" name="new_pack_qty" value="1" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="new_pack_days">Durée (jours)</label>
+          <input class="adm-input" id="new_pack_days" type="number" min="0" name="new_pack_days" value="7">
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="new_pack_desc">Description</label>
+          <input class="adm-input" id="new_pack_desc" name="new_pack_desc" placeholder="Texte affiché dans l’application">
+        </div>
+      </div>
+      <label class="adm-check adm-check--sm"><input type="checkbox" name="new_pack_active" checked> Pack actif</label>
+      <button class="adm-btn adm-btn--primary" type="submit">Ajouter le pack</button>
+    </form>
+  </div>
+</div>
+
+{% for pack in pack_rows %}
+<div class="adm-sheet" id="pack-edit-{{ pack.id }}" hidden data-mon-sheet>
+  <div class="adm-sheet__bar">
+    <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-close>Fermer</button>
+    <h2 class="adm-sheet__title">Modifier · {{ pack.label }}</h2>
+  </div>
+  <div class="adm-sheet__body">
+    <form method="post" class="adm-sheet__form">{% csrf_token %}
+      <input type="hidden" name="action" value="save_packs">
+      <input type="hidden" name="pack_id" value="{{ pack.id }}">
+      <div class="adm-grid-2 adm-grid-2--compact">
+        <div class="adm-field">
+          <label class="adm-label" for="pack_label_{{ pack.id }}">Nom</label>
+          <input class="adm-input" id="pack_label_{{ pack.id }}" name="pack_label_{{ pack.id }}" value="{{ pack.label }}" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="pack_type_{{ pack.id }}">Type</label>
+          <select class="adm-select" id="pack_type_{{ pack.id }}" name="pack_type_{{ pack.id }}">
+            {% for type_id, type_label in pack_types %}
+            <option value="{{ type_id }}"{% if pack.pack_type == type_id %} selected{% endif %}>{{ type_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="pack_price_{{ pack.id }}">Prix (FCFA)</label>
+          <input class="adm-input" id="pack_price_{{ pack.id }}" type="number" min="0" name="pack_price_{{ pack.id }}" value="{{ pack.price }}" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="pack_qty_{{ pack.id }}">Quantité</label>
+          <input class="adm-input" id="pack_qty_{{ pack.id }}" type="number" min="1" name="pack_qty_{{ pack.id }}" value="{{ pack.quantity }}" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="pack_days_{{ pack.id }}">Durée (jours)</label>
+          <input class="adm-input" id="pack_days_{{ pack.id }}" type="number" min="0" name="pack_days_{{ pack.id }}" value="{{ pack.duration_days }}">
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="pack_desc_{{ pack.id }}">Description</label>
+          <input class="adm-input" id="pack_desc_{{ pack.id }}" name="pack_desc_{{ pack.id }}" value="{{ pack.description }}">
+        </div>
+      </div>
+      <label class="adm-check adm-check--sm"><input type="checkbox" name="pack_active_{{ pack.id }}"{% if pack.active %} checked{% endif %}> Pack actif</label>
+      <button class="adm-btn adm-btn--primary" type="submit">Enregistrer le pack</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if tab == 'promos' %}
+<section class="adm-mon-section">
+  <div class="adm-mon-toolbar">
+    <div>
+      <h2 class="adm-mon-toolbar__title">Codes promo</h2>
+      <p class="adm-mon-toolbar__lead">Réductions % liées à une formule d’abonnement. Les membres saisissent le code dans Profil → Abonnements ou lors d’un upgrade. Limite = nombre total de personnes pouvant en profiter (ou illimité).</p>
+    </div>
+    <button class="adm-btn adm-btn--primary" type="button" data-mon-open="promo-add">Créer un code</button>
+  </div>
+
+  {% if promo_codes %}
+  <div class="adm-offer-grid">
+    {% for promo in promo_codes %}
+    <article class="adm-offer adm-offer--promo">
+      <header class="adm-offer__head">
+        <code class="adm-offer__code">{{ promo.code }}</code>
+        <span class="adm-badge adm-badge--{{ promo|promo_status_badge }}">{{ promo|promo_status_label }}</span>
+      </header>
+      <p class="adm-offer__price">−{{ promo.discount_percent }}%</p>
+      <p class="adm-offer__meta">{{ promo|promo_plan_label }} · {{ promo|promo_usage_label }}{% if promo.expires_at %} · expire le {{ promo.expires_at|date:"d/m/Y" }}{% else %} · sans expiration{% endif %}</p>
+      {% if promo.note %}<p class="adm-offer__desc">{{ promo.note }}</p>{% endif %}
+      <div class="adm-offer__actions">
+        <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-open="promo-edit-{{ promo.id }}">Modifier</button>
+        {% if promo.active %}
+        <form method="post" class="adm-inline-form">{% csrf_token %}
+          <input type="hidden" name="action" value="toggle_promo">
+          <input type="hidden" name="promo_id" value="{{ promo.id }}">
+          <input type="hidden" name="promo_active" value="0">
+          <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Désactiver</button>
+        </form>
+        {% else %}
+        <form method="post" class="adm-inline-form">{% csrf_token %}
+          <input type="hidden" name="action" value="toggle_promo">
+          <input type="hidden" name="promo_id" value="{{ promo.id }}">
+          <input type="hidden" name="promo_active" value="1">
+          <button class="adm-btn adm-btn--primary adm-btn--sm" type="submit">Activer</button>
+        </form>
+        {% endif %}
+        <form method="post" class="adm-inline-form" onsubmit="return confirm('Supprimer ce code promo ?');">{% csrf_token %}
+          <input type="hidden" name="action" value="delete_promo">
+          <input type="hidden" name="promo_id" value="{{ promo.id }}">
+          <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Suppr.</button>
+        </form>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="adm-empty adm-empty--card">Aucun code promo — créez-en un avec « Créer un code ».</div>
+  {% endif %}
+</section>
+
+<div class="adm-sheet" id="promo-add" hidden data-mon-sheet>
+  <div class="adm-sheet__bar">
+    <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-close>Fermer</button>
+    <h2 class="adm-sheet__title">Nouveau code promo</h2>
+  </div>
+  <div class="adm-sheet__body">
+    <form method="post" class="adm-sheet__form">{% csrf_token %}
+      <input type="hidden" name="action" value="create_promo">
+      <div class="adm-grid-2 adm-grid-2--compact">
+        <div class="adm-field">
+          <label class="adm-label" for="promo_code">Code promo</label>
+          <input class="adm-input" id="promo_code" name="promo_code" required placeholder="Ex. TIMALOVE20" pattern="[A-Za-z0-9_-]{3,40}" style="text-transform:uppercase">
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="promo_plan_tier">Formule liée</label>
+          <select class="adm-input" id="promo_plan_tier" name="promo_plan_tier" required>
+            <option value="">Choisir une formule</option>
+            {% for plan in plan_rows %}
+            {% if plan.active %}
+            <option value="{{ plan.id }}">{{ plan.label }} · {{ plan.price|fcfa }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="promo_discount">Remise (%)</label>
+          <input class="adm-input" id="promo_discount" type="number" min="1" max="100" name="promo_discount" value="10" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="promo_expires">Expiration</label>
+          <input class="adm-input" id="promo_expires" type="date" name="promo_expires">
+        </div>
+        <div class="adm-field adm-field--full" data-promo-uses>
+          <span class="adm-label">Bénéficiaires</span>
+          <label class="adm-check adm-check--sm"><input type="checkbox" name="promo_unlimited" value="on" checked data-promo-unlimited> Illimité — tous les utilisateurs peuvent en profiter</label>
+          <div class="adm-field adm-field--nested" data-promo-max-field hidden>
+            <label class="adm-label" for="promo_max_uses">Nombre de personnes</label>
+            <input class="adm-input" id="promo_max_uses" type="number" min="1" name="promo_max_uses" placeholder="Ex. 100" data-promo-max-input disabled>
+          </div>
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="promo_note">Note interne</label>
+          <input class="adm-input" id="promo_note" name="promo_note" placeholder="Ex. Campagne Saint-Valentin">
+        </div>
+      </div>
+      <p class="adm-offer__desc">Le code ne s’applique qu’à la formule choisie. Publiez-le dans une campagne CRM ou communiquez-le aux membres : ils le saisissent au paiement. Le compteur augmente après chaque paiement réussi.</p>
+      <label class="adm-check adm-check--sm"><input type="checkbox" name="promo_active" checked> Code actif dès la création</label>
+      <button class="adm-btn adm-btn--primary" type="submit">Créer le code promo</button>
+    </form>
+  </div>
+</div>
+
+{% for promo in promo_codes %}
+<div class="adm-sheet" id="promo-edit-{{ promo.id }}" hidden data-mon-sheet>
+  <div class="adm-sheet__bar">
+    <button class="adm-btn adm-btn--ghost adm-btn--sm" type="button" data-mon-close>Fermer</button>
+    <h2 class="adm-sheet__title">Modifier · {{ promo.code }}</h2>
+  </div>
+  <div class="adm-sheet__body">
+    <form method="post" class="adm-sheet__form">{% csrf_token %}
+      <input type="hidden" name="action" value="update_promo">
+      <input type="hidden" name="promo_id" value="{{ promo.id }}">
+      <div class="adm-grid-2 adm-grid-2--compact">
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="promo_plan_tier_{{ promo.id }}">Formule liée</label>
+          <select class="adm-input" id="promo_plan_tier_{{ promo.id }}" name="promo_plan_tier" required>
+            {% if not promo.plan_tier %}<option value="">Choisir une formule</option>{% endif %}
+            {% for plan in plan_rows %}
+            {% if plan.active or plan.id == promo.plan_tier %}
+            <option value="{{ plan.id }}"{% if promo.plan_tier == plan.id %} selected{% endif %}>{{ plan.label }} · {{ plan.price|fcfa }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="promo_discount_{{ promo.id }}">Remise (%)</label>
+          <input class="adm-input" id="promo_discount_{{ promo.id }}" type="number" min="1" max="100" name="promo_discount" value="{{ promo.discount_percent }}" required>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label" for="promo_expires_{{ promo.id }}">Expiration</label>
+          <input class="adm-input" id="promo_expires_{{ promo.id }}" type="date" name="promo_expires" value="{% if promo.expires_at %}{{ promo.expires_at|date:'Y-m-d' }}{% endif %}">
+        </div>
+        <div class="adm-field adm-field--full" data-promo-uses>
+          <span class="adm-label">Bénéficiaires</span>
+          <label class="adm-check adm-check--sm"><input type="checkbox" name="promo_unlimited" value="on"{% if not promo.max_uses %} checked{% endif %} data-promo-unlimited> Illimité — tous les utilisateurs peuvent en profiter</label>
+          <div class="adm-field adm-field--nested" data-promo-max-field{% if not promo.max_uses %} hidden{% endif %}>
+            <label class="adm-label" for="promo_max_uses_{{ promo.id }}">Nombre de personnes</label>
+            <input class="adm-input" id="promo_max_uses_{{ promo.id }}" type="number" min="{{ promo.usage_count|default:1 }}" name="promo_max_uses" value="{% if promo.max_uses %}{{ promo.max_uses }}{% endif %}" placeholder="Ex. 100" data-promo-max-input{% if not promo.max_uses %} disabled{% endif %}>
+          </div>
+        </div>
+        <div class="adm-field adm-field--full">
+          <label class="adm-label" for="promo_note_{{ promo.id }}">Note interne</label>
+          <input class="adm-input" id="promo_note_{{ promo.id }}" name="promo_note" value="{{ promo.note }}">
+        </div>
+      </div>
+      <button class="adm-btn adm-btn--primary" type="submit">Enregistrer le code</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

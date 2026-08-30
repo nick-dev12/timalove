@@ -31,7 +31,7 @@ def resolve_public_site_url(raw: str, *, debug: bool, allowed_hosts: list[str]) 
         return url
     for host in allowed_hosts:
         h = (host or "").strip().lstrip(".")
-        if not h or h in {"localhost", "127.0.0.1", "*"}:
+        if not h or h in {"localhost", "127.0.0.1", "testserver", "*"}:
             continue
         scheme = "http" if debug else "https"
         return f"{scheme}://{h}"

@@ -10,6 +10,8 @@ from django.urls import reverse
 MEMBER_PREFIXES = (
     "/decouvrir",
     "/likes",
+    "/historique",
+    "/messages",
     "/rencontres",
     "/discussions",
     "/profil",
@@ -57,13 +59,21 @@ class AuthGuardsMiddleware:
             return self.get_response(request)
 
         if path.startswith("/explorer"):
-            if request.user.is_authenticated:
-                profile = getattr(request.user, "profile", None)
-                if profile and profile.banned_at:
-                    logout(request)
-                    return redirect("auth:connexion")
-                if profile and not profile.is_profile_complete:
-                    return redirect("/connexion/?signup=1")
+            if not request.user.is_authenticated:
+                if path.rstrip("/") == "/explorer":
+                    return redirect("public:home")
+                return self.get_response(request)
+            profile = getattr(request.user, "profile", None)
+            if profile and profile.banned_at:
+                logout(request)
+                return redirect("auth:connexion")
+            if (
+                profile
+                and not profile.is_admin
+                and not profile.is_profile_complete
+            ):
+                return redirect("/connexion/?signup=1")
+            return self.get_response(request)
 
         if any(path.startswith(p) for p in MEMBER_PREFIXES):
             if not request.user.is_authenticated:
@@ -72,7 +82,7 @@ class AuthGuardsMiddleware:
             if profile and profile.banned_at:
                 logout(request)
                 return redirect("auth:connexion")
-            if profile and not profile.is_profile_complete:
+            if profile and not profile.is_admin and not profile.is_profile_complete:
                 return redirect(f"/connexion/?signup=1&next={path}")
 
         if path.startswith(COMPLETER_PATH):

@@ -3,9 +3,13 @@
 {% block title %}Messages{% endblock %}
 {% block body_class %}messages-inbox-page{% endblock %}
 {% block head %}
+{% include "partials/member_page_scroll.html" %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260822h6" defer></script>
-<script src="{% static 'js/messages-inbox.js' %}?v=20260822m6" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260826h1" defer></script>
+<script src="{% static 'js/messages-inbox.js' %}?v=20260826m8" defer></script>
+{% if user.is_authenticated %}
+<script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
+{% endif %}
 {% endblock %}
 {% block body %}
 {% include "partials/explorer_atmosphere.html" %}
@@ -20,7 +24,6 @@
       <nav id="explorer-menu" class="explorer__menu" hidden>
       <a href="{% url 'public:accueil' %}">En savoir plus</a>
       <a href="{% url 'public:coaching' %}">Coaching individuel</a>
-      <a href="{% url 'public:temoignages' %}">Témoignages</a>
       <a href="{% url 'public:contact' %}">Contact</a>
       <a href="{% url 'auth:deconnexion' %}">Déconnexion</a>
       </nav>
@@ -39,36 +42,15 @@
         {% include "partials/explorer_bell.html" %}
       </div>
     </header>
-
-    <form class="explorer-search" role="search" data-msg-search-form onsubmit="return false;">
-      <label class="explorer-search__field">
-        <span class="visually-hidden">Rechercher une discussion</span>
-        <svg class="explorer-search__ico" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
-          <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="m16.2 16.2 4.2 4.2"/>
-        </svg>
-        <input
-          type="search"
-          name="q"
-          placeholder="Rechercher une discussion…"
-          autocomplete="off"
-          spellcheck="false"
-          enterkeyhint="search"
-          aria-autocomplete="list"
-          aria-controls="msg-search-results"
-        >
-        <button type="button" class="explorer-search__clear" data-search-clear hidden aria-label="Effacer">
-          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
-        </button>
-      </label>
-      <div id="msg-search-results" class="explorer-search__results" role="listbox" aria-label="Suggestions de discussions"></div>
-    </form>
   </div>
 
   <main class="msg-list">
     <header class="msg-list__intro">
       <h1 class="msg-list__title">Messages</h1>
       <p class="msg-list__lead">Vos conversations, au plus récent.</p>
+      {% if app_features.messages_search_enabled %}
+      {% include "partials/explorer_search_bar.html" with search_placeholder="Rechercher une discussion…" search_label="Rechercher une discussion" search_results_id="msg-search-results" search_form_extra="data-msg-search-form" %}
+      {% endif %}
     </header>
 
     {% if conversations %}
@@ -81,7 +63,7 @@
           data-msg-card
           data-msg-search="{{ c.partner.first_name }} {{ c.preview }}"
         >
-          <span class="msg-list__avatar" aria-hidden="true">
+          <span class="msg-list__avatar" data-profile-modal="{{ c.partner.id }}" role="button" tabindex="0" aria-label="Voir le profil de {{ c.partner.first_name }}">
             {% if c.partner.primary_photo %}
             <img src="{{ c.partner.primary_photo }}" alt="">
             {% else %}
@@ -113,7 +95,7 @@
       </article>
       {% endfor %}
     </section>
-    <p class="msg-list__empty-search" data-msg-empty-search hidden>Aucune discussion ne correspond à cette recherche.</p>
+    <p class="msg-list__empty-search" data-msg-empty-search hidden>Aucune discussion ne correspond à votre recherche.</p>
     {% else %}
     <section class="msg-list__empty" aria-live="polite">
       <span class="msg-list__empty-ico" aria-hidden="true">
@@ -129,4 +111,7 @@
   {% include "partials/explorer_dock.html" with dock_active="messages" %}
 </div>
 {% include "partials/profile_modal.html" %}
+{% if user.is_authenticated %}
+{% include "partials/message_invite_modal.html" %}
+{% endif %}
 {% endblock %}

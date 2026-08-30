@@ -3,8 +3,9 @@
 {% block title %}Mon profil{% endblock %}
 {% block body_class %}visit-profil-page{% endblock %}
 {% block head %}
+{% include "partials/member_page_scroll.html" %}
 <script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
-<script src="{% static 'js/own-profile.js' %}?v=20260822s7" defer></script>
+<script src="{% static 'js/own-profile.js' %}?v=20260827promo1" defer></script>
 {% endblock %}
 {% block body %}
 <div class="visit visit--own" data-own-profile data-max-photos="{{ max_photos }}">
@@ -669,8 +670,9 @@
       </div>
     </section>
   </main>
+</div>
 
-  <div class="visit-settings-modal" id="settings-modal-privacy" hidden data-settings-modal="privacy">
+<div class="visit-settings-modal" id="settings-modal-privacy" hidden data-settings-modal="privacy">
     <div class="visit-settings-modal__backdrop" data-settings-modal-close tabindex="-1"></div>
     <div class="visit-settings-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="settings-modal-privacy-title">
       <header class="visit-settings-modal__top">
@@ -734,7 +736,23 @@
             {% endif %}
           </div>
           <p class="visit__save-msg visit__save-msg--plans" data-save-msg="subscription" hidden aria-live="assertive"></p>
-          <div class="tl-plans-grid">
+          <div class="visit-form__field visit-form__field--full visit-promo-field" data-promo-field>
+            <label for="checkout-promo-code"><span>Code promo</span></label>
+            <p class="visit__card-lead visit-promo-hint">Si vous avez reçu un code, choisissez d’abord la formule concernée, saisissez le code puis cliquez sur Vérifier avant de payer.</p>
+            <div class="visit-promo-row">
+              <input id="checkout-promo-code" type="text" name="promo_code" data-promo-code placeholder="Ex. BIENVENUE10" autocomplete="off" maxlength="40">
+              <button type="button" class="tl-plan__cta tl-plan__cta--ghost visit-promo-apply" data-promo-apply>Vérifier</button>
+            </div>
+            <p class="visit__meta-line visit-promo-feedback" data-promo-feedback hidden aria-live="polite"></p>
+          </div>
+          <div class="tl-plans-rail"{% if plans|length > 1 %} data-plans-rail-multiple{% endif %} role="region" aria-label="Formules d’abonnement">
+            {% if plans|length > 1 %}
+            <p class="tl-plans-rail__hint" aria-hidden="true">
+              <span>Glissez pour voir les autres formules</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </p>
+            {% endif %}
+            <div class="tl-plans-grid">
             {% for plan in plans %}
             <article class="tl-plan tl-plan--{{ plan.id }}{% if plan.is_featured %} tl-plan--featured{% endif %}{% if plan.is_vip %} tl-plan--vip{% endif %}{% if payment_status.tier == plan.id %} is-current{% endif %}">
               {% if plan.badge %}
@@ -785,10 +803,10 @@
               </button>
             </article>
             {% endfor %}
+            </div>
           </div>
         </article>
       </div>
     </div>
   </div>
-</div>
 {% endblock %}

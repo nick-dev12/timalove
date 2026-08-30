@@ -155,7 +155,16 @@ def discussion_detail(request, partner_id):
 
     thread = message_controller.thread_for(profile, partner_id)
     if not thread:
-        raise Http404("Conversation introuvable.")
+        ok, msg, _match = message_controller.ensure_conversation(profile, partner_id)
+        if not ok:
+            messages.error(request, msg)
+            referer = request.META.get("HTTP_REFERER") or ""
+            if referer and referer.startswith(request.build_absolute_uri("/")):
+                return redirect(referer)
+            return redirect("public:messages")
+        thread = message_controller.thread_for(profile, partner_id)
+        if not thread:
+            raise Http404("Conversation introuvable.")
     message_controller.mark_read(profile, partner_id)
     notification_controller.mark_read_for_context(profile, "messages", partner_id=partner_id)
     inbox_back = len(message_controller.list_conversations(profile)) > 1

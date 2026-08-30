@@ -37,13 +37,28 @@
   function updateQuota(quota) {
     const label = document.querySelector("[data-quota-label]");
     if (!label || !quota || !quota.is_freemium) return;
-    const swipes = Number(quota.swipes_left);
-    const likes = Number(quota.likes_left);
-    const swipeWord = swipes > 1 ? "profils" : "profil";
-    const likeWord = likes > 1 ? "likes" : "like";
-    const restWord = likes > 1 ? "restants" : "restant";
-    label.textContent =
-      swipes + " " + swipeWord + " · " + likes + " " + likeWord + " " + restWord + " aujourd’hui";
+    if (quota.show_explorer_quota === false) {
+      label.hidden = true;
+      return;
+    }
+    const period = quota.period_label || label.getAttribute("data-period-label") || "aujourd’hui";
+    const parts = [];
+    if (quota.swipes_left != null && quota.swipes_left !== "") {
+      const swipes = Number(quota.swipes_left);
+      parts.push(swipes + " " + (swipes > 1 ? "profils" : "profil"));
+    }
+    if (quota.likes_left != null && quota.likes_left !== "") {
+      const likes = Number(quota.likes_left);
+      const likeWord = likes > 1 ? "likes" : "like";
+      const restWord = likes > 1 ? "restants" : "restant";
+      parts.push(likes + " " + likeWord + " " + restWord);
+    }
+    if (!parts.length) {
+      label.hidden = true;
+      return;
+    }
+    label.hidden = false;
+    label.textContent = parts.join(" · ") + " " + period;
   }
 
   function applySuccess(scope, action, data, profileId) {
@@ -58,6 +73,13 @@
     if (action === "super_like") {
       scope.querySelectorAll('[data-swipe="super_like"]').forEach(function (el) {
         el.classList.add("is-on");
+      });
+    }
+    if (action === "like" || action === "super_like") {
+      scope.querySelectorAll("[data-msg-like-required]").forEach(function (el) {
+        el.removeAttribute("data-msg-like-required");
+        el.setAttribute("data-msg-open", "");
+        el.classList.remove("visit__action--msg-muted");
       });
     }
     if (action === "pass") {
@@ -144,14 +166,11 @@
         }
         if (result.data.quota) updateQuota(result.data.quota);
         applySuccess(root, action, result.data, id);
+        if (window.timaloveExplorer && typeof window.timaloveExplorer.consume === "function") {
+          window.timaloveExplorer.consume(id);
+        }
         if (action === "pass") {
           if (window.timalovePassBurst) window.timalovePassBurst(btn);
-          const delay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 400;
-          window.setTimeout(function () {
-            if (window.timaloveExplorer && typeof window.timaloveExplorer.goNext === "function") {
-              window.timaloveExplorer.goNext();
-            }
-          }, delay);
         } else if (action === "like" || action === "super_like") {
           showMessageInvite(btn, action, result.data, id);
         }

@@ -1,0 +1,29 @@
+{% load admin_tags %}
+{% for r in page_obj %}
+<tr>
+  <td data-label="Priorité">
+    {% with badge=r|report_priority_badge %}
+    <span class="adm-badge adm-badge--{{ badge }}">
+      {% if badge == 'muted' %}—{% else %}{{ r|report_priority_label }}{% endif %}
+    </span>
+    {% endwith %}
+  </td>
+  <td data-label="Motif">
+    <strong>{{ r.get_reason_display|default:r.reason }}</strong>
+    {% if r.message %}<span class="adm-member-ref">{{ r.message|truncatechars:48 }}</span>{% endif %}
+  </td>
+  <td data-label="Signaleur"><code class="adm-plan-id">{{ r.reporter|profile_ref }}</code></td>
+  <td data-label="Signalé"><code class="adm-plan-id">{{ r.reported_profile|profile_ref }}</code></td>
+  <td data-label="Date">{{ r.created_at|date:"d/m/Y H:i" }}</td>
+  <td data-label="Statut">
+    <span class="adm-badge adm-badge--{% if r.status == 'pending' %}warn{% elif r.status == 'dismissed' %}muted{% elif r.status == 'action_taken' %}danger{% else %}ok{% endif %}">
+      {% if r.status == 'pending' %}En attente{% elif r.status == 'dismissed' %}Ignoré{% elif r.status == 'action_taken' %}Action prise{% else %}Traité{% endif %}
+    </span>
+  </td>
+  <td class="adm-table__actions" data-label="">
+    <a class="adm-btn adm-btn--primary adm-btn--sm" href="{% url 'admin_panel:signalement_detail' r.id %}">Examiner</a>
+  </td>
+</tr>
+{% empty %}
+<tr><td colspan="7"><div class="adm-empty">Aucun signalement dans la file</div></td></tr>
+{% endfor %}

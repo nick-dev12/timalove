@@ -116,6 +116,18 @@ def _preview_text(last: Message | None, me: Profile) -> str:
     return text
 
 
+LIKE_REQUIRED_MSG = (
+    "Likez ou super likez ce profil avant de démarrer une discussion."
+)
+
+
+def has_outgoing_like(profile: Profile, partner_id) -> bool:
+    from core.controllers.swipe_controller import LIKE_Q
+    from core.models import Swipe
+
+    return Swipe.objects.filter(swiper=profile, swiped_id=partner_id).filter(LIKE_Q).exists()
+
+
 def get_active_match(profile: Profile, partner_id) -> Match | None:
     try:
         partner = Profile.objects.get(pk=partner_id)
@@ -215,11 +227,12 @@ def ensure_conversation(profile: Profile, partner_id) -> tuple[bool, str, Match 
 
     existing = get_active_match(profile, partner_id)
     if existing:
+        unhide_conversation(profile, partner_id)
         return True, "", existing
 
-    liked = Swipe.objects.filter(swiper=profile, swiped=partner).filter(LIKE_Q).exists()
+    liked = has_outgoing_like(profile, partner_id)
     if not liked:
-        return False, "Like requis pour démarrer une conversation.", None
+        return False, LIKE_REQUIRED_MSG, None
 
     they_liked = Swipe.objects.filter(swiper=partner, swiped=profile).filter(LIKE_Q).exists()
 
@@ -241,6 +254,7 @@ def ensure_conversation(profile: Profile, partner_id) -> tuple[bool, str, Match 
         match.save(update_fields=list(dict.fromkeys(update_fields)))
 
     _apply_conversation_gate(match, initiator=profile, recipient=partner)
+    unhide_conversation(profile, partner_id)
 
     for p in (profile, partner):
         p.matches_count = Match.objects.filter(
@@ -415,9 +429,15 @@ def can_send_media(profile: Profile, match: Match) -> tuple[bool, str]:
 
 @transaction.atomic
 def send_text(profile: Profile, partner_id, content: str) -> tuple[bool, str, Message | None]:
+    from core.controllers import app_config_controller
+
+    if not app_config_controller.text_messages_enabled():
+        return False, "Les messages texte sont temporairement désactivés.", None
     match = get_active_match(profile, partner_id)
     if not match:
-        return False, "Conversation introuvable.", None
+        if has_outgoing_like(profile, partner_id):
+            return False, "Ouvrez la conversation avant d’envoyer un message.", None
+        return False, LIKE_REQUIRED_MSG, None
     ok, err = can_send(profile, match)
     if not ok:
         return False, err, None
@@ -448,9 +468,15 @@ def send_text(profile: Profile, partner_id, content: str) -> tuple[bool, str, Me
 def send_voice(
     profile: Profile, partner_id, voice_url: str, duration: int
 ) -> tuple[bool, str, Message | None]:
+    from core.controllers import app_config_controller
+
+    if not app_config_controller.voice_messages_enabled():
+        return False, "Les messages vocaux sont temporairement désactivés.", None
     match = get_active_match(profile, partner_id)
     if not match:
-        return False, "Conversation introuvable.", None
+        if has_outgoing_like(profile, partner_id):
+            return False, "Ouvrez la conversation avant d’envoyer un message.", None
+        return False, LIKE_REQUIRED_MSG, None
     ok, err = can_send_media(profile, match)
     if not ok:
         return False, err, None
@@ -470,9 +496,15 @@ def send_voice(
 
 @transaction.atomic
 def send_image(profile: Profile, partner_id, image_url: str) -> tuple[bool, str, Message | None]:
+    from core.controllers import app_config_controller
+
+    if not app_config_controller.image_messages_enabled():
+        return False, "L’envoi d’images est temporairement désactivé.", None
     match = get_active_match(profile, partner_id)
     if not match:
-        return False, "Conversation introuvable.", None
+        if has_outgoing_like(profile, partner_id):
+            return False, "Ouvrez la conversation avant d’envoyer un message.", None
+        return False, LIKE_REQUIRED_MSG, None
     ok, err = can_send_media(profile, match)
     if not ok:
         return False, err, None

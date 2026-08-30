@@ -1,8 +1,0 @@
-﻿{% extends "layouts/admin.html" %}
-{% block content %}
-<div class="card card-lg">
-  <h2>Santé applicative</h2>
-  <p>Membres : {{ stats.members_total }} · Matchs : {{ stats.matches_active }} · Signalements ouverts : {{ stats.reports_pending }}</p>
-  <p>Endpoint santé : <code>/api/health/</code></p>
-</div>
-{% endblock %}

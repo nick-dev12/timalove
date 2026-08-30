@@ -76,6 +76,7 @@ def _eligible_queryset():
         Profile.objects.filter(
             registration_status=RegistrationStatus.APPROVED,
             is_hidden=False,
+            is_shadowbanned=False,
             role=UserRole.MEMBER,
         )
         .exclude(banned_at__isnull=False)
@@ -90,6 +91,7 @@ def _search_queryset():
         Profile.objects.filter(
             registration_status=RegistrationStatus.APPROVED,
             is_hidden=False,
+            is_shadowbanned=False,
             role=UserRole.MEMBER,
         )
         .exclude(banned_at__isnull=False)
@@ -130,14 +132,14 @@ def serialize_card(
 
 
 def _eligible_ids(viewer=None) -> list:
-    """IDs éligibles au feed (filtres + exclusions swipe)."""
+    """IDs éligibles au feed explorer : genre opposé, hors bannis / déjà croisés."""
     qs = _eligible_queryset()
     if viewer is not None:
         qs = qs.exclude(pk=viewer.pk)
         from core.controllers.profile_controller import apply_discover_filters, apply_opposite_gender_filter
 
-        qs = apply_discover_filters(qs, viewer)
         qs = apply_opposite_gender_filter(qs, viewer)
+        qs = apply_discover_filters(qs, viewer)
         qs = swipe_controller.apply_feed_exclusions(qs, viewer)
     return list(qs.values_list("pk", flat=True))
 
@@ -174,20 +176,28 @@ def reset_feed_session(session) -> None:
     session.modified = True
 
 
+ORDER_WINDOW = 80
+
+
 def _order_feed_ids(remaining: list, viewer=None, *, seed: str = "", served_count: int = 0) -> list:
-    """Priorise visibilité Premium/VIP et profils complets pour viewers VIP."""
+    """Priorise les profils complets (>60 %) puis Premium/VIP, sans charger tout le catalogue."""
     import random
 
     from core.controllers import profile_controller, subscription_controller
 
     if not remaining:
         return []
-    profiles = Profile.objects.in_bulk(remaining)
     rng = random.Random(f"{seed}:order:{served_count}")
+    pool = list(remaining)
+    rng.shuffle(pool)
+    window = pool[:ORDER_WINDOW]
+    rest = pool[ORDER_WINDOW:]
+    profiles = Profile.objects.in_bulk(window)
     scored: list[tuple[float, int, object]] = []
-    for pk in remaining:
+    for pk in window:
         profile = profiles.get(pk)
         if not profile:
+            rest.append(pk)
             continue
         mult = subscription_controller.visibility_multiplier(profile)
         if profile.is_boosted:
@@ -195,11 +205,8 @@ def _order_feed_ids(remaining: list, viewer=None, *, seed: str = "", served_coun
         score = rng.random() * mult
         completion = profile_controller.completion_score(profile)
         scored.append((score, completion, pk))
-    if viewer and subscription_controller.is_vip(viewer):
-        scored.sort(key=lambda row: (-(1 if row[1] >= 70 else 0), -row[0]))
-    else:
-        scored.sort(key=lambda row: -row[0])
-    return [pk for _, _, pk in scored]
+    scored.sort(key=lambda row: (-(1 if row[1] > 60 else 0), -row[0]))
+    return [pk for _, _, pk in scored] + rest
 
 
 def public_feed(

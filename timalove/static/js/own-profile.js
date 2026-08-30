@@ -96,7 +96,7 @@
     const settingsPanels = [...root.querySelectorAll("[data-settings-panel]")];
     const settingsSectionKeys = settingsPanels.map((p) => p.getAttribute("data-settings-panel"));
     const MODAL_SECTIONS = ["privacy", "subscription"];
-    const settingsModals = [...root.querySelectorAll("[data-settings-modal]")];
+    const settingsModals = [...document.querySelectorAll("[data-settings-modal]")];
 
     function getSettingsSectionFromUrl() {
       const section = new URLSearchParams(window.location.search).get("section");
@@ -127,7 +127,7 @@
       });
       document.body.classList.add("is-settings-modal");
       setSettingsUrlSection(key);
-      const dialog = root.querySelector(`[data-settings-modal="${key}"] .visit-settings-modal__dialog`);
+      const dialog = document.querySelector(`[data-settings-modal="${key}"] .visit-settings-modal__dialog`);
       dialog?.querySelector("[data-settings-modal-close]")?.focus();
     }
 
@@ -153,8 +153,10 @@
     root.querySelectorAll("[data-settings-modal-open]").forEach((btn) => {
       btn.addEventListener("click", () => openSettingsModal(btn.getAttribute("data-settings-modal-open")));
     });
-    root.querySelectorAll("[data-settings-modal-close]").forEach((el) => {
-      el.addEventListener("click", closeSettingsModal);
+    settingsModals.forEach((modal) => {
+      modal.querySelectorAll("[data-settings-modal-close]").forEach((el) => {
+        el.addEventListener("click", closeSettingsModal);
+      });
     });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") closeSettingsModal();
@@ -296,7 +298,6 @@
       await postJSON("/api/profile/filters/", {
         age_min: fd.get("age_min"),
         age_max: fd.get("age_max"),
-        gender: fd.get("gender"),
         religion: fd.get("religion"),
         country: fd.get("country"),
         verified_only: fd.get("verified_only") === "on",
@@ -796,16 +797,29 @@
       void withButton(e.currentTarget, "notifications", saveNotifications, "Notifications enregistrées.");
     });
 
-    root.addEventListener("click", (event) => {
+    document.addEventListener("click", (event) => {
+      const promoBtn = event.target.closest("[data-promo-apply]");
+      if (promoBtn) {
+        event.preventDefault();
+        void applyPromoCode();
+        return;
+      }
       const btn = event.target.closest("[data-checkout]");
-      if (!btn || !root.contains(btn) || btn.disabled) return;
+      if (!btn || btn.disabled) return;
+      const inProfile = root.contains(btn);
+      const inSubscriptionModal = Boolean(btn.closest("#settings-modal-subscription"));
+      if (!inProfile && !inSubscriptionModal) return;
       const original = btn.textContent;
       void withButton(
         btn,
         "subscription",
         async () => {
           btn.textContent = "Ouverture du paiement…";
-          const data = await postJSON("/api/payments/checkout/", { tier: btn.getAttribute("data-checkout") });
+          const payload = { tier: btn.getAttribute("data-checkout") };
+          const promoInput = document.querySelector("[data-promo-code]");
+          const promoCode = promoInput?.value.trim();
+          if (promoCode) payload.promo_code = promoCode;
+          const data = await postJSON("/api/payments/checkout/", payload);
           if (!data.checkout_url) throw new Error(data.message || "Lien de paiement indisponible.");
           window.location.href = data.checkout_url;
         },
@@ -814,6 +828,41 @@
         if (document.body.contains(btn)) btn.textContent = original;
       });
     });
+
+    async function applyPromoCode() {
+      const promoInput = document.querySelector("[data-promo-code]");
+      const feedback = document.querySelector("[data-promo-feedback]");
+      const code = promoInput?.value.trim();
+      if (!code) {
+        if (feedback) {
+          feedback.hidden = false;
+          feedback.textContent = "Saisissez un code promo.";
+        }
+        return;
+      }
+      const tierBtn = document.querySelector("[data-checkout]:not([disabled])");
+      const tier = tierBtn?.getAttribute("data-checkout");
+      if (!tier) {
+        if (feedback) {
+          feedback.hidden = false;
+          feedback.textContent = "Sélectionnez d’abord une formule.";
+        }
+        return;
+      }
+      try {
+        const data = await postJSON("/api/payments/promo/validate/", { promo_code: code, tier });
+        if (!data.ok) throw new Error(data.message || "Code invalide.");
+        if (feedback) {
+          feedback.hidden = false;
+          feedback.textContent = `Code ${data.code} appliqué : −${data.discount_percent} % (${data.final_amount} FCFA).`;
+        }
+      } catch (err) {
+        if (feedback) {
+          feedback.hidden = false;
+          feedback.textContent = err.message || "Code promo invalide.";
+        }
+      }
+    }
 
     root.querySelector("[data-delete-account]")?.addEventListener("click", (e) => {
       if (!window.confirm("Supprimer définitivement votre compte ? Cette action est irréversible.")) return;

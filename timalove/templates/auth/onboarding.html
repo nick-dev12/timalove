@@ -7,7 +7,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@24.6.0/build/css/intlTelInput.css">
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.6.0/build/js/intlTelInput.min.js"></script>
-<script src="{% static 'js/onboarding.js' %}?v=20260813ob4" defer></script>
+<script src="{% static 'js/onboarding.js' %}?v=20260826ob5" defer></script>
 {% endblock %}
 {% block body %}
 <div class="auth-hearts" aria-hidden="true">
@@ -181,7 +181,7 @@
           </label>
           <button type="button" class="ob-photos__pick" data-profile-pick>Choisir une image</button>
         </div>
-        <div class="ob-photos__slot">
+        <div class="ob-photos__slot" data-selfie-slot{% if not app_features.selfie_verification_enabled %} hidden{% endif %}>
           <p class="ob-photos__title">Vérification en direct</p>
           <div class="ob-photos__frame ob-photos__frame--live" data-live-frame>
             <video data-live-video playsinline muted hidden></video>
@@ -193,7 +193,7 @@
         </div>
       </div>
       <p class="ob-photos__match" data-match-msg hidden></p>
-      <p class="ob__hint">La vérification compare votre selfie à la photo de profil.</p>
+      <p class="ob__hint" data-selfie-hint{% if not app_features.selfie_verification_enabled %} hidden{% endif %}>La vérification compare votre selfie à la photo de profil.</p>
     </section>
   </div>
 

@@ -3,13 +3,16 @@
 {% block title %}Historique{% endblock %}
 {% block body_class %}history-page{% endblock %}
 {% block head %}
+{% include "partials/member_page_scroll.html" %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="{% static 'js/explorer-search.js' %}?v=20260815s1" defer></script>
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260822h6" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260826h1" defer></script>
+{% if app_features.history_search_enabled %}
+<script src="{% static 'js/explorer-search.js' %}?v=20260826s1" defer></script>
+{% endif %}
 <script src="{% static 'js/explorer-like-burst.js' %}?v=20260821b4" defer></script>
 {% if user.is_authenticated %}
-<script src="{% static 'js/message-invite.js' %}?v=20260821m5" defer></script>
-<script src="{% static 'js/explorer-swipe.js' %}?v=20260822s6" defer></script>
+<script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
+<script src="{% static 'js/explorer-swipe.js' %}?v=20260826s9" defer></script>
 {% endif %}
 {% endblock %}
 {% block body %}
@@ -25,7 +28,6 @@
     {% if user.is_authenticated %}
     <a href="{% url 'public:accueil' %}">En savoir plus</a>
     <a href="{% url 'public:coaching' %}">Coaching individuel</a>
-    <a href="{% url 'public:temoignages' %}">Témoignages</a>
     <a href="{% url 'public:contact' %}">Contact</a>
     <a href="{% url 'auth:deconnexion' %}">Déconnexion</a>
     {% else %}
@@ -52,6 +54,10 @@
   </header>
 
   <main class="history">
+    {% if not history_locked and app_features.history_search_enabled %}
+    {% url 'public:historique_search' as history_search_url %}
+    {% include "partials/explorer_search_bar.html" with search_url=history_search_url search_placeholder="Rechercher dans l’historique…" search_label="Rechercher un profil liké" search_results_id="history-search-results" %}
+    {% endif %}
     {% if history_locked %}
     <section class="history__paywall" aria-labelledby="history-paywall-title">
       <p class="history__kicker">Offre Premium</p>
@@ -98,8 +104,8 @@
     {% if history_locked_extra %}
     <div class="history__more-wrap">
       <p class="history__kicker">Offre Premium</p>
-      <p>Passez au plan supérieur pour voir {{ history_locked_extra }} profil{{ history_locked_extra|pluralize }} de plus dans votre historique.</p>
-      <a class="history__more" href="{% url 'app:parametres' %}">Voir les offres</a>
+      <p>Passez au plan supérieur pour voir {{ history_locked_extra }} profil{{ history_locked_extra|pluralize }} de plus.</p>
+      <a class="history__more" href="{% url 'app:parametres' %}">Voir plus</a>
     </div>
     {% endif %}
     {% else %}

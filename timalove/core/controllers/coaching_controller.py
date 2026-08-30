@@ -38,7 +38,7 @@ def checkout(coaching: CoachingRequest) -> dict:
         type=TransactionType.COACHING,
         status=TransactionStatus.PENDING,
         coaching_request=coaching,
-        payment_details={"provider": "cinetpay"},
+        payment_details={"provider": "naboopay"},
     )
     extra = {
         "first_name": coaching.first_name,
