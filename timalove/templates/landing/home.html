@@ -1,8 +1,12 @@
 ﻿{% extends "layouts/public.html" %}
 {% load static %}
 {% block title %}Accueil{% endblock %}
+{% block head %}
+{{ block.super }}
+<link rel="preload" as="image" href="{% static 'images/hero-section.webp' %}" type="image/webp" fetchpriority="high">
+{% endblock %}
 {% block content %}
-<section class="section" style="padding-top:2rem;min-height:80dvh;display:grid;align-items:center;background:var(--cream) url('{% static 'images/hero-section.png' %}') center/cover no-repeat;">
+<section class="section home-hero" style="padding-top:2rem;min-height:80dvh;display:grid;align-items:center;">
   <div class="container" style="max-width:36rem;">
     <div class="badge badge-verified" style="margin-bottom:1rem;">Objectif mariage</div>
     <h1 style="font-size:clamp(2rem,6vw,3.5rem);color:var(--text-primary);">Trouvez une relation <em style="color:var(--rose-primary);font-style:italic;">authentique</em></h1>

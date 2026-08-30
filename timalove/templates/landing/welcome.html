@@ -4,9 +4,11 @@
 {% block body_class %}welcome-page{% endblock %}
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="{% static 'images/hero-section.webp' %}" type="image/webp" fetchpriority="high">
 <style>
   body.welcome-page {
-    --welcome-bg-image: url("{% static 'images/hero-section.png' %}");
+    --welcome-bg-image: url("{% static 'images/hero-section.webp' %}");
+    --welcome-bg-fallback: url("{% static 'images/hero-section.jpg' %}");
   }
 </style>
 {% endblock %}

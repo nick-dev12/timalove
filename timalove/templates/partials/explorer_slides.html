@@ -30,15 +30,16 @@
         {% endif %}
 
         <div
-          class="explorer__match is-pending"
+          class="explorer__match is-idle"
           role="button"
           tabindex="0"
           data-match-score
           data-profile-id="{{ card.id }}"
-          aria-label="Calcul de compatibilité en cours"
+          aria-label="Calculer la compatibilité"
         >
           <svg viewBox="0 0 24 22" width="13" height="12" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
-          <span data-match-label>Calcul…</span>
+          <span data-match-label>Match ?</span>
+          <span class="explorer__match-bar" aria-hidden="true"><span></span></span>
         </div>
 
         <a class="explorer__go-profile" href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}" aria-label="Voir le profil de {{ card.first_name }}">

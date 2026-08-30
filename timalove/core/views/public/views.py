@@ -117,9 +117,9 @@ def explorer(request):
         page_limit = 1
     else:
         try:
-            page_limit = min(max(1, int(request.GET.get("limit", 20))), 20)
+            page_limit = min(max(1, int(request.GET.get("limit", 5))), 20)
         except (TypeError, ValueError):
-            page_limit = 20
+            page_limit = 5
     cards, has_more = explore_controller.public_feed(
         seed=seed,
         limit=page_limit,

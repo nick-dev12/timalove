@@ -1,12 +1,10 @@
 /**
- * TimaLove — calcul asynchrone du % Match par profil (explorer).
+ * TimaLove — calcul du % Match à la demande (clic sur le badge explorer).
  */
 (function () {
   const cache = new Map();
-  const queued = new Set();
-  let queue = [];
-  let inflight = 0;
-  const MAX_PARALLEL = 2;
+  const inflight = new Set();
+  const MIN_CALC_MS = 900;
 
   function fetchScore(profileId) {
     if (cache.has(profileId)) {
@@ -30,117 +28,141 @@
       });
   }
 
-  function applyScore(badge, score) {
+  function profileIdFrom(badge) {
+    if (!badge) return "";
+    const slide = badge.closest(".explorer__slide");
+    return (
+      badge.getAttribute("data-profile-id") ||
+      (slide && slide.getAttribute("data-profile-id")) ||
+      ""
+    );
+  }
+
+  function setIdle(badge) {
     if (!badge) return;
     const label = badge.querySelector("[data-match-label]");
-    badge.classList.remove("is-pending");
+    badge.classList.remove("is-pending", "is-calculating", "is-ready");
+    badge.classList.add("is-idle");
+    badge.removeAttribute("data-match-ready");
+    badge.setAttribute("aria-label", "Calculer la compatibilité");
+    if (label) label.textContent = "Match ?";
+  }
+
+  function setCalculating(badge) {
+    if (!badge) return;
+    const label = badge.querySelector("[data-match-label]");
+    badge.classList.remove("is-idle", "is-ready");
+    badge.classList.add("is-pending", "is-calculating");
+    badge.removeAttribute("data-match-ready");
+    badge.setAttribute("aria-label", "Calcul de compatibilité en cours");
+    badge.setAttribute("aria-busy", "true");
+    if (label) label.textContent = "Calcul…";
+  }
+
+  function animateScore(badge, score) {
+    if (!badge) return;
+    const label = badge.querySelector("[data-match-label]");
+    badge.classList.remove("is-pending", "is-calculating", "is-idle");
     badge.classList.add("is-ready");
     badge.dataset.matchReady = "1";
+    badge.removeAttribute("aria-busy");
     badge.setAttribute("aria-label", "Compatibilité " + score + " pourcent");
-    if (label) {
+
+    if (!label) return;
+
+    const prefersReduced =
+      window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) {
       label.textContent = score + "% Match";
+      return;
     }
+
+    const start = performance.now();
+    const duration = 620;
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const value = Math.round(score * eased);
+      label.textContent = value + "% Match";
+      if (t < 1) {
+        window.requestAnimationFrame(frame);
+      } else {
+        label.textContent = score + "% Match";
+      }
+    }
+    label.textContent = "0% Match";
+    window.requestAnimationFrame(frame);
   }
 
-  function applyPending(badge) {
-    if (!badge || badge.dataset.matchReady === "1") return;
-    badge.classList.add("is-pending");
-    badge.classList.remove("is-ready");
+  function setError(badge) {
+    if (!badge) return;
     const label = badge.querySelector("[data-match-label]");
-    if (label) label.textContent = "Calcul…";
-    badge.setAttribute("aria-label", "Calcul de compatibilité en cours");
+    badge.classList.remove("is-calculating", "is-ready");
+    badge.classList.add("is-idle", "is-pending");
+    badge.removeAttribute("data-match-ready");
+    badge.removeAttribute("aria-busy");
+    badge.setAttribute("aria-label", "Compatibilité indisponible, réessayez");
+    if (label) label.textContent = "Réessayer";
   }
 
-  function pump() {
-    while (inflight < MAX_PARALLEL && queue.length) {
-      const job = queue.shift();
-      inflight += 1;
-      fetchScore(job.profileId)
-        .then(function (score) {
-          applyScore(job.badge, score);
-        })
-        .catch(function () {
-          if (job.badge) {
-            job.badge.classList.remove("is-pending");
-            const label = job.badge.querySelector("[data-match-label]");
-            if (label) label.textContent = "—";
-          }
-        })
-        .finally(function () {
-          inflight -= 1;
-          queued.delete(job.profileId);
-          pump();
-        });
+  function calculate(badge) {
+    if (!badge || badge.dataset.matchReady === "1" || badge.classList.contains("is-calculating")) {
+      return;
     }
-  }
 
-  function schedule(badge, priority) {
-    if (!badge || badge.dataset.matchReady === "1") return;
-    const slide = badge.closest(".explorer__slide");
-    const profileId =
-      badge.getAttribute("data-profile-id") ||
-      (slide && slide.getAttribute("data-profile-id"));
+    const profileId = profileIdFrom(badge);
     if (!profileId) return;
 
     if (cache.has(profileId)) {
-      applyScore(badge, cache.get(profileId));
+      animateScore(badge, cache.get(profileId));
       return;
     }
-    if (queued.has(profileId)) return;
 
-    applyPending(badge);
-    queued.add(profileId);
-    const job = { badge: badge, profileId: profileId };
-    if (priority === "high") {
-      queue.unshift(job);
-    } else {
-      queue.push(job);
-    }
-    pump();
+    if (inflight.has(profileId)) return;
+    inflight.add(profileId);
+
+    setCalculating(badge);
+    const started = performance.now();
+
+    fetchScore(profileId)
+      .then(function (score) {
+        const wait = Math.max(0, MIN_CALC_MS - (performance.now() - started));
+        return new Promise(function (resolve) {
+          window.setTimeout(function () {
+            resolve(score);
+          }, wait);
+        });
+      })
+      .then(function (score) {
+        animateScore(badge, score);
+      })
+      .catch(function () {
+        setError(badge);
+      })
+      .finally(function () {
+        inflight.delete(profileId);
+      });
   }
 
-  function scan(root, options) {
-    const opts = options || {};
-    const container = root || document;
-    const badges = container.querySelectorAll("[data-match-score]:not([data-match-ready='1'])");
-    badges.forEach(function (badge, index) {
-      const high = opts.priority === "high" || index === 0;
-      schedule(badge, high ? "high" : "normal");
-    });
+  function onActivate(event) {
+    const badge = event.target.closest("[data-match-score]");
+    if (!badge || !badge.closest("#explorer-feed")) return;
+    if (badge.dataset.matchReady === "1") return;
+    event.preventDefault();
+    event.stopPropagation();
+    calculate(badge);
   }
 
-  function scanVisible(feed) {
-    if (!feed) return;
-    const slides = feed.querySelectorAll(".explorer__slide");
-    const top = feed.scrollTop;
-    let best = 0;
-    let dist = Infinity;
-    slides.forEach(function (slide, i) {
-      const d = Math.abs(slide.offsetTop - top);
-      if (d < dist) {
-        dist = d;
-        best = i;
-      }
-    });
-    for (let i = best; i < Math.min(slides.length, best + 3); i += 1) {
-      const badge = slides[i].querySelector("[data-match-score]");
-      if (badge) schedule(badge, i === best ? "high" : "normal");
-    }
-  }
+  document.addEventListener("click", onActivate);
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const badge = event.target.closest("[data-match-score]");
+    if (!badge || !badge.closest("#explorer-feed")) return;
+    event.preventDefault();
+    onActivate(event);
+  });
 
   window.timaloveMatchScore = {
-    scan: scan,
-    scanVisible: scanVisible,
-    schedule: schedule,
+    calculate: calculate,
   };
-
-  document.addEventListener("DOMContentLoaded", function () {
-    const feed = document.getElementById("explorer-feed");
-    if (!feed) return;
-    scanVisible(feed);
-    const observer = new MutationObserver(function () {
-      scan(feed);
-    });
-    observer.observe(feed, { childList: true, subtree: true });
-  });
 })();

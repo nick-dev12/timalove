@@ -20,10 +20,10 @@
 {% endif %}
 {% if user.is_authenticated %}
 <script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
-<script src="{% static 'js/explorer-match.js' %}?v=20260821c1" defer></script>
+<script src="{% static 'js/explorer-match.js' %}?v=20260830m1" defer></script>
 <script src="{% static 'js/explorer-swipe.js' %}?v=20260826s9" defer></script>
 {% else %}
-<script src="{% static 'js/explorer-match.js' %}?v=20260821c1" defer></script>
+<script src="{% static 'js/explorer-match.js' %}?v=20260830m1" defer></script>
 {% endif %}
 {% endblock %}
 {% block body %}
@@ -142,12 +142,12 @@
   if (!feed || !sentinel) return;
 
   const REVEAL_MS = 380;
+  const PREFETCH_AHEAD = 2;
+  const WHEEL_THRESHOLD = 28;
   let fetching = false;
-  let paging = false;
-  let gestureLock = 0;
+  let wheelLock = 0;
+  let wheelAccum = 0;
   let wheelFrame = 0;
-  let touchY0 = null;
-  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
 
   function slideList() {
     return Array.from(feed.querySelectorAll(".explorer__slide"));
@@ -174,41 +174,71 @@
     }, REVEAL_MS);
   }
 
-  function clearSlides() {
-    slideList().forEach(function (slide) {
-      clearTimer(slide);
-      slide.remove();
+  function updateMeta(meta) {
+    if (!meta) return;
+    feed.dataset.nextOffset = meta.dataset.nextOffset || feed.dataset.nextOffset || "0";
+    feed.dataset.hasMore = meta.dataset.hasMore || "false";
+  }
+
+  function activeSlideIndex() {
+    const slides = slideList();
+    if (!slides.length) return -1;
+    const center = feed.scrollTop + feed.clientHeight * 0.42;
+    let best = 0;
+    let dist = Infinity;
+    slides.forEach(function (slide, index) {
+      const mid = slide.offsetTop + slide.offsetHeight * 0.5;
+      const d = Math.abs(mid - center);
+      if (d < dist) {
+        dist = d;
+        best = index;
+      }
     });
+    return best;
   }
 
-  function showSlide(slide) {
-    if (!slide) return;
-    feed.scrollTop = 0;
-    paging = true;
-    slide.scrollIntoView({ behavior: "auto", block: "start" });
+  function markActiveSlide() {
+    const index = activeSlideIndex();
+    slideList().forEach(function (slide, i) {
+      slide.classList.toggle("is-active", i === index);
+    });
+    return index;
+  }
+
+  function scrollToIndex(index, behavior) {
+    const slides = slideList();
+    if (index < 0 || index >= slides.length) return false;
+    const slide = slides[index];
+    slide.scrollIntoView({ behavior: behavior || "smooth", block: "start" });
     startReveal(slide);
-    if (window.timaloveMatchScore) {
-      window.timaloveMatchScore.scanVisible(feed);
-    }
-    window.setTimeout(function () {
-      paging = false;
-    }, 280);
+    window.setTimeout(markActiveSlide, behavior === "auto" ? 0 : 220);
+    return true;
   }
 
-  function fetchFreshSlide(direction) {
-    if (fetching) {
-      return Promise.resolve(false);
+  function appendSlides(html) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html.trim();
+    const slides = Array.from(tmp.querySelectorAll(".explorer__slide"));
+    const meta = tmp.querySelector("[data-explorer-meta]");
+    if (!slides.length) {
+      feed.dataset.hasMore = "false";
+      return 0;
     }
-    if (feed.dataset.hasMore !== "true") {
-      return Promise.resolve(false);
-    }
+    slides.forEach(function (slide) {
+      feed.insertBefore(slide, sentinel);
+    });
+    observeSlides();
+    updateMeta(meta);
+    return slides.length;
+  }
 
+  function fetchMore(limit) {
+    if (fetching || feed.dataset.hasMore !== "true") {
+      return Promise.resolve(0);
+    }
     fetching = true;
     const url = new URL(feed.dataset.loadUrl, window.location.origin);
-    url.searchParams.set("limit", "1");
-    if (direction === "back") {
-      url.searchParams.set("direction", "back");
-    }
+    url.searchParams.set("limit", String(limit || 3));
 
     return fetch(url.toString(), {
       credentials: "same-origin",
@@ -219,100 +249,41 @@
         return r.text();
       })
       .then(function (html) {
-        const tmp = document.createElement("div");
-        tmp.innerHTML = html.trim();
-        const slide = tmp.querySelector(".explorer__slide");
-        const meta = tmp.querySelector("[data-explorer-meta]");
-        if (!slide) {
-          feed.dataset.hasMore = "false";
-          return false;
-        }
-
-        clearSlides();
-        feed.insertBefore(slide, sentinel);
-        observeSlides();
-        showSlide(slide);
-
-        if (meta) {
-          feed.dataset.nextOffset = meta.dataset.nextOffset || feed.dataset.nextOffset || "0";
-          feed.dataset.hasMore = meta.dataset.hasMore || "false";
-        }
-        return true;
+        return appendSlides(html);
       })
       .catch(function () {
-        return false;
+        return 0;
       })
       .finally(function () {
         fetching = false;
       });
   }
 
-  function goNext(force) {
-    const cur = slideList()[0];
-    if (!force && cur && cur.dataset.ready !== "true") return;
-    fetchFreshSlide("next");
+  function prefetchIfNeeded() {
+    if (feed.dataset.hasMore !== "true" || fetching) return;
+    const slides = slideList();
+    const index = activeSlideIndex();
+    if (index < 0) return;
+    if (slides.length - index - 1 <= PREFETCH_AHEAD) {
+      fetchMore(3);
+    }
   }
 
-  function goPrev() {
-    const cur = slideList()[0];
-    if (cur && cur.dataset.ready !== "true") return;
-    fetchFreshSlide("back");
-  }
-
-  function onGesture(direction) {
-    const now = Date.now();
-    if (paging || fetching || now - gestureLock < 420) return;
-    gestureLock = now;
-    if (direction > 0) goNext();
-    else goPrev();
-  }
-
-  if (!coarsePointer) {
-    feed.addEventListener(
-      "wheel",
-      function (event) {
-        event.preventDefault();
-        if (wheelFrame || Math.abs(event.deltaY) < 18) return;
-        wheelFrame = window.requestAnimationFrame(function () {
-          wheelFrame = 0;
-          onGesture(event.deltaY > 0 ? 1 : -1);
-        });
-      },
-      { passive: false }
-    );
-
-    document.addEventListener("keydown", function (event) {
-      if (event.target.closest("input, textarea, select, [contenteditable]")) return;
-      if (["ArrowDown", "PageDown", " "].indexOf(event.key) !== -1) {
-        event.preventDefault();
-        onGesture(1);
-      }
-      if (["ArrowUp", "PageUp"].indexOf(event.key) !== -1) {
-        event.preventDefault();
-        onGesture(-1);
-      }
-    });
-  } else {
-    feed.addEventListener(
-      "touchstart",
-      function (event) {
-        if (event.touches.length !== 1) return;
-        touchY0 = event.touches[0].clientY;
-      },
-      { passive: true }
-    );
-
-    feed.addEventListener(
-      "touchend",
-      function (event) {
-        if (touchY0 === null) return;
-        const dy = event.changedTouches[0].clientY - touchY0;
-        touchY0 = null;
-        if (Math.abs(dy) < 42) return;
-        onGesture(dy < 0 ? 1 : -1);
-      },
-      { passive: true }
-    );
+  function goRelative(step) {
+    const slides = slideList();
+    if (!slides.length) return;
+    const current = activeSlideIndex();
+    const target = current + step;
+    if (target >= 0 && target < slides.length) {
+      scrollToIndex(target, "smooth");
+      prefetchIfNeeded();
+      return;
+    }
+    if (step > 0 && feed.dataset.hasMore === "true") {
+      fetchMore(1).then(function (added) {
+        if (added) scrollToIndex(slideList().length - 1, "smooth");
+      });
+    }
   }
 
   function bindPhotoNav(slide) {
@@ -353,42 +324,88 @@
       entries.forEach(function (entry) {
         const slide = entry.target;
         const chip = slide.querySelector(".explorer__go-profile");
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.45) {
           if (chip) chip.classList.add("is-inview");
           startReveal(slide);
-          if (window.timaloveMatchScore) {
-            const badge = slide.querySelector("[data-match-score]");
-            if (badge) window.timaloveMatchScore.schedule(badge, "high");
-          }
+          markActiveSlide();
+          prefetchIfNeeded();
           return;
         }
-        if (chip && !entry.isIntersecting) chip.classList.remove("is-inview");
+        if (chip && entry.intersectionRatio < 0.2) chip.classList.remove("is-inview");
       });
     },
-    { root: feed, threshold: [0.55, 0.75] }
+    { root: feed, threshold: [0.2, 0.45, 0.75] }
   );
 
-  observeSlides();
-  if (window.timaloveMatchScore) {
-    window.timaloveMatchScore.scanVisible(feed);
-  }
+  const sentinelObserver = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) prefetchIfNeeded();
+      });
+    },
+    { root: feed, rootMargin: "120px 0px 240px 0px", threshold: 0.01 }
+  );
+  sentinelObserver.observe(sentinel);
 
-  const slidesOnLoad = slideList();
-  if (slidesOnLoad.length > 1) {
-    slidesOnLoad.slice(1).forEach(function (slide) {
-      clearTimer(slide);
-      slide.remove();
-    });
-  }
+  feed.addEventListener(
+    "scroll",
+    function () {
+      window.clearTimeout(feed._activeTimer);
+      feed._activeTimer = window.setTimeout(function () {
+        markActiveSlide();
+        prefetchIfNeeded();
+      }, 80);
+    },
+    { passive: true }
+  );
+
+  feed.addEventListener(
+    "wheel",
+    function (event) {
+      if (Math.abs(event.deltaY) < 8) return;
+      event.preventDefault();
+      wheelAccum += event.deltaY;
+      if (wheelFrame) return;
+      wheelFrame = window.requestAnimationFrame(function () {
+        wheelFrame = 0;
+        if (Math.abs(wheelAccum) < WHEEL_THRESHOLD) return;
+        const now = Date.now();
+        if (now - wheelLock < 320) {
+          wheelAccum = 0;
+          return;
+        }
+        wheelLock = now;
+        const step = wheelAccum > 0 ? 1 : -1;
+        wheelAccum = 0;
+        goRelative(step);
+      });
+    },
+    { passive: false }
+  );
+
+  document.addEventListener("keydown", function (event) {
+    if (event.target.closest("input, textarea, select, [contenteditable]")) return;
+    if (["ArrowDown", "PageDown", " "].indexOf(event.key) !== -1) {
+      event.preventDefault();
+      goRelative(1);
+    }
+    if (["ArrowUp", "PageUp"].indexOf(event.key) !== -1) {
+      event.preventDefault();
+      goRelative(-1);
+    }
+  });
+
+  observeSlides();
   const first = slideList()[0];
   if (first) {
-    feed.scrollTop = 0;
-    startReveal(first);
+    first.classList.add("is-active");
+    if (first.dataset.ready !== "true") startReveal(first);
   }
+  prefetchIfNeeded();
 
   window.timaloveExplorer = {
     goNext: function () {
-      goNext(true);
+      goRelative(1);
     },
     consume: function (profileId) {
       const wanted = String(profileId || "");
@@ -400,11 +417,22 @@
         }
       });
       if (!slide) slide = list[0] || null;
-      if (slide) {
-        clearTimer(slide);
-        slide.remove();
+      if (!slide) return;
+
+      const index = list.indexOf(slide);
+      clearTimer(slide);
+      slide.remove();
+
+      const remaining = slideList();
+      if (remaining.length) {
+        const targetIndex = Math.min(index, remaining.length - 1);
+        scrollToIndex(targetIndex, "auto");
+      } else if (feed.dataset.hasMore === "true") {
+        fetchMore(1).then(function (added) {
+          if (added) scrollToIndex(0, "auto");
+        });
       }
-      fetchFreshSlide("next");
+      prefetchIfNeeded();
     },
   };
 })();
