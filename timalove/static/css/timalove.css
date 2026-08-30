@@ -4481,31 +4481,40 @@ body.explorer-page.is-guest .explorer__photo {
   }
 
   .explorer__top {
-    padding: 0.55rem 0.75rem 0.25rem;
-    padding-top: calc(0.55rem + env(safe-area-inset-top, 0px));
-    gap: 0.35rem;
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    padding: 0.28rem 0.55rem 0.12rem;
+    padding-top: calc(0.28rem + env(safe-area-inset-top, 0px));
+    gap: 0.28rem;
   }
 
   body.explorer-page {
-    --explorer-chrome: 3.7rem;
+    --explorer-chrome: 3.15rem;
   }
 
   body.explorer-page.has-explorer-search,
   body.explorer-page:has(.explorer-search) {
-    --explorer-chrome: 6.55rem;
+    --explorer-chrome: 5.55rem;
   }
 
   body.explorer-page.has-explorer-quota:not(.has-explorer-search) {
-    --explorer-chrome: 5.05rem;
+    --explorer-chrome: 3.15rem;
   }
 
   body.explorer-page.has-explorer-quota.has-explorer-search {
-    --explorer-chrome: 7.9rem;
+    --explorer-chrome: 5.55rem;
   }
 
   .explorer__icon-btn {
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 2.15rem;
+    height: 2.15rem;
+    min-width: 2.15rem;
+    min-height: 2.15rem;
+  }
+
+  .explorer__icon-btn svg {
+    width: 18px;
+    height: 18px;
   }
 
   .explorer__menu {
@@ -4517,18 +4526,53 @@ body.explorer-page.is-guest .explorer__photo {
   }
 
   .explorer__top-actions {
-    gap: 0.3rem;
+    gap: 0.22rem;
+  }
+
+  .explorer__coach {
+    min-height: 2.15rem;
+    font-size: 0.68rem;
+    gap: 0.2rem;
+    padding: 0.1rem 0.5rem 0.1rem 0.12rem;
+  }
+
+  .explorer__coach-icon {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
+  .explorer__coach-icon svg {
+    width: 0.72rem;
+    height: 0.72rem;
+  }
+
+  .explorer-search {
+    padding: 0 0.55rem 0.38rem;
+  }
+
+  .explorer-search__field {
+    min-height: 2.15rem;
+    padding: 0 0.5rem 0 0.75rem;
+  }
+
+  .explorer-search__field input {
+    font-size: 0.82rem;
+  }
+
+  .explorer-search__ico {
+    width: 14px;
+    height: 14px;
   }
 
   .explorer__logo,
   .brand-script {
-    font-size: clamp(2.1rem, 8.5vw, 2.75rem);
+    font-size: clamp(1.45rem, 5.6vw, 1.75rem);
   }
 
   .explorer__logo.brand-mark > img,
   .brand-script.brand-mark > img {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.2rem;
+    height: 1.2rem;
   }
 
   .explorer__match {
@@ -4601,24 +4645,41 @@ body.explorer-page.is-guest .explorer__photo {
 
 @media (max-width: 480px) {
   .explorer__top {
-    padding: 0.45rem 0.55rem;
-    padding-top: calc(0.45rem + env(safe-area-inset-top, 0px));
+    padding: 0.22rem 0.45rem 0.08rem;
+    padding-top: calc(0.22rem + env(safe-area-inset-top, 0px));
+    gap: 0.2rem;
   }
 
   .explorer__icon-btn {
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 2.05rem;
+    height: 2.05rem;
+    min-width: 2.05rem;
+    min-height: 2.05rem;
   }
 
   .explorer__logo,
   .brand-script {
-    font-size: clamp(1.85rem, 9vw, 2.25rem);
+    font-size: clamp(1.35rem, 6.2vw, 1.6rem);
   }
 
   .explorer__logo.brand-mark > img,
   .brand-script.brand-mark > img {
-    width: 1.45rem;
-    height: 1.45rem;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .explorer__coach {
+    min-height: 2.05rem;
+    font-size: 0.64rem;
+    padding: 0.08rem 0.42rem 0.08rem 0.1rem;
+  }
+
+  .explorer-search {
+    padding: 0 0.45rem 0.32rem;
+  }
+
+  .explorer-search__field {
+    min-height: 2.05rem;
   }
 
   .explorer__bell-badge {
@@ -4724,23 +4785,6 @@ body.explorer-page.is-guest .explorer__photo {
 
   .explorer__bottom {
     padding: 0.4rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
-  }
-
-  .explorer__coach {
-    min-height: 2.75rem;
-    font-size: 0.82rem;
-    gap: 0.35rem;
-    padding: 0.22rem 0.85rem 0.22rem 0.26rem;
-  }
-
-  .explorer__coach-icon {
-    width: 1.85rem;
-    height: 1.85rem;
-  }
-
-  .explorer__coach-icon svg {
-    width: 1rem;
-    height: 1rem;
   }
 
   .explorer-hearts {
