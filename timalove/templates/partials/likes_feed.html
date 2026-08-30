@@ -24,8 +24,10 @@
     </span>
     {% endif %}
     <span class="likes__story-name">
-      {% include "partials/subscription_mark.html" with badge=item.subscription_badge %}
-      {{ item.first_name }}
+      <span class="tl-name-line">
+        {% include "partials/subscription_mark.html" with badge=item.subscription_badge %}
+        <span class="tl-name-text">{{ item.first_name }}</span>
+      </span>
     </span>
   </a>
   {% endfor %}
@@ -68,8 +70,10 @@
     </a>
     <div class="likes__card-bar">
       <strong>
-        {% include "partials/subscription_mark.html" with badge=item.subscription_badge %}
-        {{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}
+        <span class="tl-name-line">
+          {% include "partials/subscription_mark.html" with badge=item.subscription_badge %}
+          <span class="tl-name-text">{{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}</span>
+        </span>
       </strong>
       <em>{{ item.city }}</em>
       <div class="likes__card-actions">

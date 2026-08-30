@@ -239,6 +239,42 @@ p {
   background: var(--info);
 }
 
+.tl-name-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tl-name-line > a,
+.tl-name-line > strong,
+.tl-name-line > .tl-name-text,
+.tl-name-line > .visit__name-main {
+  min-width: 0;
+}
+
+.tl-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visit__name .tl-name-line {
+  flex: 1 1 auto;
+  align-items: flex-start;
+}
+
+.explorer__meta h2 .tl-name-line {
+  min-width: 0;
+}
+
+.explorer__meta h2 .tl-name-line > a {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .explorer__slide.is-vip .explorer__media {
   border-color: var(--vip);
   box-shadow: 0 0 0 2px var(--vip), var(--glass-shadow);
@@ -281,6 +317,10 @@ p {
 
 .msg-list__avatar.is-vip {
   border-color: var(--vip);
+}
+
+.msg-list__avatar.is-premium {
+  border-color: var(--info);
 }
 
 .section {
@@ -9801,22 +9841,15 @@ body.history-page {
 }
 
 .history__name {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  display: block;
   width: 100%;
   color: var(--white);
   font-size: 0.84rem;
   font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.history__name > span:last-child {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.history__name .tl-name-line {
+  max-width: 100%;
 }
 
 .history__msg {
@@ -14120,14 +14153,22 @@ body.history-page .explorer__chrome {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
   margin-top: 0.35rem;
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--bordeaux-dark);
-  white-space: nowrap;
+}
+
+.likes__story-name .tl-name-line {
+  max-width: 100%;
+  justify-content: center;
+}
+
+.likes__story-name .tl-name-text {
+  max-width: 3.2rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .likes__featured {
@@ -14497,14 +14538,13 @@ body.history-page .explorer__chrome {
 }
 
 .likes__card-bar strong {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  display: block;
   font-size: 0.84rem;
   font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.likes__card-bar strong .tl-name-line {
+  max-width: 100%;
 }
 
 .likes__card-bar em {

@@ -334,6 +334,8 @@ def unread_count(profile: Profile) -> int:
 
 def inbox_feed(profile: Profile) -> list[dict]:
     """Feed JSON pour l'inbox messages (temps réel)."""
+    from core.controllers import subscription_controller
+
     items: list[dict] = []
     for c in list_conversations(profile):
         partner = c["partner"]
@@ -352,6 +354,7 @@ def inbox_feed(profile: Profile) -> list[dict]:
                 "conversation_pending": bool(c.get("conversation_pending")),
                 "can_accept": bool(c.get("can_accept")),
                 "thread_url": f"/discussions/{partner.id}/",
+                "partner_subscription_badge": subscription_controller.badge_for(partner),
             }
         )
     return items

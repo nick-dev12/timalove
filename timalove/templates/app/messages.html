@@ -5,8 +5,9 @@
 {% block head %}
 {% include "partials/member_page_scroll.html" %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="{% static 'js/subscription-badges.js' %}?v=20260830badge2" defer></script>
 <script src="{% static 'js/explorer-chrome.js' %}?v=20260826h1" defer></script>
-<script src="{% static 'js/messages-inbox.js' %}?v=20260826m8" defer></script>
+<script src="{% static 'js/messages-inbox.js' %}?v=20260830badge2" defer></script>
 {% if user.is_authenticated %}
 <script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
 {% endif %}
@@ -63,7 +64,7 @@
           data-msg-card
           data-msg-search="{{ c.partner.first_name }} {{ c.preview }}"
         >
-          <span class="msg-list__avatar{% if c.partner|sub_badge == 'vip' %} is-vip{% endif %}" data-profile-modal="{{ c.partner.id }}" role="button" tabindex="0" aria-label="Voir le profil de {{ c.partner.first_name }}">
+          <span class="msg-list__avatar{% if c.partner|sub_badge == 'vip' %} is-vip{% elif c.partner|sub_badge == 'premium' %} is-premium{% endif %}" data-profile-modal="{{ c.partner.id }}" role="button" tabindex="0" aria-label="Voir le profil de {{ c.partner.first_name }}">
             {% if c.partner.primary_photo %}
             <img src="{{ c.partner.primary_photo }}" alt="">
             {% else %}
@@ -74,8 +75,10 @@
           <span class="msg-list__body">
             <span class="msg-list__row-top">
               <span class="msg-list__who">
-                {% include "partials/subscription_mark.html" with badge=c.partner|sub_badge %}
-                <strong>{{ c.partner.first_name }}</strong>
+                <span class="tl-name-line">
+                  {% include "partials/subscription_mark.html" with badge=c.partner|sub_badge %}
+                  <strong>{{ c.partner.first_name }}</strong>
+                </span>
               </span>
               {% if c.blocked_by_me %}<span class="msg-list__blocked-badge">Bloqué</span>{% endif %}
               {% if c.last_time %}<time>{{ c.last_time }}</time>{% endif %}

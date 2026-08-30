@@ -37,9 +37,11 @@
           <div class="visit__identity-top">
             <div class="visit__who">
               <h1 class="visit__name">
-                {% include "partials/subscription_mark.html" with badge=member.subscription_badge labeled="1" %}
-                <span class="visit__name-main">
-                  <span data-display-name>{{ member.full_name|default:member.first_name }}</span>{% if member.age %}<span class="visit__age" data-display-age>, {{ member.age }}</span>{% else %}<span class="visit__age" data-display-age></span>{% endif %}
+                <span class="tl-name-line">
+                  {% include "partials/subscription_mark.html" with badge=member.subscription_badge labeled="1" %}
+                  <span class="visit__name-main">
+                    <span data-display-name>{{ member.full_name|default:member.first_name }}</span>{% if member.age %}<span class="visit__age" data-display-age>, {{ member.age }}</span>{% else %}<span class="visit__age" data-display-age></span>{% endif %}
+                  </span>
                 </span>
                 {% if member.is_verified %}
                 <span class="visit__verified" title="Profil vérifié" aria-label="Profil vérifié">

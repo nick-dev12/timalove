@@ -206,6 +206,15 @@
   }
 
   function renderRow(item) {
+    const badge = item.partner_subscription_badge || "";
+    const markFn = window.timaloveSubscriptionMark || function () {
+      return "";
+    };
+    const badgeHtml = markFn(badge, false);
+    const avatarClass =
+      "msg-list__avatar" +
+      (badge === "vip" ? " is-vip" : badge === "premium" ? " is-premium" : "");
+
     const article = document.createElement("article");
     article.className = "msg-list__item" + (item.blocked_by_me ? " is-blocked" : "");
     article.setAttribute("data-msg-row", "");
@@ -237,7 +246,9 @@
       '" data-msg-card data-msg-search="' +
       escapeHtml(searchHay) +
       '">' +
-      '<span class="msg-list__avatar" data-profile-modal="' +
+      '<span class="' +
+      avatarClass +
+      '" data-profile-modal="' +
       escapeHtml(item.partner_id) +
       '" role="button" tabindex="0" aria-label="Voir le profil de ' +
       escapeHtml(item.partner_name) +
@@ -247,9 +258,12 @@
       "</span>" +
       '<span class="msg-list__body">' +
       '<span class="msg-list__row-top">' +
+      '<span class="msg-list__who">' +
+      badgeHtml +
       "<strong>" +
       escapeHtml(item.partner_name) +
       "</strong>" +
+      "</span>" +
       blockedBadge +
       timeHtml +
       "</span>" +

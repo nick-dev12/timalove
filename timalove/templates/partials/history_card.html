@@ -14,8 +14,10 @@
   </a>
   <div class="history__bar">
     <span class="history__name">
-      {% include "partials/subscription_mark.html" with badge=item.subscription_badge %}
-      <span>{{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}</span>
+      <span class="tl-name-line">
+        {% include "partials/subscription_mark.html" with badge=item.subscription_badge %}
+        <span class="tl-name-text">{{ item.first_name }}{% if item.age %}, {{ item.age }}{% endif %}</span>
+      </span>
     </span>
     {% if not is_preview %}
     <div class="history__actions">

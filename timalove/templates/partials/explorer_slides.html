@@ -59,10 +59,12 @@
               {{ card.city|default:card.location }}
             </span>
             <h2>
-              {% include "partials/subscription_mark.html" with badge=card.subscription_badge %}
-              <a href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}">
-                {{ card.first_name }}{% if card.age %}, {{ card.age }}{% endif %}
-              </a>
+              <span class="tl-name-line">
+                {% include "partials/subscription_mark.html" with badge=card.subscription_badge %}
+                <a href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}">
+                  {{ card.first_name }}{% if card.age %}, {{ card.age }}{% endif %}
+                </a>
+              </span>
               {% if card.is_verified %}
               <span class="explorer__verified" title="Profil vérifié" aria-label="Profil vérifié">★</span>
               {% endif %}

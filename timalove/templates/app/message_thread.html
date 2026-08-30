@@ -65,8 +65,10 @@
           {% if partner.is_online %}<i class="msg__dot"></i>{% endif %}
         </button>
         <strong>
-          {% include "partials/subscription_mark.html" with badge=partner.subscription_badge %}
-          <button type="button" class="msg__name-link" data-profile-modal="{{ partner_profile_id }}">{{ partner.first_name }}</button>
+          <span class="tl-name-line">
+            {% include "partials/subscription_mark.html" with badge=partner.subscription_badge %}
+            <button type="button" class="msg__name-link" data-profile-modal="{{ partner_profile_id }}">{{ partner.first_name }}</button>
+          </span>
         </strong>
         <em>{% if partner.is_online %}En ligne{% else %}Hors ligne{% endif %}</em>
       </div>
