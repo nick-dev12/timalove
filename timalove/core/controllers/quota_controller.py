@@ -319,6 +319,6 @@ def snapshot(profile: Profile | None) -> dict:
         "likes_visible": likes_visible_cap(profile),
         "period": cfg["period"],
         "period_label": cfg["period_label"],
-        "show_explorer_quota": swipes_left is not None or likes_left is not None,
+        "show_explorer_quota": False,
         "upgrade_path": UPGRADE_PATH,
     }

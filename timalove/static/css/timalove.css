@@ -3306,9 +3306,9 @@ body.is-explorer-filters {
 .explorer__feed {
   overflow-x: hidden;
   overflow-y: auto;
-  align-self: stretch;
-  width: var(--explorer-col);
-  max-width: 100%;
+  align-self: center;
+  width: 100%;
+  max-width: var(--explorer-col);
   margin-inline: auto;
   flex: 1 1 0%;
   min-height: 0;
@@ -3321,21 +3321,42 @@ body.is-explorer-filters {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   scroll-behavior: smooth;
+  box-sizing: border-box;
 }
 
 .explorer__slide {
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  height: calc(
-    100dvh - var(--explorer-chrome) - var(--explorer-dock) - var(--explorer-slide-pad)
+  height: var(
+    --explorer-slide-h,
+    calc(100dvh - var(--explorer-chrome) - var(--explorer-dock) - var(--explorer-slide-pad))
   );
-  min-height: 16rem;
-  max-height: none;
+  min-height: var(
+    --explorer-slide-h,
+    calc(100dvh - var(--explorer-chrome) - var(--explorer-dock) - var(--explorer-slide-pad))
+  );
+  max-height: var(
+    --explorer-slide-h,
+    calc(100dvh - var(--explorer-chrome) - var(--explorer-dock) - var(--explorer-slide-pad))
+  );
+  width: 100%;
   flex-shrink: 0;
   padding: var(--explorer-slide-pad) 0 0.1rem;
   box-sizing: border-box;
   display: flex;
   align-items: stretch;
+  justify-content: center;
+}
+
+.explorer__slide--pending .explorer__veil {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: none;
+}
+
+.explorer__slide--pending .explorer__reveal {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .explorer__card {
@@ -4052,13 +4073,19 @@ body.explorer-page.is-guest .explorer__photo {
 
 .explorer__bottom {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
   bottom: 0;
   z-index: 8;
-  width: var(--explorer-col);
+  width: 100%;
+  max-width: var(--explorer-col);
+  margin-inline: auto;
+  transform: none;
   background: transparent;
-  padding: 0 0.65rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  padding: 0 max(0.65rem, env(safe-area-inset-right, 0px))
+    calc(0.35rem + env(safe-area-inset-bottom, 0px))
+    max(0.65rem, env(safe-area-inset-left, 0px));
+  box-sizing: border-box;
 }
 
 .explorer__dock {
@@ -4411,6 +4438,38 @@ body.explorer-page.is-guest .explorer__photo {
   .explorer__feed {
     scrollbar-width: none;
     -ms-overflow-style: none;
+  }
+
+  body.explorer-page {
+    --explorer-col: 100%;
+    --explorer-slide-pad: 0.2rem;
+  }
+
+  .explorer__feed {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: max(0.55rem, env(safe-area-inset-left, 0px))
+      max(0.55rem, env(safe-area-inset-right, 0px));
+  }
+
+  .explorer__bottom {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: max(0.55rem, env(safe-area-inset-left, 0px))
+      max(0.55rem, env(safe-area-inset-right, 0px));
+  }
+
+  .explorer__slide .explorer__card {
+    transform: none;
+    opacity: 1;
+  }
+
+  html.is-native-app body.explorer-page .explorer__feed,
+  html.is-native-app body.explorer-page .explorer__bottom {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: max(0.5rem, env(safe-area-inset-left, 0px))
+      max(0.5rem, env(safe-area-inset-right, 0px));
   }
 
   body.explorer-page::-webkit-scrollbar,

@@ -1,7 +1,7 @@
 {% extends "layouts/base.html" %}
 {% load static %}
 {% block title %}Explorer{% endblock %}
-{% block body_class %}explorer-page{% if not user.is_authenticated %} is-guest{% endif %}{% if app_features.explorer_search_enabled %} has-explorer-search{% endif %}{% if swipe_quota and swipe_quota.is_freemium and swipe_quota.show_explorer_quota %} has-explorer-quota{% endif %}{% endblock %}
+{% block body_class %}explorer-page{% if not user.is_authenticated %} is-guest{% endif %}{% if app_features.explorer_search_enabled %} has-explorer-search{% endif %}{% endblock %}
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -110,11 +110,6 @@
   {% url 'public:explorer_search' as explorer_search_url %}
   {% include "partials/explorer_search_bar.html" with search_url=explorer_search_url search_placeholder="Rechercher un profil…" search_label="Rechercher un profil" %}
   {% endif %}
-  {% if swipe_quota and swipe_quota.is_freemium and swipe_quota.show_explorer_quota %}
-  <p class="explorer__quota" data-quota-label data-period-label="{{ swipe_quota.period_label }}">
-    {% if swipe_quota.swipes_left != None %}{{ swipe_quota.swipes_left }} profil{{ swipe_quota.swipes_left|pluralize }}{% endif %}{% if swipe_quota.swipes_left != None and swipe_quota.likes_left != None %} · {% endif %}{% if swipe_quota.likes_left != None %}{{ swipe_quota.likes_left }} like{{ swipe_quota.likes_left|pluralize }} restant{{ swipe_quota.likes_left|pluralize }}{% endif %} {{ swipe_quota.period_label }}
-  </p>
-  {% endif %}
   </div>
 
   <div
@@ -142,12 +137,17 @@
   if (!feed || !sentinel) return;
 
   const REVEAL_MS = 380;
-  const PREFETCH_AHEAD = 2;
   const WHEEL_THRESHOLD = 28;
+  const SWIPE_THRESHOLD = 52;
+  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
   let fetching = false;
   let wheelLock = 0;
   let wheelAccum = 0;
   let wheelFrame = 0;
+  let touchY0 = null;
+  let lastActiveIndex = -1;
+  let scrollSettleTimer = null;
+  let gestureLock = 0;
 
   function slideList() {
     return Array.from(feed.querySelectorAll(".explorer__slide"));
@@ -160,11 +160,20 @@
     }
   }
 
+  function syncSlideHeights() {
+    const h = Math.max(Math.round(feed.clientHeight), 1);
+    feed.style.setProperty("--explorer-slide-h", h + "px");
+    slideList().forEach(function (slide) {
+      slide.style.height = h + "px";
+      slide.style.minHeight = h + "px";
+      slide.style.maxHeight = h + "px";
+    });
+  }
+
   function startReveal(slide) {
     if (!slide || slide.dataset.ready === "true" || slide.dataset.loading === "true") return;
     slide.dataset.loading = "true";
     slide.classList.add("is-loading");
-
     clearTimer(slide);
     slide._revealTimer = window.setTimeout(function () {
       slide.dataset.ready = "true";
@@ -183,7 +192,7 @@
   function activeSlideIndex() {
     const slides = slideList();
     if (!slides.length) return -1;
-    const center = feed.scrollTop + feed.clientHeight * 0.42;
+    const center = feed.scrollTop + feed.clientHeight * 0.5;
     let best = 0;
     let dist = Infinity;
     slides.forEach(function (slide, index) {
@@ -205,13 +214,23 @@
     return index;
   }
 
+  function onSlideActivated(index) {
+    if (index < 0) return;
+    markActiveSlide();
+    if (index === lastActiveIndex) return;
+    lastActiveIndex = index;
+    const slide = slideList()[index];
+    if (slide) startReveal(slide);
+  }
+
   function scrollToIndex(index, behavior) {
     const slides = slideList();
     if (index < 0 || index >= slides.length) return false;
     const slide = slides[index];
     slide.scrollIntoView({ behavior: behavior || "smooth", block: "start" });
-    startReveal(slide);
-    window.setTimeout(markActiveSlide, behavior === "auto" ? 0 : 220);
+    window.setTimeout(function () {
+      onSlideActivated(index);
+    }, behavior === "auto" ? 0 : 260);
     return true;
   }
 
@@ -225,8 +244,12 @@
       return 0;
     }
     slides.forEach(function (slide) {
+      slide.removeAttribute("data-ready");
+      slide.dataset.loading = "false";
+      slide.classList.remove("is-loading");
       feed.insertBefore(slide, sentinel);
     });
+    syncSlideHeights();
     observeSlides();
     updateMeta(meta);
     return slides.length;
@@ -238,7 +261,7 @@
     }
     fetching = true;
     const url = new URL(feed.dataset.loadUrl, window.location.origin);
-    url.searchParams.set("limit", String(limit || 3));
+    url.searchParams.set("limit", String(limit || 1));
 
     return fetch(url.toString(), {
       credentials: "same-origin",
@@ -259,29 +282,54 @@
       });
   }
 
-  function prefetchIfNeeded() {
-    if (feed.dataset.hasMore !== "true" || fetching) return;
-    const slides = slideList();
-    const index = activeSlideIndex();
-    if (index < 0) return;
-    if (slides.length - index - 1 <= PREFETCH_AHEAD) {
-      fetchMore(3);
-    }
+  function scheduleScrollSettle() {
+    window.clearTimeout(scrollSettleTimer);
+    scrollSettleTimer = window.setTimeout(function () {
+      onSlideActivated(activeSlideIndex());
+    }, 120);
   }
 
-  function goRelative(step) {
+  function advance(step) {
+    const now = Date.now();
+    if (now - gestureLock < 340) return;
+    gestureLock = now;
+
     const slides = slideList();
     if (!slides.length) return;
     const current = activeSlideIndex();
     const target = current + step;
+
     if (target >= 0 && target < slides.length) {
       scrollToIndex(target, "smooth");
-      prefetchIfNeeded();
       return;
     }
-    if (step > 0 && feed.dataset.hasMore === "true") {
+
+    if (step > 0 && feed.dataset.hasMore === "true" && !fetching) {
+      const loadingSlide = document.createElement("article");
+      loadingSlide.className = "explorer__slide explorer__slide--pending is-loading";
+      loadingSlide.dataset.loading = "true";
+      loadingSlide.innerHTML =
+        '<div class="explorer__card"><div class="explorer__media">' +
+        '<div class="explorer__veil" aria-live="polite">' +
+        '<div class="explorer__veil-inner">' +
+        '<div class="explorer__veil-heart" aria-hidden="true">♥</div>' +
+        '<p class="explorer__veil-text">Nouveau profil…</p>' +
+        '<div class="explorer__veil-bar" aria-hidden="true"><span></span></div>' +
+        "</div></div></div></div>";
+      feed.insertBefore(loadingSlide, sentinel);
+      syncSlideHeights();
+      scrollToIndex(slideList().length - 1, "smooth");
+
       fetchMore(1).then(function (added) {
-        if (added) scrollToIndex(slideList().length - 1, "smooth");
+        clearTimer(loadingSlide);
+        loadingSlide.remove();
+        syncSlideHeights();
+        if (added) {
+          const newIndex = slideList().length - 1;
+          lastActiveIndex = newIndex - 1;
+          scrollToIndex(newIndex, "auto");
+          onSlideActivated(newIndex);
+        }
       });
     }
   }
@@ -324,88 +372,104 @@
       entries.forEach(function (entry) {
         const slide = entry.target;
         const chip = slide.querySelector(".explorer__go-profile");
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.45) {
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.72) {
           if (chip) chip.classList.add("is-inview");
-          startReveal(slide);
-          markActiveSlide();
-          prefetchIfNeeded();
+          const idx = slideList().indexOf(slide);
+          if (idx >= 0) onSlideActivated(idx);
           return;
         }
         if (chip && entry.intersectionRatio < 0.2) chip.classList.remove("is-inview");
       });
     },
-    { root: feed, threshold: [0.2, 0.45, 0.75] }
+    { root: feed, threshold: [0.2, 0.72, 0.95] }
   );
 
-  const sentinelObserver = new IntersectionObserver(
-    function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) prefetchIfNeeded();
-      });
-    },
-    { root: feed, rootMargin: "120px 0px 240px 0px", threshold: 0.01 }
-  );
-  sentinelObserver.observe(sentinel);
+  feed.addEventListener("scroll", scheduleScrollSettle, { passive: true });
+  if ("onscrollend" in feed) {
+    feed.addEventListener("scrollend", function () {
+      onSlideActivated(activeSlideIndex());
+    });
+  }
 
-  feed.addEventListener(
-    "scroll",
-    function () {
-      window.clearTimeout(feed._activeTimer);
-      feed._activeTimer = window.setTimeout(function () {
-        markActiveSlide();
-        prefetchIfNeeded();
-      }, 80);
-    },
-    { passive: true }
-  );
-
-  feed.addEventListener(
-    "wheel",
-    function (event) {
-      if (Math.abs(event.deltaY) < 8) return;
-      event.preventDefault();
-      wheelAccum += event.deltaY;
-      if (wheelFrame) return;
-      wheelFrame = window.requestAnimationFrame(function () {
-        wheelFrame = 0;
-        if (Math.abs(wheelAccum) < WHEEL_THRESHOLD) return;
-        const now = Date.now();
-        if (now - wheelLock < 320) {
+  if (!coarsePointer) {
+    feed.addEventListener(
+      "wheel",
+      function (event) {
+        if (Math.abs(event.deltaY) < 8) return;
+        event.preventDefault();
+        wheelAccum += event.deltaY;
+        if (wheelFrame) return;
+        wheelFrame = window.requestAnimationFrame(function () {
+          wheelFrame = 0;
+          if (Math.abs(wheelAccum) < WHEEL_THRESHOLD) return;
+          const now = Date.now();
+          if (now - wheelLock < 320) {
+            wheelAccum = 0;
+            return;
+          }
+          wheelLock = now;
+          advance(wheelAccum > 0 ? 1 : -1);
           wheelAccum = 0;
-          return;
+        });
+      },
+      { passive: false }
+    );
+  } else {
+    feed.addEventListener(
+      "touchstart",
+      function (event) {
+        if (event.touches.length !== 1) return;
+        touchY0 = event.touches[0].clientY;
+      },
+      { passive: true }
+    );
+
+    feed.addEventListener(
+      "touchend",
+      function (event) {
+        if (touchY0 === null) return;
+        const dy = event.changedTouches[0].clientY - touchY0;
+        touchY0 = null;
+        if (Math.abs(dy) < SWIPE_THRESHOLD) return;
+        const idx = activeSlideIndex();
+        const slides = slideList();
+        if (dy < 0 && idx === slides.length - 1) {
+          advance(1);
         }
-        wheelLock = now;
-        const step = wheelAccum > 0 ? 1 : -1;
-        wheelAccum = 0;
-        goRelative(step);
-      });
-    },
-    { passive: false }
-  );
+      },
+      { passive: true }
+    );
+  }
 
   document.addEventListener("keydown", function (event) {
     if (event.target.closest("input, textarea, select, [contenteditable]")) return;
     if (["ArrowDown", "PageDown", " "].indexOf(event.key) !== -1) {
       event.preventDefault();
-      goRelative(1);
+      advance(1);
     }
     if (["ArrowUp", "PageUp"].indexOf(event.key) !== -1) {
       event.preventDefault();
-      goRelative(-1);
+      advance(-1);
     }
   });
 
+  window.addEventListener("resize", syncSlideHeights);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", syncSlideHeights);
+  }
+
   observeSlides();
+  syncSlideHeights();
   const first = slideList()[0];
   if (first) {
     first.classList.add("is-active");
+    lastActiveIndex = 0;
     if (first.dataset.ready !== "true") startReveal(first);
   }
-  prefetchIfNeeded();
 
   window.timaloveExplorer = {
     goNext: function () {
-      goRelative(1);
+      advance(1);
     },
     consume: function (profileId) {
       const wanted = String(profileId || "");
@@ -422,17 +486,16 @@
       const index = list.indexOf(slide);
       clearTimer(slide);
       slide.remove();
+      syncSlideHeights();
 
       const remaining = slideList();
       if (remaining.length) {
         const targetIndex = Math.min(index, remaining.length - 1);
+        lastActiveIndex = targetIndex - 1;
         scrollToIndex(targetIndex, "auto");
       } else if (feed.dataset.hasMore === "true") {
-        fetchMore(1).then(function (added) {
-          if (added) scrollToIndex(0, "auto");
-        });
+        advance(1);
       }
-      prefetchIfNeeded();
     },
   };
 })();
