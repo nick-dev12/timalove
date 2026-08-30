@@ -35,6 +35,7 @@ SKIP_GIT=false
 FAST_MODE=false
 RESET_SETTINGS=false
 RUN_CHECKS=true
+SKIP_NABOOPAY=false
 
 usage() {
     cat <<'EOF'
@@ -50,7 +51,8 @@ Options:
   --skip-restart      Ne pas redémarrer Daphne/Celery
   --skip-git          Ne pas faire git pull (migrate/static/restart seulement)
   --reset-settings    Abandonner les modifs locales de settings.py avant pull
-  --no-checks         Pas de vérifications finales (curl, celery ping)
+  --no-checks         Pas de vérifications finales (curl, celery ping, NabooPay)
+  --skip-naboopay     Ne pas vérifier NabooPay en fin de déploiement
   -h, --help          Afficher cette aide
 
 Exemples:
@@ -70,6 +72,7 @@ while [[ $# -gt 0 ]]; do
         --skip-git)       SKIP_GIT=true ;;
         --reset-settings) RESET_SETTINGS=true ;;
         --no-checks)      RUN_CHECKS=false ;;
+        --skip-naboopay)  SKIP_NABOOPAY=true ;;
         -h|--help)        usage; exit 0 ;;
         *)                echo "Option inconnue: $1"; usage; exit 1 ;;
     esac
@@ -305,6 +308,19 @@ if $RUN_CHECKS; then
             ok "Notifications + WebSocket → OK"
         else
             warn "Vérifications notifications/WebSocket incomplètes (voir ci-dessus)"
+        fi
+
+        if ! $SKIP_NABOOPAY; then
+            NABOO_OUTPUT=$(django_cmd "python scripts/check_naboopay_setup.py --deploy --site-url '$SITE_URL'" 2>&1) || NABOO_RC=$?
+            NABOO_RC=${NABOO_RC:-0}
+            echo "$NABOO_OUTPUT"
+            if [[ "$NABOO_RC" -eq 0 ]]; then
+                ok "NabooPay → configuration et webhook OK"
+            else
+                err "NabooPay — vérification échouée (voir ci-dessus)"
+                err "Corrigez .env / dashboard NabooPay ou relancez avec --skip-naboopay"
+                exit 1
+            fi
         fi
     fi
 fi
