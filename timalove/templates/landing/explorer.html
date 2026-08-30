@@ -137,20 +137,30 @@
   if (!feed || !sentinel) return;
 
   const REVEAL_MS = 380;
-  const WHEEL_THRESHOLD = 28;
-  const SWIPE_THRESHOLD = 52;
-  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
-  let fetching = false;
-  let wheelLock = 0;
+  const TRANSITION_MS = 300;
+  const WHEEL_THRESHOLD = 24;
+  const SWIPE_THRESHOLD = 48;
+  const NAV_LOCK_MS = 340;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let navLock = false;
+  let navLockUntil = 0;
   let wheelAccum = 0;
   let wheelFrame = 0;
   let touchY0 = null;
-  let lastActiveIndex = -1;
-  let scrollSettleTimer = null;
-  let gestureLock = 0;
+  let prefetching = false;
+  let fetching = false;
+  let cachedSlide = null;
 
   function slideList() {
-    return Array.from(feed.querySelectorAll(".explorer__slide"));
+    return Array.from(
+      feed.querySelectorAll(".explorer__slide:not(.explorer__slide--pending)")
+    );
+  }
+
+  function currentSlide() {
+    const slides = slideList();
+    return slides.length ? slides[0] : null;
   }
 
   function clearTimer(slide) {
@@ -161,12 +171,28 @@
   }
 
   function syncSlideHeights() {
-    const h = Math.max(Math.round(feed.clientHeight), 1);
+    const chrome = document.querySelector(".explorer__chrome");
+    const bottom = document.querySelector("nav.explorer__bottom");
+    const chromeH = chrome ? Math.round(chrome.getBoundingClientRect().height) : 0;
+    const dockH = bottom ? Math.round(bottom.getBoundingClientRect().height) : 0;
+    const viewportH = Math.round(
+      (window.visualViewport && window.visualViewport.height) || window.innerHeight
+    );
+    const gap = 8;
+    const between = viewportH - chromeH - dockH - gap;
+    const fromFeed = Math.round(feed.clientHeight);
+    const h = Math.max(Math.min(fromFeed || between, between), 120);
     feed.style.setProperty("--explorer-slide-h", h + "px");
-    slideList().forEach(function (slide) {
+    feed.querySelectorAll(".explorer__slide").forEach(function (slide) {
       slide.style.height = h + "px";
       slide.style.minHeight = h + "px";
       slide.style.maxHeight = h + "px";
+    });
+  }
+
+  function wait(ms) {
+    return new Promise(function (resolve) {
+      window.setTimeout(resolve, ms);
     });
   }
 
@@ -179,85 +205,45 @@
       slide.dataset.ready = "true";
       slide.dataset.loading = "false";
       slide.classList.remove("is-loading");
+      slide.classList.add("is-active");
       slide._revealTimer = null;
     }, REVEAL_MS);
   }
 
-  function updateMeta(meta) {
+  function updateMetaFrom(root) {
+    const meta = root && root.querySelector ? root.querySelector("[data-explorer-meta]") : null;
     if (!meta) return;
     feed.dataset.nextOffset = meta.dataset.nextOffset || feed.dataset.nextOffset || "0";
     feed.dataset.hasMore = meta.dataset.hasMore || "false";
   }
 
-  function activeSlideIndex() {
-    const slides = slideList();
-    if (!slides.length) return -1;
-    const center = feed.scrollTop + feed.clientHeight * 0.5;
-    let best = 0;
-    let dist = Infinity;
-    slides.forEach(function (slide, index) {
-      const mid = slide.offsetTop + slide.offsetHeight * 0.5;
-      const d = Math.abs(mid - center);
-      if (d < dist) {
-        dist = d;
-        best = index;
-      }
-    });
-    return best;
-  }
-
-  function markActiveSlide() {
-    const index = activeSlideIndex();
-    slideList().forEach(function (slide, i) {
-      slide.classList.toggle("is-active", i === index);
-    });
-    return index;
-  }
-
-  function onSlideActivated(index) {
-    if (index < 0) return;
-    markActiveSlide();
-    if (index === lastActiveIndex) return;
-    lastActiveIndex = index;
-    const slide = slideList()[index];
-    if (slide) startReveal(slide);
-  }
-
-  function scrollToIndex(index, behavior) {
-    const slides = slideList();
-    if (index < 0 || index >= slides.length) return false;
-    const slide = slides[index];
-    slide.scrollIntoView({ behavior: behavior || "smooth", block: "start" });
-    window.setTimeout(function () {
-      onSlideActivated(index);
-    }, behavior === "auto" ? 0 : 260);
-    return true;
-  }
-
-  function appendSlides(html) {
+  function parseSlidesHtml(html) {
     const tmp = document.createElement("div");
     tmp.innerHTML = html.trim();
     const slides = Array.from(tmp.querySelectorAll(".explorer__slide"));
-    const meta = tmp.querySelector("[data-explorer-meta]");
-    if (!slides.length) {
-      feed.dataset.hasMore = "false";
-      return 0;
-    }
-    slides.forEach(function (slide) {
-      slide.removeAttribute("data-ready");
-      slide.dataset.loading = "false";
-      slide.classList.remove("is-loading");
-      feed.insertBefore(slide, sentinel);
-    });
-    syncSlideHeights();
-    observeSlides();
-    updateMeta(meta);
-    return slides.length;
+    updateMetaFrom(tmp);
+    return slides;
   }
 
-  function fetchMore(limit) {
+  function prepareSlide(slide) {
+    if (!slide) return null;
+    slide.removeAttribute("data-ready");
+    slide.removeAttribute("data-observed");
+    slide.dataset.loading = "false";
+    slide.classList.remove(
+      "is-loading",
+      "is-active",
+      "is-exit-up",
+      "is-exit-down",
+      "is-enter-up",
+      "is-enter-down"
+    );
+    return slide;
+  }
+
+  function fetchSlidesHtml(limit) {
     if (fetching || feed.dataset.hasMore !== "true") {
-      return Promise.resolve(0);
+      return Promise.resolve("");
     }
     fetching = true;
     const url = new URL(feed.dataset.loadUrl, window.location.origin);
@@ -271,67 +257,65 @@
         if (!r.ok) throw new Error("feed");
         return r.text();
       })
-      .then(function (html) {
-        return appendSlides(html);
-      })
       .catch(function () {
-        return 0;
+        return "";
       })
       .finally(function () {
         fetching = false;
       });
   }
 
-  function scheduleScrollSettle() {
-    window.clearTimeout(scrollSettleTimer);
-    scrollSettleTimer = window.setTimeout(function () {
-      onSlideActivated(activeSlideIndex());
-    }, 120);
+  function prefetchNext() {
+    if (prefetching || cachedSlide || feed.dataset.hasMore !== "true") return;
+    prefetching = true;
+    fetchSlidesHtml(1)
+      .then(function (html) {
+        if (!html) return;
+        const slides = parseSlidesHtml(html);
+        if (slides.length) cachedSlide = prepareSlide(slides[0]);
+      })
+      .finally(function () {
+        prefetching = false;
+      });
   }
 
-  function advance(step) {
-    const now = Date.now();
-    if (now - gestureLock < 340) return;
-    gestureLock = now;
-
-    const slides = slideList();
-    if (!slides.length) return;
-    const current = activeSlideIndex();
-    const target = current + step;
-
-    if (target >= 0 && target < slides.length) {
-      scrollToIndex(target, "smooth");
-      return;
+  function acquireNextSlide() {
+    if (cachedSlide) {
+      const slide = cachedSlide;
+      cachedSlide = null;
+      return Promise.resolve(slide);
     }
+    return fetchSlidesHtml(1).then(function (html) {
+      if (!html) {
+        feed.dataset.hasMore = "false";
+        return null;
+      }
+      const slides = parseSlidesHtml(html);
+      if (!slides.length) {
+        feed.dataset.hasMore = "false";
+        return null;
+      }
+      return prepareSlide(slides[0]);
+    });
+  }
 
-    if (step > 0 && feed.dataset.hasMore === "true" && !fetching) {
-      const loadingSlide = document.createElement("article");
-      loadingSlide.className = "explorer__slide explorer__slide--pending is-loading";
-      loadingSlide.dataset.loading = "true";
-      loadingSlide.innerHTML =
-        '<div class="explorer__card"><div class="explorer__media">' +
-        '<div class="explorer__veil" aria-live="polite">' +
-        '<div class="explorer__veil-inner">' +
-        '<div class="explorer__veil-heart" aria-hidden="true">♥</div>' +
-        '<p class="explorer__veil-text">Nouveau profil…</p>' +
-        '<div class="explorer__veil-bar" aria-hidden="true"><span></span></div>' +
-        "</div></div></div></div>";
-      feed.insertBefore(loadingSlide, sentinel);
-      syncSlideHeights();
-      scrollToIndex(slideList().length - 1, "smooth");
-
-      fetchMore(1).then(function (added) {
-        clearTimer(loadingSlide);
-        loadingSlide.remove();
-        syncSlideHeights();
-        if (added) {
-          const newIndex = slideList().length - 1;
-          lastActiveIndex = newIndex - 1;
-          scrollToIndex(newIndex, "auto");
-          onSlideActivated(newIndex);
-        }
-      });
-    }
+  function showPending() {
+    let pending = feed.querySelector(".explorer__slide--pending");
+    if (pending) return pending;
+    pending = document.createElement("article");
+    pending.className = "explorer__slide explorer__slide--pending is-loading";
+    pending.dataset.loading = "true";
+    pending.innerHTML =
+      '<div class="explorer__card"><div class="explorer__media">' +
+      '<div class="explorer__veil" aria-live="polite">' +
+      '<div class="explorer__veil-inner">' +
+      '<div class="explorer__veil-heart" aria-hidden="true">♥</div>' +
+      '<p class="explorer__veil-text">Nouveau profil…</p>' +
+      '<div class="explorer__veil-bar" aria-hidden="true"><span></span></div>' +
+      "</div></div></div></div>";
+    feed.insertBefore(pending, sentinel);
+    syncSlideHeights();
+    return pending;
   }
 
   function bindPhotoNav(slide) {
@@ -359,97 +343,135 @@
     });
   }
 
-  function observeSlides() {
-    feed.querySelectorAll(".explorer__slide:not([data-observed])").forEach(function (slide) {
-      slide.dataset.observed = "true";
-      bindPhotoNav(slide);
-      slideObserver.observe(slide);
+  function observeSlide(slide) {
+    if (!slide || slide.dataset.observed === "true") return;
+    slide.dataset.observed = "true";
+    bindPhotoNav(slide);
+  }
+
+  function markSlideInView(slide) {
+    if (!slide) return;
+    slide.querySelectorAll(".explorer__go-profile").forEach(function (chip) {
+      chip.classList.add("is-inview");
     });
   }
 
-  const slideObserver = new IntersectionObserver(
-    function (entries) {
-      entries.forEach(function (entry) {
-        const slide = entry.target;
-        const chip = slide.querySelector(".explorer__go-profile");
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.72) {
-          if (chip) chip.classList.add("is-inview");
-          const idx = slideList().indexOf(slide);
-          if (idx >= 0) onSlideActivated(idx);
-          return;
+  function pruneHistory() {
+    const slides = slideList();
+    if (slides.length <= 1) return;
+    slides.slice(1).forEach(function (slide) {
+      clearTimer(slide);
+      slide.remove();
+    });
+    feed.scrollTop = 0;
+    syncSlideHeights();
+  }
+
+  function navigate(step) {
+    const now = Date.now();
+    if (navLock || now < navLockUntil || !step) return Promise.resolve(false);
+    if (feed.dataset.hasMore !== "true" && !cachedSlide) return Promise.resolve(false);
+
+    navLock = true;
+    navLockUntil = now + NAV_LOCK_MS;
+
+    const outgoing = currentSlide();
+    const pending = showPending();
+    const exitClass = step > 0 ? "is-exit-up" : "is-exit-down";
+    const enterClass = step > 0 ? "is-enter-up" : "is-enter-down";
+    const motionMs = reduceMotion ? 0 : TRANSITION_MS;
+
+    return acquireNextSlide()
+      .then(function (incoming) {
+        pending.remove();
+
+        if (!incoming) {
+          navLock = false;
+          return false;
         }
-        if (chip && entry.intersectionRatio < 0.2) chip.classList.remove("is-inview");
+
+        if (outgoing) {
+          outgoing.classList.remove("is-active");
+          outgoing.classList.add(exitClass);
+        }
+
+        feed.insertBefore(incoming, sentinel);
+        incoming.classList.add(enterClass);
+        syncSlideHeights();
+        observeSlide(incoming);
+
+        return wait(motionMs).then(function () {
+          if (outgoing) {
+            clearTimer(outgoing);
+            outgoing.remove();
+          }
+
+          incoming.classList.remove(enterClass);
+          incoming.classList.add("is-active");
+          markSlideInView(incoming);
+          feed.scrollTop = 0;
+          syncSlideHeights();
+          startReveal(incoming);
+          prefetchNext();
+          navLock = false;
+          return true;
+        });
+      })
+      .catch(function () {
+        pending.remove();
+        navLock = false;
+        return false;
       });
+  }
+
+  feed.addEventListener(
+    "touchstart",
+    function (event) {
+      if (event.touches.length !== 1) return;
+      touchY0 = event.touches[0].clientY;
     },
-    { root: feed, threshold: [0.2, 0.72, 0.95] }
+    { passive: true }
   );
 
-  feed.addEventListener("scroll", scheduleScrollSettle, { passive: true });
-  if ("onscrollend" in feed) {
-    feed.addEventListener("scrollend", function () {
-      onSlideActivated(activeSlideIndex());
-    });
-  }
+  feed.addEventListener(
+    "touchend",
+    function (event) {
+      if (touchY0 === null) return;
+      const dy = event.changedTouches[0].clientY - touchY0;
+      touchY0 = null;
+      if (Math.abs(dy) < SWIPE_THRESHOLD) return;
+      navigate(dy < 0 ? 1 : -1);
+    },
+    { passive: true }
+  );
 
-  if (!coarsePointer) {
-    feed.addEventListener(
-      "wheel",
-      function (event) {
-        if (Math.abs(event.deltaY) < 8) return;
-        event.preventDefault();
-        wheelAccum += event.deltaY;
-        if (wheelFrame) return;
-        wheelFrame = window.requestAnimationFrame(function () {
-          wheelFrame = 0;
-          if (Math.abs(wheelAccum) < WHEEL_THRESHOLD) return;
-          const now = Date.now();
-          if (now - wheelLock < 320) {
-            wheelAccum = 0;
-            return;
-          }
-          wheelLock = now;
-          advance(wheelAccum > 0 ? 1 : -1);
-          wheelAccum = 0;
-        });
-      },
-      { passive: false }
-    );
-  } else {
-    feed.addEventListener(
-      "touchstart",
-      function (event) {
-        if (event.touches.length !== 1) return;
-        touchY0 = event.touches[0].clientY;
-      },
-      { passive: true }
-    );
-
-    feed.addEventListener(
-      "touchend",
-      function (event) {
-        if (touchY0 === null) return;
-        const dy = event.changedTouches[0].clientY - touchY0;
-        touchY0 = null;
-        if (Math.abs(dy) < SWIPE_THRESHOLD) return;
-        const idx = activeSlideIndex();
-        const slides = slideList();
-        if (dy < 0 && idx === slides.length - 1) {
-          advance(1);
-        }
-      },
-      { passive: true }
-    );
-  }
+  feed.addEventListener(
+    "wheel",
+    function (event) {
+      if (Math.abs(event.deltaY) < 6) return;
+      event.preventDefault();
+      wheelAccum += event.deltaY;
+      if (wheelFrame) return;
+      wheelFrame = window.requestAnimationFrame(function () {
+        wheelFrame = 0;
+        if (Math.abs(wheelAccum) < WHEEL_THRESHOLD) return;
+        const step = wheelAccum > 0 ? 1 : -1;
+        wheelAccum = 0;
+        navigate(step);
+      });
+    },
+    { passive: false }
+  );
 
   document.addEventListener("keydown", function (event) {
     if (event.target.closest("input, textarea, select, [contenteditable]")) return;
     if (["ArrowDown", "PageDown", " "].indexOf(event.key) !== -1) {
       event.preventDefault();
-      advance(1);
+      navigate(1);
     }
     if (["ArrowUp", "PageUp"].indexOf(event.key) !== -1) {
       event.preventDefault();
-      advance(-1);
+      navigate(-1);
     }
   });
 
@@ -458,44 +480,32 @@
     window.visualViewport.addEventListener("resize", syncSlideHeights);
   }
 
-  observeSlides();
+  pruneHistory();
   syncSlideHeights();
-  const first = slideList()[0];
+
+  const first = currentSlide();
   if (first) {
     first.classList.add("is-active");
-    lastActiveIndex = 0;
+    observeSlide(first);
+    markSlideInView(first);
     if (first.dataset.ready !== "true") startReveal(first);
+    prefetchNext();
   }
 
   window.timaloveExplorer = {
     goNext: function () {
-      advance(1);
+      navigate(1);
     },
     consume: function (profileId) {
       const wanted = String(profileId || "");
-      const list = slideList();
-      let slide = null;
-      list.forEach(function (el) {
-        if (String(el.getAttribute("data-profile-id") || "") === wanted) {
-          slide = el;
-        }
-      });
-      if (!slide) slide = list[0] || null;
-      if (!slide) return;
-
-      const index = list.indexOf(slide);
-      clearTimer(slide);
-      slide.remove();
-      syncSlideHeights();
-
-      const remaining = slideList();
-      if (remaining.length) {
-        const targetIndex = Math.min(index, remaining.length - 1);
-        lastActiveIndex = targetIndex - 1;
-        scrollToIndex(targetIndex, "auto");
-      } else if (feed.dataset.hasMore === "true") {
-        advance(1);
+      const slide = currentSlide();
+      if (slide && String(slide.getAttribute("data-profile-id") || "") === wanted) {
+        clearTimer(slide);
+        slide.remove();
+        syncSlideHeights();
       }
+      cachedSlide = null;
+      navigate(1);
     },
   };
 })();

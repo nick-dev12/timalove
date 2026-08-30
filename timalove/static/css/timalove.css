@@ -3304,44 +3304,36 @@ body.is-explorer-filters {
 }
 
 .explorer__feed {
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   align-self: center;
   width: 100%;
   max-width: var(--explorer-col);
   margin-inline: auto;
   flex: 1 1 0%;
   min-height: 0;
-  padding: 0 0.65rem;
+  padding: 0.2rem 0.65rem 0.25rem;
   background: transparent;
-  scroll-snap-type: y mandatory;
-  scroll-snap-stop: always;
-  overscroll-behavior-y: contain;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-  scroll-behavior: smooth;
+  overscroll-behavior: none;
+  touch-action: none;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+body.explorer-page .explorer__feed {
+  display: flex;
+  flex-direction: column;
 }
 
 .explorer__slide {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-  height: var(
-    --explorer-slide-h,
-    calc(100dvh - var(--explorer-chrome) - var(--explorer-dock) - var(--explorer-slide-pad))
-  );
-  min-height: var(
-    --explorer-slide-h,
-    calc(100dvh - var(--explorer-chrome) - var(--explorer-dock) - var(--explorer-slide-pad))
-  );
-  max-height: var(
-    --explorer-slide-h,
-    calc(100dvh - var(--explorer-chrome) - var(--explorer-dock) - var(--explorer-slide-pad))
-  );
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  height: var(--explorer-slide-h, 100%);
+  min-height: 0;
+  max-height: var(--explorer-slide-h, 100%);
   width: 100%;
-  flex-shrink: 0;
-  padding: var(--explorer-slide-pad) 0 0.1rem;
+  padding: 0;
   box-sizing: border-box;
   display: flex;
   align-items: stretch;
@@ -3359,31 +3351,90 @@ body.is-explorer-filters {
   pointer-events: none;
 }
 
+.explorer__slide.is-exit-up {
+  z-index: 2;
+  animation: explorer-exit-up 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+.explorer__slide.is-exit-down {
+  z-index: 2;
+  animation: explorer-exit-down 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+.explorer__slide.is-enter-up {
+  animation: explorer-enter-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.explorer__slide.is-enter-down {
+  animation: explorer-enter-down 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes explorer-exit-up {
+  to {
+    transform: translate3d(0, -108%, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes explorer-exit-down {
+  to {
+    transform: translate3d(0, 108%, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes explorer-enter-up {
+  from {
+    transform: translate3d(0, 108%, 0);
+    opacity: 0.88;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes explorer-enter-down {
+  from {
+    transform: translate3d(0, -108%, 0);
+    opacity: 0.88;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
 .explorer__card {
   position: relative;
-  flex: 1;
+  flex: 1 1 auto;
   width: 100%;
+  height: 100%;
   min-height: 0;
   display: flex;
-  transition:
-    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.42s ease;
-  transform: scale(0.965);
-  opacity: 0.9;
-  will-change: transform, opacity;
+  align-items: stretch;
+  justify-content: stretch;
+  transform: none;
+  transform-origin: center center;
+  opacity: 1;
 }
 
 .explorer__slide.is-active .explorer__card {
-  transform: scale(1);
+  transform: none;
   opacity: 1;
 }
 
 .explorer__media {
   position: relative;
-  flex: 1;
+  flex: 1 1 auto;
   width: 100%;
+  height: 100%;
   min-width: 0;
   min-height: 0;
+  margin: 0;
+  padding: 0;
   border-radius: 1.65rem;
   overflow: hidden;
   background: var(--rose-pale);
@@ -3393,50 +3444,66 @@ body.is-explorer-filters {
 
 .explorer__reveal {
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    opacity 0.32s ease,
-    transform 0.32s ease;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: block;
+  margin: 0;
+  padding: 0;
+  transform: none;
+  transition: opacity 0.32s ease;
 }
 
 .explorer__slide:not([data-ready="true"]) .explorer__reveal {
   opacity: 0.5;
-  transform: scale(1.008);
   pointer-events: none;
 }
 
 .explorer__slide[data-ready="true"] .explorer__reveal {
   opacity: 1;
-  transform: scale(1);
-}
-
-.explorer__photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center center;
-  display: block;
-  opacity: 0;
-  pointer-events: none;
-  border-radius: 1.65rem;
-}
-
-.explorer__photo.is-active {
-  opacity: 1;
 }
 
 .explorer__photos {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  transform: none;
   background: var(--rose-pale);
   cursor: pointer;
+}
+
+.explorer__photo {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: 0;
+  transform: none;
+}
+
+.explorer__photo.is-active {
+  opacity: 1;
 }
 
 .explorer__photo-dots {
@@ -3484,7 +3551,7 @@ body.is-explorer-filters {
 
 body.explorer-page.is-guest .explorer__photo {
   filter: blur(26px);
-  transform: scale(1.04);
+  transform: none;
 }
 
 .explorer__photo--empty {
@@ -4072,11 +4139,12 @@ body.explorer-page.is-guest .explorer__photo {
 }
 
 .explorer__bottom {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 8;
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: 20;
+  flex: 0 0 auto;
   width: 100%;
   max-width: var(--explorer-col);
   margin-inline: auto;
@@ -4086,6 +4154,14 @@ body.explorer-page.is-guest .explorer__photo {
     calc(0.35rem + env(safe-area-inset-bottom, 0px))
     max(0.65rem, env(safe-area-inset-left, 0px));
   box-sizing: border-box;
+}
+
+body:not(.explorer-page) .explorer__bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8;
 }
 
 .explorer__dock {
@@ -4472,6 +4548,30 @@ body.explorer-page.is-guest .explorer__photo {
       max(0.5rem, env(safe-area-inset-right, 0px));
   }
 
+  html.is-native-app .explorer__card,
+  html.is-native-app .explorer__media,
+  html.is-native-app .explorer__reveal,
+  html.is-native-app .explorer__photos,
+  html.is-native-app .explorer__photo {
+    transform: none;
+  }
+
+  html.is-native-app .explorer__photos,
+  html.is-native-app .explorer__photo {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+  }
+
+  html.is-native-app .explorer__photo {
+    max-width: none;
+    max-height: none;
+    object-fit: cover;
+    object-position: center center;
+  }
+
   body.explorer-page::-webkit-scrollbar,
   html:has(body.explorer-page)::-webkit-scrollbar,
   .explorer__feed::-webkit-scrollbar {
@@ -4776,7 +4876,7 @@ body.explorer-page.is-guest .explorer__photo {
   }
 
   .explorer__slide {
-    padding: var(--explorer-slide-pad) 0;
+    padding: 0;
   }
 
   .explorer__meta {
@@ -4904,11 +5004,11 @@ body.explorer-page.is-guest .explorer__photo {
   }
 
   .explorer__feed {
-    padding: 0 1rem;
+    padding: 0.2rem 1rem 0.25rem;
   }
 
   .explorer__slide {
-    padding: var(--explorer-slide-pad) 0;
+    padding: 0;
   }
 
   .explorer__meta {
@@ -16995,13 +17095,13 @@ body.history-page {
   body.explorer-page .explorer__match-bar span,
   body.explorer-page .explorer__slide[data-ready="true"] .explorer__match,
   body.explorer-page .explorer__slide[data-ready="true"] .explorer__go-profile,
-  body.explorer-page .explorer__slide[data-ready="true"] .explorer__meta {
+  body.explorer-page .explorer__slide[data-ready="true"] .explorer__meta,
+  body.explorer-page .explorer__slide.is-exit-up,
+  body.explorer-page .explorer__slide.is-exit-down,
+  body.explorer-page .explorer__slide.is-enter-up,
+  body.explorer-page .explorer__slide.is-enter-down {
     transition: none !important;
     animation: none !important;
-  }
-
-  body.explorer-page .explorer__feed {
-    scroll-behavior: auto;
   }
 
   .explorer-rise__heart,
