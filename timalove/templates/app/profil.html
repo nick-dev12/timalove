@@ -620,6 +620,7 @@
       </div>
 
       <div class="visit__settings-panel" id="settings-panel-notifications" role="tabpanel" aria-labelledby="settings-tab-notifications" data-settings-panel="notifications" hidden>
+        {% if show_dev_tools %}
         <article class="visit-glass visit__card visit-ws-test" data-block="ws-diagnostic">
           <div class="visit__card-head">
             <p class="visit__kicker">Diagnostic</p>
@@ -632,6 +633,7 @@
             <button type="button" class="visit__save" data-ws-test>Lancer le test WebSocket</button>
           </div>
         </article>
+        {% endif %}
 
         <article class="visit-glass visit__card" data-block="notifications">
           <div class="visit__card-head">
@@ -652,7 +654,9 @@
               Notifications en temps réel activées
             </p>
             <p class="visit__card-lead">Choisissez les alertes que vous souhaitez recevoir.</p>
+            {% if show_dev_tools %}
             <p class="visit-form-hint visit-form-hint--boxed visit-notifs__health" data-notifs-health hidden aria-live="polite"></p>
+            {% endif %}
             <form class="visit-form visit-form--checks" data-notifs-form>
               <label class="visit-form__check"><input type="checkbox" name="likes"{% if notif_prefs.likes %} checked{% endif %}> Nouveau like</label>
               <label class="visit-form__check"><input type="checkbox" name="super_likes"{% if notif_prefs.super_likes %} checked{% endif %}> Super like</label>
@@ -663,7 +667,9 @@
             <div class="visit__card-foot visit__card-foot--split visit-notifs__foot">
               <p class="visit__save-msg" data-save-msg="notifications" hidden></p>
               <button type="button" class="visit__save" data-save="notifications">Enregistrer</button>
+              {% if show_dev_tools %}
               <button type="button" class="visit__save visit__save--ghost" data-notifs-test>Tester la notification</button>
+              {% endif %}
               <button type="button" class="visit__save visit__save--ghost" data-notifs-disable>Désactiver</button>
             </div>
           </div>
