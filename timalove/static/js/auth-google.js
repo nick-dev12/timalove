@@ -276,6 +276,46 @@
       });
     }
 
+    function isNativeApp() {
+      return Boolean(
+        (window.TimaLoveNative &&
+          typeof window.TimaLoveNative.isNativeApp === "function" &&
+          window.TimaLoveNative.isNativeApp()) ||
+          window.flutter_inappwebview,
+      );
+    }
+
+    async function signInWithNative(kind) {
+      const isApple = kind === "apple";
+      const handlerName = isApple ? "signInWithApple" : "signInWithGoogle";
+      let result = null;
+
+      if (
+        window.TimaLoveNative &&
+        typeof window.TimaLoveNative[handlerName] === "function"
+      ) {
+        result = await window.TimaLoveNative[handlerName]();
+      } else if (window.flutter_inappwebview) {
+        result = await window.flutter_inappwebview.callHandler(handlerName);
+      } else {
+        return false;
+      }
+
+      if (!result?.success || !result?.idToken) {
+        throw new Error(result?.error || "Connexion impossible.");
+      }
+
+      const hints =
+        isApple && (result.email || result.displayName)
+          ? {
+              email: result.email || "",
+              display_name: result.displayName || "",
+            }
+          : {};
+      await sendToken(result.idToken, kind, hints);
+      return true;
+    }
+
     function appleErrorMessage(code) {
       if (code === "auth/popup-blocked") {
         return "Autorisez les pop-ups pour ce site, puis réessayez Apple.";
@@ -401,6 +441,11 @@
       if (nextUrl) sessionStorage.setItem("tl_next", nextUrl);
 
       try {
+        if (isNativeApp()) {
+          await signInWithNative(kind);
+          return;
+        }
+
         const {
           auth,
           GoogleAuthProvider,

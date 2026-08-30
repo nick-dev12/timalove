@@ -83,4 +83,17 @@
     const next = window.location.pathname + (qs ? "?" + qs : "") + window.location.hash;
     window.history.replaceState({}, "", next);
   }
+
+  document.addEventListener("click", function (event) {
+    if (window.flutter_inappwebview || window.TimaLoveNative?.isNativeApp?.()) return;
+    const googleBtn = event.target.closest("#explorer-gate [data-auth-google]");
+    const appleBtn = event.target.closest("#explorer-gate [data-auth-apple]");
+    if (googleBtn) {
+      event.preventDefault();
+      window.location.href = "/connexion/?via=google";
+    } else if (appleBtn) {
+      event.preventDefault();
+      window.location.href = "/connexion/?via=apple";
+    }
+  });
 })();
