@@ -144,29 +144,29 @@ class PaymentNetworkFallbackTests(TestCase):
 
 
 class SubscriptionPricesMergeTests(TestCase):
-    def test_legacy_prices_fill_current_offers(self):
+    def test_plan_prices_override_stale_subscription_prices(self):
         site_settings_controller.set_value(
             "subscription_prices",
             {"vip_1m": 20000, "premium_1m": 9000, "premium_10d": 6000},
         )
         prices = site_settings_controller.get("subscription_prices")
-        self.assertEqual(prices["vip_1m"], 20000)
+        self.assertEqual(prices["vip_1m"], 8000)
+        self.assertEqual(prices["premium_1m"], 2990)
+        self.assertEqual(prices["premium_10d"], 6000)
         self.assertEqual(prices["journee_amoureuse"], 1000)
-        self.assertEqual(prices["pass_amour"], 4500)
-        self.assertEqual(prices["eternite"], 29900)
         profile = make_profile("prix@test.com", Gender.MALE, "Prix")
         plans = {item["id"]: item for item in profile_controller.subscription_plans_for(profile)}
-        self.assertEqual(plans["premium_1m"]["price"], 9000)
-        self.assertEqual(plans["vip_1m"]["price"], 20000)
-        self.assertEqual(payment_controller.price_for_tier("premium_1m"), 9000)
+        self.assertEqual(plans["premium_1m"]["price"], 2990)
+        self.assertEqual(plans["vip_1m"]["price"], 8000)
+        self.assertEqual(payment_controller.price_for_tier("premium_1m"), 2990)
 
-    def test_seed_defaults_persists_missing_keys(self):
+    def test_seed_defaults_syncs_plan_prices(self):
         site_settings_controller.set_value("subscription_prices", {"vip_1m": 20000})
         site_settings_controller.seed_defaults()
         from core.models import SiteSetting
 
         stored = SiteSetting.objects.get(key="subscription_prices").value
-        self.assertEqual(stored["vip_1m"], 20000)
+        self.assertEqual(stored["vip_1m"], 8000)
         self.assertEqual(stored["journee_amoureuse"], 1000)
 
 

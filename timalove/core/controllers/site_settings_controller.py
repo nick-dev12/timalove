@@ -310,12 +310,11 @@ def _merged_subscription_plans(stored: Any) -> dict[str, dict[str, Any]]:
 
 
 def _merged_subscription_prices(stored: Any) -> dict[str, int]:
-    """Complète les clés manquantes (ex. import ancien) avec les tarifs par défaut."""
-    plans = get_subscription_plans()
-    merged: dict[str, int] = {plan_id: int(meta.get("price", 0)) for plan_id, meta in plans.items()}
+    """Tarifs legacy + défauts ; les formules admin (subscription_plans) priment toujours."""
+    merged: dict[str, int] = {}
     for key, value in (DEFAULTS.get("subscription_prices") or {}).items():
         try:
-            merged.setdefault(str(key), int(value))
+            merged[str(key)] = int(value)
         except (TypeError, ValueError):
             continue
     if isinstance(stored, dict):
@@ -326,6 +325,8 @@ def _merged_subscription_prices(stored: Any) -> dict[str, int]:
                 merged[str(key)] = int(value)
             except (TypeError, ValueError):
                 continue
+    for plan_id, meta in get_subscription_plans().items():
+        merged[plan_id] = int(meta.get("price", 0))
     return merged
 
 
@@ -558,11 +559,7 @@ def get(key: str, default: Any = None) -> Any:
     if key == "subscription_plans":
         return _merged_subscription_plans(value if isinstance(value, dict) else {})
     if key == "subscription_prices":
-        plan_prices = {
-            plan_id: int(meta.get("price", 0)) for plan_id, meta in get_subscription_plans().items()
-        }
-        stored_prices = _merged_subscription_prices(value if isinstance(value, dict) else {})
-        return {**plan_prices, **stored_prices}
+        return _merged_subscription_prices(value if isinstance(value, dict) else {})
     if key == "in_app_packs":
         return get_in_app_packs()
     return value
@@ -656,7 +653,7 @@ def seed_defaults() -> int:
     stored_prices = prices_row.value if prices_row is not None else {}
     final_prices = _merged_subscription_prices(stored_prices if isinstance(stored_prices, dict) else {})
     for plan_id, meta in merged_plans.items():
-        final_prices.setdefault(plan_id, int(meta.get("price", 0)))
+        final_prices[plan_id] = int(meta.get("price", 0))
     if final_prices != (stored_prices if isinstance(stored_prices, dict) else {}):
         set_value("subscription_prices", final_prices)
     packs_row = SiteSetting.objects.filter(key="in_app_packs").first()
