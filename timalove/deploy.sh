@@ -11,13 +11,30 @@
 
 set -euo pipefail
 
+# Chemins générés par deploy/install-vps.sh (nouveau VPS mytimalove.com)
+if [[ -f /etc/timalove/deploy.env ]]; then
+    # shellcheck disable=SC1091
+    source /etc/timalove/deploy.env
+fi
+
 # ── Configuration (adapter si besoin) ────────────────────────────────────────
-APP_USER="${APP_USER:-colobanes}"
-REPO_DIR="${REPO_DIR:-/home/colobanes/timalove.goo-bridge.com}"
+# Priorité : /etc/timalove/deploy.env → variables d’env → détection auto.
+if [[ -z "${APP_USER:-}" ]]; then
+    if id colobanes &>/dev/null && [[ -d /home/colobanes/timalove.goo-bridge.com ]]; then
+        APP_USER=colobanes
+        REPO_DIR="${REPO_DIR:-/home/colobanes/timalove.goo-bridge.com}"
+        SITE_URL="${SITE_URL:-https://timalove.goo-bridge.com}"
+    else
+        APP_USER=jomas
+        REPO_DIR="${REPO_DIR:-/home/jomas/timalove}"
+        SITE_URL="${SITE_URL:-https://mytimalove.com}"
+    fi
+fi
+REPO_DIR="${REPO_DIR:-/home/${APP_USER}/timalove}"
 DJANGO_DIR="${DJANGO_DIR:-${REPO_DIR}/timalove}"
 VENV_DIR="${VENV_DIR:-${REPO_DIR}/venv}"
 GIT_BRANCH="${GIT_BRANCH:-main}"
-SITE_URL="${SITE_URL:-https://timalove.goo-bridge.com}"
+SITE_URL="${SITE_URL:-https://mytimalove.com}"
 SETTINGS_FILE="timalove/config/settings.py"
 
 SERVICES=(
