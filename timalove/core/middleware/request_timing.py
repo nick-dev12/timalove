@@ -26,4 +26,10 @@ class RequestTimingMiddleware:
         response["X-Response-Time"] = f"{duration_ms:.1f}ms"
         if duration_ms > 500:
             logger.warning("Slow request %s %s (%.1fms)", request.method, request.path, duration_ms)
+            try:
+                from core.controllers import monitoring_controller
+
+                monitoring_controller.record_slow_request(request, duration_ms)
+            except Exception:  # noqa: BLE001
+                pass
         return response

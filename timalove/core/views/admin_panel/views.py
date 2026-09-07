@@ -94,12 +94,20 @@ def dashboard(request):
 
 @require_GET
 def monitoring(request):
+    level = (request.GET.get("level") or "").strip().lower()
+    source = (request.GET.get("source") or "").strip().lower()
+    allowed_levels = {"", "critical", "error", "warning", "info"}
+    allowed_sources = {"", "http", "exception", "slow", "logging", "celery", "payment", "email", "push", "system"}
+    if level not in allowed_levels:
+        level = ""
+    if source not in allowed_sources:
+        source = ""
     return render(
         request,
         "admin_panel/monitoring.html",
         {
             "title": "Monitoring",
-            "overview": admin_controller.monitoring_overview(),
+            "overview": admin_controller.monitoring_overview(level=level, source=source),
         },
     )
 

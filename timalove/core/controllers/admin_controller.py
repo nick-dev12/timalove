@@ -912,12 +912,12 @@ def list_banned_identities(limit: int = 100):
     )
 
 
-def monitoring_overview() -> dict:
-    """Santé plateforme pour l'espace Monitoring (modérateurs / super admin)."""
+def monitoring_overview(*, level: str = "", source: str = "") -> dict:
+    """Santé plateforme + journal d'erreurs pour Monitoring."""
     from django.conf import settings
     from django.db import connection
 
-    from core.controllers import audit_controller, site_settings_controller
+    from core.controllers import monitoring_controller, site_settings_controller
     from core.models import AuditLog
 
     now = timezone.now()
@@ -982,9 +982,12 @@ def monitoring_overview() -> dict:
     messages_24h = Message.objects.filter(created_at__gte=day_ago).count()
     new_members_7d = Profile.objects.filter(role="member", created_at__gte=week_ago).count()
 
-    recent_logs = list(
-        AuditLog.objects.select_related("actor").order_by("-created_at")[:12]
-    )
+    event_summary = monitoring_controller.events_summary()
+    system_events = [
+        monitoring_controller.format_event_for_ui(e)
+        for e in monitoring_controller.list_events(level=level, source=source, limit=80)
+    ]
+    recent_logs = list(AuditLog.objects.select_related("actor").order_by("-created_at")[:12])
 
     services = [
         {
@@ -1022,6 +1025,20 @@ def monitoring_overview() -> dict:
         alerts.append({"level": "warn", "text": "Celery ne répond pas — e-mails et jobs différés en attente."})
     if maintenance:
         alerts.append({"level": "warn", "text": "Le mode maintenance est activé."})
+    if event_summary["critical_24h"]:
+        alerts.append(
+            {
+                "level": "danger",
+                "text": f"{event_summary['critical_24h']} erreur(s) critique(s) sur 24 h — voir le journal ci-dessous.",
+            }
+        )
+    elif event_summary["errors_24h"] >= 5:
+        alerts.append(
+            {
+                "level": "warn",
+                "text": f"{event_summary['errors_24h']} erreurs applicatives sur 24 h.",
+            }
+        )
     if pending_reports >= 10:
         alerts.append(
             {
@@ -1034,17 +1051,19 @@ def monitoring_overview() -> dict:
         "services": services,
         "alerts": alerts,
         "metrics": [
+            {"label": "Erreurs 24 h", "value": event_summary["errors_24h"], "href": None},
+            {"label": "Critiques 24 h", "value": event_summary["critical_24h"], "href": None},
+            {"label": "Alertes 24 h", "value": event_summary["warnings_24h"], "href": None},
             {"label": "Signalements ouverts", "value": pending_reports, "href": "admin_panel:signalements"},
             {"label": "Inscriptions en attente", "value": pending_regs, "href": "admin_panel:membres"},
-            {"label": "Bannissements 24 h", "value": bans_24h, "href": "admin_panel:membres"},
             {"label": "Messages 24 h", "value": messages_24h, "href": None},
+            {"label": "Bannissements 24 h", "value": bans_24h, "href": "admin_panel:membres"},
             {"label": "Nouveaux membres 7 j", "value": new_members_7d, "href": "admin_panel:membres"},
-            {
-                "label": "Actions audit aujourd'hui",
-                "value": audit_controller.audit_summary()["today"],
-                "href": None,
-            },
         ],
+        "system_events": system_events,
+        "event_summary": event_summary,
+        "filter_level": level,
+        "filter_source": source,
         "recent_logs": recent_logs,
         "checked_at": now,
     }

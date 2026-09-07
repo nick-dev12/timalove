@@ -1,5 +1,6 @@
 from .choices import *  # noqa: F401,F403
 from .admin_security import AdminTwoFactor, AuditLog
+from .system_event import SystemEvent
 from .commerce import (
     BannedIdentity,
     CoachingRequest,
@@ -40,6 +41,7 @@ __all__ = [
     "PushDevice",
     "AuditLog",
     "AdminTwoFactor",
+    "SystemEvent",
     "MarketingCampaign",
     "CampaignDelivery",
 ]

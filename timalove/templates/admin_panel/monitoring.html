@@ -1,13 +1,13 @@
 {% extends "layouts/admin.html" %}
 {% block subtitle %}
-<p class="adm__subtitle">Santé des services, file de modération et activité récente — {{ overview.checked_at|date:"d/m/Y H:i" }}</p>
+<p class="adm__subtitle">Santé des services, erreurs applicatives et lieu d’occurrence — {{ overview.checked_at|date:"d/m/Y H:i" }}</p>
 {% endblock %}
 {% block content %}
 <section class="adm-hero adm-hero--compact">
   <div class="adm-hero__copy">
     <p class="adm-hero__eyebrow">Monitoring</p>
     <h2 class="adm-hero__title">État de la plateforme</h2>
-    <p class="adm-hero__lead">Surveillez Redis, la base, Celery et les files à traiter sans quitter l’espace privé.</p>
+    <p class="adm-hero__lead">Erreurs HTTP, exceptions, requêtes lentes et dysfonctionnements — avec le chemin et le fichier concernés.</p>
   </div>
 </section>
 
@@ -50,10 +50,97 @@
   {% endfor %}
 </section>
 
+<section class="adm-card" id="journal-erreurs">
+  <div class="adm-card__head adm-card__head--row">
+    <div>
+      <h2 class="adm-card__title">Journal des erreurs & dysfonctionnements</h2>
+      <p class="adm-card__lead">Où ça casse : URL, code HTTP, fichier/ligne, type d’exception. Les doublons sont regroupés (30 min).</p>
+    </div>
+  </div>
+
+  <form method="get" class="adm-monitor-filters" action="{% url 'admin_panel:monitoring' %}#journal-erreurs">
+    <label class="adm-monitor-filters__field">
+      <span>Sévérité</span>
+      <select name="level" class="adm-input" onchange="this.form.submit()">
+        <option value="" {% if not overview.filter_level %}selected{% endif %}>Toutes</option>
+        <option value="critical" {% if overview.filter_level == 'critical' %}selected{% endif %}>Critique</option>
+        <option value="error" {% if overview.filter_level == 'error' %}selected{% endif %}>Erreur</option>
+        <option value="warning" {% if overview.filter_level == 'warning' %}selected{% endif %}>Avertissement</option>
+      </select>
+    </label>
+    <label class="adm-monitor-filters__field">
+      <span>Source</span>
+      <select name="source" class="adm-input" onchange="this.form.submit()">
+        <option value="" {% if not overview.filter_source %}selected{% endif %}>Toutes</option>
+        <option value="exception" {% if overview.filter_source == 'exception' %}selected{% endif %}>Exception</option>
+        <option value="http" {% if overview.filter_source == 'http' %}selected{% endif %}>HTTP</option>
+        <option value="slow" {% if overview.filter_source == 'slow' %}selected{% endif %}>Requête lente</option>
+        <option value="logging" {% if overview.filter_source == 'logging' %}selected{% endif %}>Logger</option>
+        <option value="payment" {% if overview.filter_source == 'payment' %}selected{% endif %}>Paiement</option>
+        <option value="email" {% if overview.filter_source == 'email' %}selected{% endif %}>Email</option>
+        <option value="push" {% if overview.filter_source == 'push' %}selected{% endif %}>Push</option>
+        <option value="celery" {% if overview.filter_source == 'celery' %}selected{% endif %}>Celery</option>
+      </select>
+    </label>
+    {% if overview.filter_level or overview.filter_source %}
+    <a class="adm-btn adm-btn--ghost adm-btn--sm" href="{% url 'admin_panel:monitoring' %}#journal-erreurs">Réinitialiser</a>
+    {% endif %}
+  </form>
+
+  {% if overview.system_events %}
+  <div class="adm-table-wrap">
+    <table class="adm-table adm-monitor-errors">
+      <thead>
+        <tr>
+          <th scope="col">Quand</th>
+          <th scope="col">Niveau</th>
+          <th scope="col">Où</th>
+          <th scope="col">Erreur</th>
+          <th scope="col">×</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in overview.system_events %}
+        <tr class="adm-monitor-errors__row adm-monitor-errors__row--{{ ev.level }}">
+          <td data-label="Quand">
+            <time datetime="{{ ev.last_seen_at|date:'c' }}">{{ ev.last_seen_at|date:"d/m H:i:s" }}</time>
+          </td>
+          <td data-label="Niveau">
+            <span class="adm-monitor-badge adm-monitor-badge--{{ ev.level }}">{{ ev.level_label }}</span>
+            <span class="adm-monitor-source">{{ ev.source_label }}</span>
+          </td>
+          <td data-label="Où">
+            <code class="adm-monitor-where">{{ ev.where }}</code>
+            {% if ev.user_email %}<span class="adm-monitor-meta">user {{ ev.user_email }}</span>{% endif %}
+            {% if ev.ip_address %}<span class="adm-monitor-meta">IP {{ ev.ip_address }}</span>{% endif %}
+          </td>
+          <td data-label="Erreur">
+            <strong class="adm-monitor-errors__title">{{ ev.title }}</strong>
+            {% if ev.message and ev.message != ev.title %}
+            <p class="adm-monitor-errors__msg">{{ ev.message|truncatechars:220 }}</p>
+            {% endif %}
+            {% if ev.traceback %}
+            <details class="adm-monitor-trace">
+              <summary>Voir la pile d’appels</summary>
+              <pre>{{ ev.traceback }}</pre>
+            </details>
+            {% endif %}
+          </td>
+          <td data-label="Occurrences"><strong>{{ ev.occurrence_count }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="adm-empty">Aucune erreur capturée pour ce filtre. Les prochaines exceptions HTTP 5xx, logs ERROR et requêtes lentes apparaîtront ici.</p>
+  {% endif %}
+</section>
+
 <section class="adm-card">
   <div class="adm-card__head">
     <h2 class="adm-card__title">Activité admin récente</h2>
-    <p class="adm-card__lead">Dernières actions journalisées (modération, config, staff).</p>
+    <p class="adm-card__lead">Actions humaines (modération, config, staff) — distinctes des erreurs techniques ci-dessus.</p>
   </div>
   {% if overview.recent_logs %}
   <div class="adm-table-wrap">

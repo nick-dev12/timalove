@@ -46,6 +46,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    "core.middleware.exception_logging.ExceptionLoggingMiddleware",
     "core.middleware.request_timing.RequestTimingMiddleware",
     "core.middleware.maintenance.MaintenanceMiddleware",
     "core.middleware.force_update.ForceUpdateMiddleware",
@@ -309,3 +310,39 @@ if DEBUG:
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+        },
+        "system_events": {
+            "class": "core.logging_handlers.SystemEventLogHandler",
+            "level": "ERROR",
+        },
+    },
+    "root": {
+        "handlers": ["console", "system_events"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["console", "system_events"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

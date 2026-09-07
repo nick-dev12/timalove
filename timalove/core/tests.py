@@ -1242,3 +1242,37 @@ class AdminRbacAccessTests(TestCase):
         self.assertIn("monitoring", mod_keys)
         self.assertNotIn("monitoring", admin_keys)
 
+
+class MonitoringSystemEventTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        site_settings_controller.set_value("admin_security", {"require_2fa": False})
+        self.mod = make_staff("mod.monitor@test.com", UserRole.MODERATOR, "Mod")
+
+    def test_record_exception_appears_on_monitoring(self):
+        from django.test import RequestFactory
+
+        from core.controllers import monitoring_controller
+        from core.models import SystemEvent
+
+        rf = RequestFactory()
+        req = rf.post("/api/messages/send/")
+        try:
+            raise RuntimeError("Echec envoi message test")
+        except RuntimeError as exc:
+            monitoring_controller.record_exception(req, exc)
+
+        event = SystemEvent.objects.order_by("-last_seen_at").first()
+        self.assertIsNotNone(event)
+        self.assertEqual(event.level, "error")
+        self.assertEqual(event.source, "exception")
+        self.assertIn("/api/messages/send/", event.path)
+        self.assertTrue(event.location or event.traceback)
+
+        client = Client()
+        client.force_login(self.mod.user)
+        resp = client.get("/espace-prive/monitoring/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Echec envoi message test")
+        self.assertContains(resp, "Journal des erreurs")
+
