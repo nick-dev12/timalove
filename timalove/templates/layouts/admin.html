@@ -6,7 +6,7 @@
 
 {% block head %}
 
-<link rel="stylesheet" href="{% static 'css/admin-panel.css' %}?v=20260830adm4">
+<link rel="stylesheet" href="{% static 'css/admin-panel.css' %}?v=20260907adm1">
 
 {% endblock %}
 
@@ -37,7 +37,7 @@
       {% for section in admin_nav_sections %}
       <p class="adm__nav-label">{{ section.label }}</p>
       {% for link in section.links %}
-      <a href="{% url link.url_name %}" class="adm__nav-link{% if request.resolver_match.url_name == link.key or link.key == 'membres' and request.resolver_match.url_name == 'membre_detail' or link.key == 'signalements' and request.resolver_match.url_name == 'signalement_detail' %} is-active{% endif %}">
+      <a href="{% url link.url_name %}" class="adm__nav-link{% if request.resolver_match.url_name == link.key or link.key == 'membres' and request.resolver_match.url_name == 'membre_detail' or link.key == 'signalements' and request.resolver_match.url_name == 'signalement_detail' or link.key == 'monitoring' and request.resolver_match.url_name == 'monitoring' %} is-active{% endif %}">
         <span class="adm__nav-icon" aria-hidden="true">{{ link.icon }}</span> {{ link.label }}
         {% if link.key == 'signalements' and admin_nav_badges.signalements %}<span class="adm__nav-badge adm__nav-badge--danger">{{ admin_nav_badges.signalements }}</span>{% endif %}
       </a>

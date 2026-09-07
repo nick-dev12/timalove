@@ -16,6 +16,7 @@ ADMIN_PAGES = [
     ("/espace-prive/monetisation/", "monetisation"),
     ("/espace-prive/communications/", "communications"),
     ("/espace-prive/configuration/", "configuration"),
+    ("/espace-prive/monitoring/", "monitoring"),
     ("/espace-prive/equipe/", "roles_audit"),
 ]
 
@@ -250,29 +251,68 @@ class Command(BaseCommand):
             else:
                 record("HTTP", "export CSV paiements", "WARN", f"status={r.status_code}")
 
-        # --- RBAC moderator POST ---
+        # --- RBAC rôles ---
         mod = Profile.objects.filter(role=UserRole.MODERATOR).first()
+        admin_role = Profile.objects.filter(role=UserRole.ADMIN).first()
         member = Profile.objects.filter(role=UserRole.MEMBER).exclude(banned_at__isnull=False).first()
-        if mod and member and admin_user:
+        if mod:
             mod_client = Client()
             mod_client.force_login(mod.user)
-            r = mod_client.post(
-                "/espace-prive/membres/",
-                {"action": "ban", "profile_id": str(member.id), "reason_key": "spam"},
-            )
-            member.refresh_from_db()
-            if r.status_code in (302, 403) and member.banned_at is None:
-                record("Sécurité", "Modérateur POST ban liste", "OK", "ban non appliqué")
-            elif member.banned_at:
-                record("Sécurité", "Modérateur POST ban liste", "FAIL", "ban appliqué sans permission!")
-            else:
-                record("Sécurité", "Modérateur POST ban liste", "WARN", f"status={r.status_code}")
+            for url, expected_ok in [
+                ("/espace-prive/membres/", True),
+                ("/espace-prive/signalements/", True),
+                ("/espace-prive/communications/", True),
+                ("/espace-prive/configuration/", True),
+                ("/espace-prive/monitoring/", True),
+                ("/espace-prive/monetisation/", False),
+                ("/espace-prive/paiements/", False),
+                ("/espace-prive/equipe/", False),
+            ]:
+                r = mod_client.get(url)
+                ok_access = r.status_code == 200
+                if expected_ok == ok_access:
+                    record("Sécurité", f"Modérateur {url}", "OK")
+                else:
+                    record(
+                        "Sécurité",
+                        f"Modérateur {url}",
+                        "FAIL",
+                        f"status={r.status_code} attendu={'200' if expected_ok else 'redirect'}",
+                    )
 
+        if admin_role:
+            adm_client = Client()
+            adm_client.force_login(admin_role.user)
+            for url, expected_ok in [
+                ("/espace-prive/membres/", True),
+                ("/espace-prive/monetisation/", True),
+                ("/espace-prive/communications/", True),
+                ("/espace-prive/signalements/", False),
+                ("/espace-prive/configuration/", False),
+                ("/espace-prive/monitoring/", False),
+                ("/espace-prive/paiements/", False),
+                ("/espace-prive/equipe/", False),
+            ]:
+                r = adm_client.get(url)
+                ok_access = r.status_code == 200
+                if expected_ok == ok_access:
+                    record("Sécurité", f"Administrateur {url}", "OK")
+                else:
+                    record(
+                        "Sécurité",
+                        f"Administrateur {url}",
+                        "FAIL",
+                        f"status={r.status_code} attendu={'200' if expected_ok else 'redirect'}",
+                    )
+
+        if mod and member:
+            mod_client = Client()
+            mod_client.force_login(mod.user)
             r2 = mod_client.get("/espace-prive/equipe/")
-            if r2.status_code == 302 or "equipe" not in r2.url:
+            if r2.status_code == 302:
                 record("Sécurité", "Modérateur accès equipe", "OK")
             else:
-                record("Sécurité", "Modérateur accès equipe", "FAIL")
+                record("Sécurité", "Modérateur accès equipe", "FAIL", f"status={r2.status_code}")
 
         # --- Promo checkout gap ---
         from core.controllers import payment_controller

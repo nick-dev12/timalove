@@ -1,0 +1,83 @@
+{% extends "layouts/admin.html" %}
+{% block subtitle %}
+<p class="adm__subtitle">Santé des services, file de modération et activité récente — {{ overview.checked_at|date:"d/m/Y H:i" }}</p>
+{% endblock %}
+{% block content %}
+<section class="adm-hero adm-hero--compact">
+  <div class="adm-hero__copy">
+    <p class="adm-hero__eyebrow">Monitoring</p>
+    <h2 class="adm-hero__title">État de la plateforme</h2>
+    <p class="adm-hero__lead">Surveillez Redis, la base, Celery et les files à traiter sans quitter l’espace privé.</p>
+  </div>
+</section>
+
+{% if overview.alerts %}
+<ul class="adm-monitor-alerts" aria-label="Alertes">
+  {% for alert in overview.alerts %}
+  <li class="adm-monitor-alerts__item adm-monitor-alerts__item--{{ alert.level }}">{{ alert.text }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<section class="adm-monitor-services" aria-label="Services">
+  {% for svc in overview.services %}
+  <article class="adm-monitor-service{% if svc.ok %} is-ok{% elif svc.ok == False %} is-down{% else %} is-unknown{% endif %}">
+    <span class="adm-monitor-service__dot" aria-hidden="true"></span>
+    <div>
+      <h3 class="adm-monitor-service__title">{{ svc.label }}</h3>
+      <p class="adm-monitor-service__detail">{{ svc.detail }}</p>
+    </div>
+    <strong class="adm-monitor-service__status">
+      {% if svc.ok %}OK{% elif svc.ok == False %}KO{% else %}—{% endif %}
+    </strong>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="adm-kpis adm-kpis--monitor">
+  {% for metric in overview.metrics %}
+  <article class="adm-kpi">
+    <div class="adm-kpi__head">
+      <span class="adm-kpi__label">{{ metric.label }}</span>
+    </div>
+    <strong class="adm-kpi__value">{{ metric.value }}</strong>
+    {% if metric.href %}
+    <a class="adm-kpi__hint" href="{% url metric.href %}">Ouvrir →</a>
+    {% else %}
+    <span class="adm-kpi__hint">Temps réel</span>
+    {% endif %}
+  </article>
+  {% endfor %}
+</section>
+
+<section class="adm-card">
+  <div class="adm-card__head">
+    <h2 class="adm-card__title">Activité admin récente</h2>
+    <p class="adm-card__lead">Dernières actions journalisées (modération, config, staff).</p>
+  </div>
+  {% if overview.recent_logs %}
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead>
+        <tr>
+          <th scope="col">Quand</th>
+          <th scope="col">Action</th>
+          <th scope="col">Détail</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in overview.recent_logs %}
+        <tr>
+          <td data-label="Quand">{{ log.created_at|date:"d/m H:i" }}</td>
+          <td data-label="Action"><code>{{ log.action }}</code></td>
+          <td data-label="Détail">{{ log.message }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="adm-empty">Aucune action journalisée pour le moment.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -18,6 +18,7 @@ urlpatterns = [
     path("communications/", views.communications, name="communications"),
     path("communications/cities/", views.communications_cities, name="communications_cities"),
     path("configuration/", views.configuration, name="configuration"),
+    path("monitoring/", views.monitoring, name="monitoring"),
     path("equipe/", views.roles_audit, name="roles_audit"),
     path("2fa/configuration/", views.admin_2fa_setup, name="admin_2fa_setup"),
     path("2fa/verification/", views.admin_2fa_verify, name="admin_2fa_verify"),

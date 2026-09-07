@@ -22,6 +22,8 @@ STAFF_ROLE_CHOICES: list[tuple[str, str]] = [
 ]
 
 # Permissions par rôle (super_admin = toutes)
+# Admin     : plans, communications, gestion utilisateurs
+# Modérateur: config, communications, monitoring, signalements, utilisateurs
 ROLE_PERMISSIONS: dict[str, frozenset[str] | None] = {
     UserRole.SUPER_ADMIN: None,
     UserRole.ADMIN: frozenset(
@@ -29,20 +31,20 @@ ROLE_PERMISSIONS: dict[str, frozenset[str] | None] = {
             "dashboard",
             "membres",
             "membres.edit",
-            "paiements",
             "monetisation",
-            "signalements",
-            "signalements.action",
-            "configuration",
             "communications",
         }
     ),
     UserRole.MODERATOR: frozenset(
         {
             "dashboard",
-            "membres.view",
+            "membres",
+            "membres.edit",
             "signalements",
             "signalements.action",
+            "communications",
+            "configuration",
+            "monitoring",
         }
     ),
     UserRole.SUPPORT: frozenset(
@@ -65,6 +67,7 @@ VIEW_PERMISSION_MAP: dict[str, str] = {
     "signalements": "signalements",
     "signalement_detail": "signalements.action",
     "configuration": "configuration",
+    "monitoring": "monitoring",
     "roles_audit": "roles.manage",
     "admin_2fa_setup": "dashboard",
     "admin_2fa_verify": "dashboard",
@@ -236,6 +239,7 @@ def nav_links_for(profile: Profile | None) -> list[dict]:
             "Système",
             [
                 ("configuration", "Configuration Globale de l'App", "admin_panel:configuration", "⚙"),
+                ("monitoring", "Monitoring", "admin_panel:monitoring", "◎"),
                 ("roles_audit", "Rôles & Audit", "admin_panel:roles_audit", "🔐"),
             ],
         ),

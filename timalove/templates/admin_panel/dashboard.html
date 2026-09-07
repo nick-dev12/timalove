@@ -11,12 +11,20 @@
 {% block content %}
 <section class="adm-hero">
   <div class="adm-hero__copy">
-    <p class="adm-hero__eyebrow">Espace super admin</p>
+    <p class="adm-hero__eyebrow">{{ admin_staff_role|default:"Espace admin" }}</p>
     <h2 class="adm-hero__title">Vue d’ensemble TimaLove</h2>
     <p class="adm-hero__lead">Revenus, engagement, modération et croissance utilisateurs en un coup d’œil.</p>
     <div class="adm-hero__actions">
+      {% if can_paiements %}
       <a class="adm-btn adm-btn--primary adm-btn--sm" href="{% url 'admin_panel:paiements' %}">Paiements</a>
+      {% elif can_membres %}
+      <a class="adm-btn adm-btn--primary adm-btn--sm" href="{% url 'admin_panel:membres' %}">Utilisateurs</a>
+      {% endif %}
+      {% if can_signalements %}
       <a class="adm-btn adm-btn--ghost adm-btn--sm adm-hero__btn-ghost" href="{% url 'admin_panel:signalements' %}">Modération</a>
+      {% elif can_monitoring %}
+      <a class="adm-btn adm-btn--ghost adm-btn--sm adm-hero__btn-ghost" href="{% url 'admin_panel:monitoring' %}">Monitoring</a>
+      {% endif %}
     </div>
   </div>
   <div class="adm-hero__metrics" aria-hidden="true">

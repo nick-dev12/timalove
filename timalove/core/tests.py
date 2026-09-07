@@ -1117,3 +1117,128 @@ class SearchFeatureFlagsTests(TestCase):
         self.assertContains(r, "data-explorer-search")
         self.assertContains(r, "Rechercher un profil")
 
+
+def make_staff(email: str, role: str, name: str = "Staff"):
+    user = User.objects.create_user(
+        username=email,
+        email=email,
+        password="StaffPass123!",
+        is_staff=True,
+        is_superuser=role == UserRole.SUPER_ADMIN,
+    )
+    return Profile.objects.create(
+        user=user,
+        first_name=name,
+        last_name="TimaLove",
+        email=email,
+        date_of_birth=date(1990, 1, 1),
+        gender=Gender.MALE,
+        city="Dakar",
+        registration_status=RegistrationStatus.APPROVED,
+        role=role,
+        is_verified=True,
+        onboarding_completed=True,
+    )
+
+
+class AdminRbacAccessTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        site_settings_controller.set_value("admin_security", {"require_2fa": False})
+        self.super = make_staff("super.rbac@test.com", UserRole.SUPER_ADMIN, "Super")
+        self.admin = make_staff("admin.rbac@test.com", UserRole.ADMIN, "Admin")
+        self.mod = make_staff("mod.rbac@test.com", UserRole.MODERATOR, "Mod")
+
+    def _assert_access(self, profile, url: str, allowed: bool):
+        client = Client()
+        client.force_login(profile.user)
+        resp = client.get(url)
+        if allowed:
+            self.assertEqual(resp.status_code, 200, f"{profile.role} devrait accéder à {url}")
+        else:
+            self.assertEqual(resp.status_code, 302, f"{profile.role} ne devrait pas accéder à {url}")
+            self.assertIn("/espace-prive/dashboard/", resp.url)
+
+    def test_super_admin_all_sections(self):
+        for url in [
+            "/espace-prive/dashboard/",
+            "/espace-prive/membres/",
+            "/espace-prive/signalements/",
+            "/espace-prive/paiements/",
+            "/espace-prive/monetisation/",
+            "/espace-prive/communications/",
+            "/espace-prive/configuration/",
+            "/espace-prive/monitoring/",
+            "/espace-prive/equipe/",
+        ]:
+            self._assert_access(self.super, url, True)
+
+    def test_admin_matrix(self):
+        allowed = {
+            "/espace-prive/dashboard/",
+            "/espace-prive/membres/",
+            "/espace-prive/monetisation/",
+            "/espace-prive/communications/",
+        }
+        denied = {
+            "/espace-prive/signalements/",
+            "/espace-prive/paiements/",
+            "/espace-prive/configuration/",
+            "/espace-prive/monitoring/",
+            "/espace-prive/equipe/",
+        }
+        for url in allowed:
+            self._assert_access(self.admin, url, True)
+        for url in denied:
+            self._assert_access(self.admin, url, False)
+
+    def test_moderator_matrix(self):
+        allowed = {
+            "/espace-prive/dashboard/",
+            "/espace-prive/membres/",
+            "/espace-prive/signalements/",
+            "/espace-prive/communications/",
+            "/espace-prive/configuration/",
+            "/espace-prive/monitoring/",
+        }
+        denied = {
+            "/espace-prive/monetisation/",
+            "/espace-prive/paiements/",
+            "/espace-prive/equipe/",
+        }
+        for url in allowed:
+            self._assert_access(self.mod, url, True)
+        for url in denied:
+            self._assert_access(self.mod, url, False)
+
+    def test_nav_links_filtered(self):
+        from core.controllers import rbac_controller
+
+        admin_keys = {
+            link["key"]
+            for section in rbac_controller.nav_links_for(self.admin)
+            for link in section["links"]
+        }
+        mod_keys = {
+            link["key"]
+            for section in rbac_controller.nav_links_for(self.mod)
+            for link in section["links"]
+        }
+        self.assertEqual(
+            admin_keys,
+            {"dashboard", "membres", "monetisation", "communications"},
+        )
+        self.assertEqual(
+            mod_keys,
+            {
+                "dashboard",
+                "membres",
+                "signalements",
+                "communications",
+                "configuration",
+                "monitoring",
+            },
+        )
+        self.assertIn("monitoring", mod_keys)
+        self.assertNotIn("monitoring", admin_keys)
+

@@ -910,3 +910,141 @@ def list_banned_identities(limit: int = 100):
         BannedIdentity.objects.select_related("profile")
         .order_by("-created_at")[:limit]
     )
+
+
+def monitoring_overview() -> dict:
+    """Santé plateforme pour l'espace Monitoring (modérateurs / super admin)."""
+    from django.conf import settings
+    from django.db import connection
+
+    from core.controllers import audit_controller, site_settings_controller
+    from core.models import AuditLog
+
+    now = timezone.now()
+    day_ago = now - timedelta(days=1)
+    week_ago = now - timedelta(days=7)
+
+    db_ok = False
+    db_detail = "Hors ligne"
+    try:
+        connection.ensure_connection()
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+        db_ok = True
+        db_detail = "PostgreSQL répond"
+    except Exception as exc:  # noqa: BLE001
+        db_detail = str(exc)[:120]
+
+    redis_ok = False
+    redis_detail = "Non configuré"
+    redis_url = getattr(settings, "REDIS_URL", None) or getattr(settings, "CELERY_BROKER_URL", "")
+    if redis_url:
+        try:
+            import redis
+
+            client = redis.from_url(redis_url, socket_connect_timeout=1.5, socket_timeout=1.5)
+            redis_ok = client.ping() is True
+            redis_detail = "PONG" if redis_ok else "Pas de réponse"
+        except Exception as exc:  # noqa: BLE001
+            redis_detail = str(exc)[:120]
+    else:
+        try:
+            from channels.layers import get_channel_layer
+
+            layer = get_channel_layer()
+            redis_ok = layer is not None
+            redis_detail = "Channel layer actif" if redis_ok else "Channel layer absent"
+        except Exception as exc:  # noqa: BLE001
+            redis_detail = str(exc)[:120]
+
+    celery_ok = None
+    celery_detail = "Non vérifié"
+    try:
+        from config.celery import app as celery_app
+
+        inspector = celery_app.control.inspect(timeout=0.25)
+        ping = inspector.ping() if inspector else None
+        if ping:
+            celery_ok = True
+            celery_detail = f"{len(ping)} worker(s) actif(s)"
+        else:
+            celery_ok = False
+            celery_detail = "Aucun worker ne répond (normal en local)"
+    except Exception as exc:  # noqa: BLE001
+        celery_ok = False
+        celery_detail = str(exc)[:120]
+
+    maintenance = site_settings_controller.is_maintenance_mode()
+    pending_reports = Report.objects.filter(status=ReportStatus.PENDING).count()
+    pending_regs = Profile.objects.filter(registration_status=RegistrationStatus.PENDING).count()
+    bans_24h = Profile.objects.filter(banned_at__gte=day_ago).count()
+    messages_24h = Message.objects.filter(created_at__gte=day_ago).count()
+    new_members_7d = Profile.objects.filter(role="member", created_at__gte=week_ago).count()
+
+    recent_logs = list(
+        AuditLog.objects.select_related("actor").order_by("-created_at")[:12]
+    )
+
+    services = [
+        {
+            "id": "database",
+            "label": "Base de données",
+            "ok": db_ok,
+            "detail": db_detail,
+        },
+        {
+            "id": "redis",
+            "label": "Redis / temps réel",
+            "ok": redis_ok,
+            "detail": redis_detail,
+        },
+        {
+            "id": "celery",
+            "label": "Celery (jobs async)",
+            "ok": celery_ok,
+            "detail": celery_detail,
+        },
+        {
+            "id": "maintenance",
+            "label": "Mode maintenance",
+            "ok": not maintenance,
+            "detail": "Actif — site public restreint" if maintenance else "Désactivé",
+        },
+    ]
+
+    alerts = []
+    if not db_ok:
+        alerts.append({"level": "danger", "text": "La base de données ne répond pas."})
+    if redis_ok is False:
+        alerts.append({"level": "warn", "text": "Redis / Channels indisponible — chat et présence impactés."})
+    if celery_ok is False:
+        alerts.append({"level": "warn", "text": "Celery ne répond pas — e-mails et jobs différés en attente."})
+    if maintenance:
+        alerts.append({"level": "warn", "text": "Le mode maintenance est activé."})
+    if pending_reports >= 10:
+        alerts.append(
+            {
+                "level": "warn",
+                "text": f"{pending_reports} signalements en attente de traitement.",
+            }
+        )
+
+    return {
+        "services": services,
+        "alerts": alerts,
+        "metrics": [
+            {"label": "Signalements ouverts", "value": pending_reports, "href": "admin_panel:signalements"},
+            {"label": "Inscriptions en attente", "value": pending_regs, "href": "admin_panel:membres"},
+            {"label": "Bannissements 24 h", "value": bans_24h, "href": "admin_panel:membres"},
+            {"label": "Messages 24 h", "value": messages_24h, "href": None},
+            {"label": "Nouveaux membres 7 j", "value": new_members_7d, "href": "admin_panel:membres"},
+            {
+                "label": "Actions audit aujourd'hui",
+                "value": audit_controller.audit_summary()["today"],
+                "href": None,
+            },
+        ],
+        "recent_logs": recent_logs,
+        "checked_at": now,
+    }

@@ -75,6 +75,7 @@ def connexion(request):
     return render(request, "admin_panel/connexion.html", {"title": "Espace administrateur"})
 
 def dashboard(request):
+    actor = _admin_profile(request)
     return render(
         request,
         "admin_panel/dashboard.html",
@@ -83,6 +84,22 @@ def dashboard(request):
             "kpis": admin_controller.dashboard_kpis(),
             "charts": admin_controller.dashboard_analytics(),
             "recent": admin_controller.dashboard_recent_activity(),
+            "can_paiements": rbac_controller.has_permission(actor, "paiements"),
+            "can_signalements": rbac_controller.has_permission(actor, "signalements"),
+            "can_membres": rbac_controller.has_permission(actor, "membres.view"),
+            "can_monitoring": rbac_controller.has_permission(actor, "monitoring"),
+        },
+    )
+
+
+@require_GET
+def monitoring(request):
+    return render(
+        request,
+        "admin_panel/monitoring.html",
+        {
+            "title": "Monitoring",
+            "overview": admin_controller.monitoring_overview(),
         },
     )
 

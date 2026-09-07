@@ -2826,3 +2826,108 @@ body.is-adm-sheet {
   }
 }
 
+/* Monitoring */
+.adm-hero--compact {
+  margin-bottom: 1.25rem;
+}
+
+.adm-monitor-alerts {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.adm-monitor-alerts__item {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: var(--cream, #fdf5f0);
+  color: var(--bordeaux-dark, #2d1f22);
+  font-size: 0.92rem;
+  border: 1px solid #ead9dc;
+}
+
+.adm-monitor-alerts__item--danger {
+  background: #fdecea;
+  border-color: #f5c2c0;
+  color: #8a1f1a;
+}
+
+.adm-monitor-alerts__item--warn {
+  background: #fff6e8;
+  border-color: #f0d3a4;
+  color: #7a4a00;
+}
+
+.adm-monitor-services {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 1.35rem;
+}
+
+.adm-monitor-service {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem 1.1rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #ead9dc;
+}
+
+.adm-monitor-service__dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #9b8a8e;
+}
+
+.adm-monitor-service.is-ok .adm-monitor-service__dot {
+  background: #4caf50;
+}
+
+.adm-monitor-service.is-down .adm-monitor-service__dot {
+  background: #e53935;
+}
+
+.adm-monitor-service__title {
+  margin: 0;
+  font-size: 0.98rem;
+  color: var(--bordeaux-dark, #2d1f22);
+}
+
+.adm-monitor-service__detail {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #6b5a5e);
+}
+
+.adm-monitor-service__status {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #9b8a8e);
+}
+
+.adm-monitor-service.is-ok .adm-monitor-service__status {
+  color: #2e7d32;
+}
+
+.adm-monitor-service.is-down .adm-monitor-service__status {
+  color: #c62828;
+}
+
+.adm-kpis--monitor {
+  margin-bottom: 1.35rem;
+}
+
+.adm-kpis--monitor .adm-kpi__hint {
+  color: var(--rose-primary, #e8637a);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+
