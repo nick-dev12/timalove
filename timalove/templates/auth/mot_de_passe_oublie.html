@@ -1,8 +1,17 @@
 ﻿{% extends "layouts/auth.html" %}
 {% block auth_content %}
-<form method="post">{% csrf_token %}
-  <p>Entrez votre email pour recevoir un lien de réinitialisation.</p>
-  <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" name="email" required></div>
-  <button class="btn btn-primary btn-block" type="submit">Envoyer</button>
+<p style="color:var(--text-secondary);margin:0 0 1.25rem;line-height:1.5;">
+  Entrez l'email de votre compte. Nous vous enverrons un lien sécurisé pour choisir un nouveau mot de passe.
+</p>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="form-group">
+    <label class="form-label" for="reset-email">Email</label>
+    <input class="form-input" id="reset-email" type="email" name="email" required autocomplete="email" placeholder="vous@email.com">
+  </div>
+  <button class="btn btn-primary btn-block" type="submit">Envoyer le lien</button>
 </form>
+<p style="margin-top:1.25rem;text-align:center;">
+  <a href="{% url 'auth:connexion' %}">Retour à la connexion</a>
+</p>
 {% endblock %}

@@ -857,7 +857,17 @@ class PagesSmokeTests(TestCase):
         self.client = Client()
 
     def test_public_pages(self):
-        for url in ["/", "/qui-suis-je/", "/coaching/", "/cgv/", "/mentions-legales/", "/politique-de-confidentialite/", "/connexion/", "/inscription/"]:
+        for url in [
+            "/",
+            "/qui-suis-je/",
+            "/coaching/",
+            "/cgv/",
+            "/mentions-legales/",
+            "/politique-de-confidentialite/",
+            "/suppression-de-compte/",
+            "/connexion/",
+            "/inscription/",
+        ]:
             resp = self.client.get(url)
             self.assertIn(resp.status_code, (200, 302), url)
 

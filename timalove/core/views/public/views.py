@@ -477,7 +477,15 @@ def contact(request):
 
 @require_GET
 def cgv(request):
-    return render(request, "legal/page.html", {"title": "CGV", "sections": legal_data.CGV_SECTIONS})
+    return render(
+        request,
+        "legal/page.html",
+        {
+            "title": "Conditions générales (CGV)",
+            "sections": legal_data.CGV_SECTIONS,
+            "updated": legal_data.UPDATED,
+        },
+    )
 
 
 @require_GET
@@ -485,7 +493,11 @@ def mentions(request):
     return render(
         request,
         "legal/page.html",
-        {"title": "Mentions légales", "sections": legal_data.MENTIONS_SECTIONS},
+        {
+            "title": "Mentions légales",
+            "sections": legal_data.MENTIONS_SECTIONS,
+            "updated": legal_data.UPDATED,
+        },
     )
 
 
@@ -494,7 +506,24 @@ def confidentialite(request):
     return render(
         request,
         "legal/page.html",
-        {"title": "Politique de confidentialité", "sections": legal_data.PRIVACY_SECTIONS},
+        {
+            "title": "Politique de confidentialité",
+            "sections": legal_data.PRIVACY_SECTIONS,
+            "updated": legal_data.UPDATED,
+        },
+    )
+
+
+@require_GET
+def suppression_compte(request):
+    return render(
+        request,
+        "legal/page.html",
+        {
+            "title": "Suppression de compte",
+            "sections": legal_data.ACCOUNT_DELETION_SECTIONS,
+            "updated": legal_data.UPDATED,
+        },
     )
 
 

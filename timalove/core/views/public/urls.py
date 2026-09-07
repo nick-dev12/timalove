@@ -25,5 +25,6 @@ urlpatterns = [
     path("cgv/", views.cgv, name="cgv"),
     path("mentions-legales/", views.mentions, name="mentions"),
     path("politique-de-confidentialite/", views.confidentialite, name="confidentialite"),
+    path("suppression-de-compte/", views.suppression_compte, name="suppression_compte"),
     path("maintenance/", views.maintenance, name="maintenance"),
 ]

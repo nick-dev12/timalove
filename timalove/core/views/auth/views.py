@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.conf import settings
 from django.contrib import messages
@@ -14,6 +15,8 @@ from core.controllers.home_controller import ORIGINE_OPTIONS
 from core.data.countries import COUNTRIES_FR
 from core.data.onboarding import INTERESTS, SIGNUP_COPY, TRAITS, LIFE_VALUES, LOOKING_FOR
 from core.models.choices import Gender, RelationshipIntent, Religion
+
+logger = logging.getLogger(__name__)
 
 
 def _firebase_web_config() -> dict:
@@ -198,14 +201,56 @@ def completer_profil(request):
 @require_http_methods(["GET", "POST"])
 def mot_de_passe_oublie(request):
     if request.method == "POST":
-        ok, msg, token_path = auth_controller.request_password_reset(request.POST.get("email", ""))
-        if token_path:
-            email = request.POST.get("email", "")
-            email_controller.password_reset_email(email, token_path)
-            messages.info(request, f"{msg} (dev: /reinitialiser-mot-de-passe/{token_path}/)")
+        email = (request.POST.get("email") or "").strip()
+        ok, msg, token_path = auth_controller.request_password_reset(email)
+        if not ok:
+            messages.error(request, msg)
+        elif token_path:
+            sent = email_controller.password_reset_email(email, token_path)
+            if sent:
+                messages.success(
+                    request,
+                    "Si un compte existe pour cet email, un lien de réinitialisation vient d'être envoyé. "
+                    "Vérifiez votre boîte de réception et vos spams.",
+                )
+            else:
+                messages.error(
+                    request,
+                    "L'envoi de l'email a échoué. Réessayez dans quelques minutes ou contactez le support.",
+                )
+                logger.error("[auth] Échec envoi reset password pour %s", email)
         else:
-            messages.info(request, msg)
-    return render(request, "auth/mot_de_passe_oublie.html", {"title": "Mot de passe oublié"})
+            messages.success(request, msg)
+        return redirect("auth:mot_de_passe_oublie")
+    return render(
+        request,
+        "auth/mot_de_passe_oublie.html",
+        {"title": "Mot de passe oublié"},
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def reinitialiser_mot_de_passe(request, uidb64: str, token: str):
+    if request.method == "POST":
+        ok, msg = auth_controller.confirm_password_reset(
+            uidb64,
+            token,
+            request.POST.get("password", ""),
+            request.POST.get("password_confirm", ""),
+        )
+        if ok:
+            messages.success(request, msg)
+            return redirect("auth:connexion")
+        messages.error(request, msg)
+    return render(
+        request,
+        "auth/reinitialiser_mot_de_passe.html",
+        {
+            "title": "Nouveau mot de passe",
+            "uidb64": uidb64,
+            "token": token,
+        },
+    )
 
 
 def deconnexion(request):

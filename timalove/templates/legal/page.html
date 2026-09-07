@@ -1,13 +1,76 @@
 ﻿{% extends "layouts/public.html" %}
 {% block content %}
-<section class="section"><div class="container" style="max-width:48rem;">
-  <h1>{{ title }}</h1>
-  {% for s in sections %}
-  <article style="margin:2rem 0;" id="{{ s.id }}">
-    <h2 style="font-size:1.35rem;">{{ s.title }}</h2>
-    {% for p in s.paragraphs %}<p>{{ p }}</p>{% endfor %}
-    {% if s.list %}<ul>{% for i in s.list %}<li>{{ i }}</li>{% endfor %}</ul>{% endif %}
-  </article>
-  {% endfor %}
-</div></section>
+<section class="section legal-page">
+  <div class="container legal-page__inner">
+    <h1>{{ title }}</h1>
+    {% if updated %}
+    <p class="legal-page__updated">Dernière mise à jour : {{ updated }}</p>
+    {% endif %}
+
+    {% if sections|length > 3 %}
+    <nav class="legal-toc" aria-label="Sommaire">
+      <strong>Sommaire</strong>
+      <ol>
+        {% for s in sections %}
+        <li><a href="#{{ s.id }}">{{ s.title }}</a></li>
+        {% endfor %}
+      </ol>
+    </nav>
+    {% endif %}
+
+    {% for s in sections %}
+    <article class="legal-section" id="{{ s.id }}">
+      <h2>{{ s.title }}</h2>
+
+      {% if s.note %}<p class="legal-note">{{ s.note }}</p>{% endif %}
+
+      {% for p in s.paragraphs %}<p>{{ p }}</p>{% endfor %}
+
+      {% if s.list %}
+      <ul>{% for i in s.list %}<li>{{ i }}</li>{% endfor %}</ul>
+      {% endif %}
+
+      {% if s.table %}
+      <div class="legal-table-wrap" role="region" aria-label="Tableau" tabindex="0">
+        <table>
+          <thead>
+            <tr>{% for h in s.table.headers %}<th scope="col">{{ h }}</th>{% endfor %}</tr>
+          </thead>
+          <tbody>
+            {% for row in s.table.rows %}
+            <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% for p in s.paragraphs_after %}<p>{{ p }}</p>{% endfor %}
+
+      {% for sub in s.subsections %}
+      <div class="legal-subsection">
+        <h3>{{ sub.title }}</h3>
+        {% for p in sub.paragraphs %}<p>{{ p }}</p>{% endfor %}
+        {% if sub.list %}
+        <ul>{% for i in sub.list %}<li>{{ i }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </article>
+    {% endfor %}
+
+    <div class="legal-cross">
+      <strong>Documents associés</strong>
+      <p>
+        <a href="{% url 'public:confidentialite' %}">Politique de confidentialité</a>
+        ·
+        <a href="{% url 'public:suppression_compte' %}">Suppression de compte</a>
+        ·
+        <a href="{% url 'public:cgv' %}">CGV</a>
+        ·
+        <a href="{% url 'public:mentions' %}">Mentions légales</a>
+      </p>
+    </div>
+  </div>
+</section>
 {% endblock %}

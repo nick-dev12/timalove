@@ -9,8 +9,8 @@ from datetime import date
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.tokens import default_token_generator
 from django.db import transaction
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from core.controllers import site_settings_controller
 from core.controllers.firebase_app import get_firebase_app
@@ -20,6 +20,10 @@ from core.models.choices import Gender, RegistrationStatus, Religion, UserRole
 User = get_user_model()
 
 logger = logging.getLogger(__name__)
+
+# Mot de passe provisoire des comptes importés depuis Supabase (hash non portable).
+# À la 1ʳᵉ connexion email/téléphone, le mot de passe saisi le remplace.
+PROVISIONAL_IMPORT_PASSWORD = "ChangeMe123!"
 
 
 def normalize_email(email: str | None) -> str | None:
@@ -95,17 +99,66 @@ def _finish_login(request, user) -> tuple[bool, str]:
     return True, "Connexion réussie."
 
 
+def needs_import_password_claim(user) -> bool:
+    """True si le compte est encore sur le mot de passe provisoire d'import."""
+    if user is None or not user.is_active:
+        return False
+    if user.is_staff or user.is_superuser:
+        return False
+    profile = getattr(user, "profile", None)
+    if profile is not None and getattr(profile, "is_admin", False):
+        return False
+    try:
+        return bool(user.check_password(PROVISIONAL_IMPORT_PASSWORD))
+    except Exception:
+        return False
+
+
+def _claim_import_password(request, user, password: str) -> tuple[bool, str]:
+    """Remplace le mot de passe provisoire par celui saisi, puis connecte."""
+    pwd = password or ""
+    if not pwd:
+        return False, "Indiquez un mot de passe."
+    if not needs_import_password_claim(user):
+        return False, "Identifiants incorrects."
+    user.set_password(pwd)
+    user.save(update_fields=["password"])
+    logger.info("[auth] Mot de passe d'import réclamé pour user_id=%s", user.pk)
+    # Re-authentifier pour attacher le bon backend
+    auth_user = authenticate(request, username=user.username, password=pwd)
+    if auth_user is None:
+        # Fallback si le backend attend l'email
+        email_n = normalize_email(getattr(user, "email", None)) or ""
+        if email_n:
+            auth_user = authenticate(request, username=email_n, password=pwd)
+    if auth_user is None:
+        auth_user = user
+        auth_user.backend = "django.contrib.auth.backends.ModelBackend"
+    return _finish_login(request, auth_user)
+
+
+def _resolve_user_by_email(email_n: str):
+    if not email_n:
+        return None
+    user = User.objects.filter(username__iexact=email_n).select_related("profile").first()
+    if user is not None:
+        return user
+    return User.objects.filter(email__iexact=email_n).select_related("profile").first()
+
+
 def _login_with_email(request, email: str, password: str) -> tuple[bool, str]:
     email_n = normalize_email(email) or ""
+    if not email_n:
+        return False, "Indiquez votre email."
     if is_banned(email=email_n):
         return False, "Ce compte a été banni."
     user = authenticate(request, username=email_n, password=password)
     if user is None:
-        try:
-            u = User.objects.get(email__iexact=email_n)
-            user = authenticate(request, username=u.username, password=password)
-        except User.DoesNotExist:
-            user = None
+        existing = _resolve_user_by_email(email_n)
+        if existing is not None:
+            user = authenticate(request, username=existing.username, password=password)
+            if user is None and needs_import_password_claim(existing):
+                return _claim_import_password(request, existing, password)
     if user is None:
         return False, "Identifiants incorrects."
     return _finish_login(request, user)
@@ -138,6 +191,8 @@ def _login_with_phone(request, phone: str, password: str) -> tuple[bool, str]:
     if profile is None:
         return False, "Identifiants incorrects."
     user = authenticate(request, username=profile.user.username, password=password)
+    if user is None and needs_import_password_claim(profile.user):
+        return _claim_import_password(request, profile.user, password)
     if user is None:
         return False, "Identifiants incorrects."
     return _finish_login(request, user)
@@ -419,13 +474,41 @@ def request_password_reset(email: str) -> tuple[bool, str, str | None]:
     email_n = normalize_email(email)
     if not email_n:
         return False, "Email requis.", None
-    try:
-        user = User.objects.get(email__iexact=email_n)
-    except User.DoesNotExist:
-        return True, "Si un compte existe, un email a été envoyé.", None
+    user = User.objects.filter(email__iexact=email_n).first()
+    if user is None:
+        user = User.objects.filter(username__iexact=email_n).first()
+    if user is None:
+        profile = Profile.objects.filter(email__iexact=email_n).select_related("user").first()
+        user = profile.user if profile is not None else None
+    if user is None or not user.is_active:
+        # Message neutre (anti-énumération)
+        return True, "Si un compte existe, un email de réinitialisation a été envoyé.", None
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    return True, "Si un compte existe, un email a été envoyé.", f"{uid}/{token}"
+    return True, "Si un compte existe, un email de réinitialisation a été envoyé.", f"{uid}/{token}"
+
+
+def confirm_password_reset(
+    uidb64: str,
+    token: str,
+    new_password: str,
+    confirm_password: str,
+) -> tuple[bool, str]:
+    if len(new_password or "") < 8:
+        return False, "Le mot de passe doit contenir au moins 8 caractères."
+    if new_password != confirm_password:
+        return False, "Les mots de passe ne correspondent pas."
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except Exception:
+        return False, "Lien de réinitialisation invalide ou expiré."
+    if not default_token_generator.check_token(user, token):
+        return False, "Lien de réinitialisation invalide ou expiré."
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+    logger.info("[auth] Mot de passe réinitialisé pour user_id=%s", user.pk)
+    return True, "Mot de passe mis à jour. Vous pouvez vous connecter."
 
 
 def verify_user_password(user, password: str) -> bool:
