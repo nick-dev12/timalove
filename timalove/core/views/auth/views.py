@@ -254,10 +254,14 @@ def reinitialiser_mot_de_passe(request, uidb64: str, token: str):
 
 
 def deconnexion(request):
+    profile = getattr(getattr(request, "user", None), "profile", None)
+    was_staff = bool(profile and getattr(profile, "is_admin", False))
     auth_controller.logout_user(request)
     for key in ("explorer_seed", "explorer_served", "explorer_queue", "admin_2fa_verified"):
         request.session.pop(key, None)
     nxt = _safe_next(request)
     if nxt:
         return redirect(nxt)
+    if was_staff:
+        return redirect("admin_panel:connexion")
     return redirect("public:home")
