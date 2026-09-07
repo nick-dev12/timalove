@@ -528,6 +528,19 @@ def suppression_compte(request):
 
 
 @require_GET
+def conditions_utilisation(request):
+    return render(
+        request,
+        "legal/page.html",
+        {
+            "title": "Conditions d'utilisation",
+            "sections": legal_data.CGU_SECTIONS,
+            "updated": legal_data.UPDATED,
+        },
+    )
+
+
+@require_GET
 def maintenance(request):
     return render(
         request,

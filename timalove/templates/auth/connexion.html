@@ -99,6 +99,12 @@
       </div>
 
       <button type="button" class="explorer-gate__ghost auth-gate__signup-btn" data-auth-open-signup>Créer mon compte</button>
+      <p class="auth-legal-consent">
+        En continuant, vous acceptez les
+        <a href="{% url 'public:conditions' %}" target="_blank" rel="noopener">Conditions d'utilisation</a>
+        et la
+        <a href="{% url 'public:confidentialite' %}" target="_blank" rel="noopener">Politique de confidentialité</a>.
+      </p>
     </div>
 
     <div data-auth-view="choice" hidden>
@@ -129,6 +135,12 @@
           Continuer avec Apple
         </button>
       </div>
+      <p class="auth-legal-consent">
+        En continuant, vous acceptez les
+        <a href="{% url 'public:conditions' %}" target="_blank" rel="noopener">Conditions d'utilisation</a>
+        et la
+        <a href="{% url 'public:confidentialite' %}" target="_blank" rel="noopener">Politique de confidentialité</a>.
+      </p>
       <p class="auth-gate__links auth-gate__links--center">
         <button type="button" class="auth-gate__text-btn" data-auth-back-login>Déjà un compte ? Se connecter</button>
       </p>
@@ -399,6 +411,12 @@
         <button type="button" class="signup-actions__btn signup-actions__skip" data-signup-skip>Plus tard</button>
         <button type="button" class="signup-actions__btn signup-actions__next" data-signup-next>Continuer</button>
       </div>
+      <p class="auth-legal-consent auth-legal-consent--wizard">
+        En continuant, vous acceptez les
+        <a href="{% url 'public:conditions' %}" target="_blank" rel="noopener">Conditions d'utilisation</a>
+        et la
+        <a href="{% url 'public:confidentialite' %}" target="_blank" rel="noopener">Politique de confidentialité</a>.
+      </p>
     </div>
 
     <p class="explorer-gate__note">Gratuit · Vérifié · Orienté mariage</p>
@@ -442,6 +460,12 @@
           </p>
         </div>
         <button class="explorer-gate__primary auth-gate__submit" type="submit" data-auth-submit>Se connecter</button>
+        <p class="auth-legal-consent auth-legal-consent--modal">
+          En continuant, vous acceptez les
+          <a href="{% url 'public:conditions' %}" target="_blank" rel="noopener">Conditions d'utilisation</a>
+          et la
+          <a href="{% url 'public:confidentialite' %}" target="_blank" rel="noopener">Politique de confidentialité</a>.
+        </p>
       </form>
       <p class="auth-gate__links auth-gate__links--center auth-gate__links--modal">
         <a href="{% url 'auth:mot_de_passe_oublie' %}">Mot de passe oublié ?</a>

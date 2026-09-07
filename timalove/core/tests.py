@@ -862,6 +862,7 @@ class PagesSmokeTests(TestCase):
             "/qui-suis-je/",
             "/coaching/",
             "/cgv/",
+            "/conditions-d-utilisation/",
             "/mentions-legales/",
             "/politique-de-confidentialite/",
             "/suppression-de-compte/",
@@ -870,6 +871,14 @@ class PagesSmokeTests(TestCase):
         ]:
             resp = self.client.get(url)
             self.assertIn(resp.status_code, (200, 302), url)
+
+    def test_connexion_shows_cgu_consent(self):
+        resp = self.client.get("/connexion/")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode("utf-8")
+        self.assertIn("Conditions d'utilisation", body)
+        self.assertIn("/conditions-d-utilisation/", body)
+        self.assertIn("Politique de confidentialité", body)
 
     def test_api_health(self):
         resp = self.client.get("/api/health/")

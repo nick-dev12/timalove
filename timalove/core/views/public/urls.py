@@ -23,6 +23,7 @@ urlpatterns = [
     path("temoignages/", views.temoignages, name="temoignages"),
     path("contact/", views.contact, name="contact"),
     path("cgv/", views.cgv, name="cgv"),
+    path("conditions-d-utilisation/", views.conditions_utilisation, name="conditions"),
     path("mentions-legales/", views.mentions, name="mentions"),
     path("politique-de-confidentialite/", views.confidentialite, name="confidentialite"),
     path("suppression-de-compte/", views.suppression_compte, name="suppression_compte"),

@@ -500,9 +500,218 @@ ACCOUNT_DELETION_SECTIONS = [
         "title": "6 — Informations pour Google Play et App Store",
         "paragraphs": [
             f"URL de la politique de confidentialité : {SITE_URL}/politique-de-confidentialite/",
+            f"URL des conditions d'utilisation : {SITE_URL}/conditions-d-utilisation/",
             f"URL de suppression de compte : {SITE_URL}/suppression-de-compte/",
             f"URL des mentions légales : {SITE_URL}/mentions-legales/",
             "Le compte peut être supprimé depuis l'app (chemin Paramètres / Profil) ou par e-mail comme indiqué ci-dessus.",
+        ],
+    },
+]
+
+CGU_SECTIONS = [
+    {
+        "id": "intro",
+        "title": "1 — Objet, acceptation et champ d'application",
+        "paragraphs": [
+            f"Les présentes Conditions générales d'utilisation (« CGU ») régissent l'accès et l'usage de la plateforme {BRAND}, éditée par {EDITOR}, accessible via le site {SITE_URL} et les applications mobiles iOS et Android.",
+            f"{BRAND} est un service de mise en relation sérieuse orientée vers le mariage. En créant un compte, en vous connectant (email, téléphone, Google ou Apple), en naviguant sur le Service ou en utilisant une quelconque fonctionnalité, vous reconnaissez avoir lu, compris et accepté sans réserve les présentes CGU, ainsi que la Politique de confidentialité et, le cas échéant, les Conditions générales de vente (CGV) pour les prestations payantes.",
+            "Si vous n'acceptez pas ces conditions, vous ne devez pas utiliser le Service.",
+        ],
+        "note": f"Dernière mise à jour : {UPDATED}",
+        "subsections": [
+            {
+                "title": "1.1 Définitions",
+                "list": [
+                    "Service / Plateforme : site web, API, application mobile et espaces membres sous la marque TimaLove",
+                    "Utilisateur / Membre : toute personne physique utilisant le Service",
+                    "Profil : fiche personnelle publiée ou en cours de validation",
+                    "Contenu utilisateur : textes, photos, messages, vocaux, stories, signalements",
+                    "Abonnement / Premium : offres payantes donnant accès à des fonctionnalités élargies",
+                ],
+            },
+            {
+                "title": "1.2 Capacité",
+                "paragraphs": [
+                    "Le Service est réservé aux personnes majeures (18 ans révolus). En vous inscrivant, vous déclarez avoir au moins 18 ans et la capacité juridique de contracter.",
+                ],
+            },
+        ],
+    },
+    {
+        "id": "editeur",
+        "title": "2 — Éditeur et contact",
+        "paragraphs": [
+            f"Éditeur : {EDITOR} (marque {BRAND}), Dakar, République du Sénégal.",
+            f"Contact : {CONTACT_EMAIL}",
+            f"Site : {SITE_URL}",
+        ],
+    },
+    {
+        "id": "compte",
+        "title": "3 — Compte, identifiants et sécurité",
+        "subsections": [
+            {
+                "title": "3.1 Exactitude des informations",
+                "paragraphs": [
+                    "Vous vous engagez à fournir des informations exactes, à jour et sincères (identité, âge, photos réellement représentatives, coordonnées). Les fausses déclarations, usurpation d'identité ou profils fictifs sont interdits et peuvent entraîner le refus, la suspension ou la suppression du compte.",
+                ],
+            },
+            {
+                "title": "3.2 Validation manuelle",
+                "paragraphs": [
+                    "L'inscription peut être soumise à une validation manuelle par l'équipe TimaLove. L'accès aux fonctionnalités de mise en relation peut être différé jusqu'à approbation. TimaLove se réserve le droit de refuser un profil non conforme sans devoir motiver exhaustivement chaque refus, dans le respect du droit applicable.",
+                ],
+            },
+            {
+                "title": "3.3 Identifiants et sécurité",
+                "paragraphs": [
+                    "Vous êtes responsable de la confidentialité de votre mot de passe et de l'usage de votre compte. Signalez immédiatement toute utilisation non autorisée à l'adresse de contact. Pour les comptes Google ou Apple, l'authentification est gérée par ces prestataires selon leurs conditions.",
+                ],
+            },
+            {
+                "title": "3.4 Un compte par personne",
+                "paragraphs": [
+                    "Sauf autorisation écrite, un seul compte actif par personne est autorisé. La création de comptes multiples pour contourner une suspension, un banissement ou des limites freemium est interdite.",
+                ],
+            },
+        ],
+    },
+    {
+        "id": "service",
+        "title": "4 — Description du Service",
+        "paragraphs": [
+            "TimaLove propose notamment :",
+        ],
+        "list": [
+            "Création et gestion de profil membre",
+            "Découverte de profils, likes, swipes, matchs",
+            "Messagerie (texte, images, messages vocaux)",
+            "Stories et interactions associées",
+            "Notifications (email / push selon vos autorisations)",
+            "Abonnements et fonctionnalités premium",
+            "Coaching relationnel (prestation distincte, soumise aux CGV)",
+        ],
+        "paragraphs_after": [
+            "TimaLove est un outil de mise en relation : nous ne garantissons pas la conclusion d'un mariage, ni la sincérité, la disponibilité ou le comportement hors plateforme des autres membres. Les rencontres en personne restent sous votre seule responsabilité.",
+        ],
+    },
+    {
+        "id": "mobile",
+        "title": "5 — Application mobile et autorisations",
+        "paragraphs": [
+            "L'application peut demander, avec votre consentement système et après explication in-app le cas échéant :",
+        ],
+        "list": [
+            "Caméra — photo de profil, selfie de vérification, image en discussion",
+            "Microphone — message vocal uniquement",
+            "Galerie — import d'une photo existante",
+            "Localisation pendant l'utilisation — explorer / ville (pas d'arrière-plan)",
+            "Notifications — likes, matchs, messages",
+        ],
+        "paragraphs_after": [
+            "Vous pouvez refuser ou révoquer ces autorisations dans les réglages de l'appareil ; certaines fonctions seront alors limitées. Le détail des traitements figure dans la Politique de confidentialité.",
+        ],
+    },
+    {
+        "id": "regles",
+        "title": "6 — Règles d'utilisation acceptables",
+        "paragraphs": [
+            "Il est notamment interdit de :",
+        ],
+        "list": [
+            "Harceler, menacer, injurier, discriminer ou intimider un autre membre",
+            "Publier des contenus illicites, pornographiques, violents, haineux ou contraires aux bonnes mœurs",
+            "Usurper l'identité d'autrui ou utiliser des photos qui ne vous représentent pas",
+            "Solliciter de l'argent, pratiquer l'escroquerie, le spam ou la publicité non autorisée",
+            "Contourner les mesures de sécurité, scrapers, bots, automatisation abusive",
+            "Revendre l'accès au Service ou exploiter commercialement les données d'autres membres",
+            "Utiliser le Service si vous êtes mineur ou si votre compte a été banni",
+        ],
+    },
+    {
+        "id": "moderation",
+        "title": "7 — Modération, signalements et sanctions",
+        "paragraphs": [
+            "TimaLove peut modérer, masquer, restreindre ou supprimer tout contenu, et suspendre ou supprimer un compte en cas de manquement réel ou suspecté aux CGU, de plainte fondée, de risque pour la sécurité de la communauté ou d'obligation légale.",
+            "Les membres peuvent signaler un profil ou un contenu. Nous traitons les signalements dans des délais raisonnables, sans garantir une réponse individuelle à chaque signalement.",
+            "En cas de banissement pour motif grave, certaines données d'identité normalisées peuvent être conservées pour empêcher une réinscription abusive, conformément à la Politique de confidentialité.",
+        ],
+    },
+    {
+        "id": "contenus",
+        "title": "8 — Contenus utilisateur et licence",
+        "paragraphs": [
+            "Vous conservez vos droits sur vos contenus. En les publiant sur TimaLove, vous concédez à l'éditeur une licence mondiale, non exclusive, gratuite, pour héberger, afficher, reproduire et diffuser ces contenus dans le cadre du Service (y compris mise en cache, redimensionnement d'images, notifications).",
+            "Vous garantissez disposer des droits nécessaires sur les photos et textes publiés, et que leur diffusion ne porte pas atteinte aux droits de tiers.",
+        ],
+    },
+    {
+        "id": "premium",
+        "title": "9 — Freemium, abonnements et paiements",
+        "paragraphs": [
+            "Certaines fonctionnalités sont gratuites avec des limites ; d'autres nécessitent un abonnement ou un achat. Les prix, durées et avantages sont affichés avant paiement.",
+            "Les paiements sont traités par des prestataires tiers (notamment NabooPay). Les conditions de paiement, renouvellement et remboursement sont précisées dans les CGV et/ou lors du checkout.",
+            "Sauf disposition légale impérative ou engagement commercial écrit, les périodes d'abonnement déjà entamées ne donnent pas lieu à remboursement automatique.",
+        ],
+    },
+    {
+        "id": "disponibilite",
+        "title": "10 — Disponibilité et évolution du Service",
+        "paragraphs": [
+            "Nous nous efforçons d'assurer une disponibilité raisonnable du Service, sans garantie d'accès ininterrompu. Des maintenances, pannes ou mises à jour peuvent survenir.",
+            "TimaLove peut faire évoluer, ajouter ou retirer des fonctionnalités. Les CGU mises à jour seront publiées sur le site ; l'usage continu après publication vaut acceptation, sauf disposition contraire.",
+        ],
+    },
+    {
+        "id": "pi",
+        "title": "11 — Propriété intellectuelle",
+        "paragraphs": [
+            f"Les éléments de la Plateforme (marque {BRAND}, logos, charte, code, textes éditoriaux) sont protégés et restent la propriété de {EDITOR}, sauf contenus fournis par les utilisateurs. Toute reproduction non autorisée est interdite.",
+        ],
+    },
+    {
+        "id": "tiers",
+        "title": "12 — Services tiers",
+        "paragraphs": [
+            "Le Service peut s'appuyer sur des tiers (hébergement, Firebase, Google, Apple, NabooPay, emails, CDN). Leur usage peut être soumis à leurs propres conditions. TimaLove n'est pas responsable des défaillances imputables exclusivement à ces tiers, dans les limites du droit applicable.",
+        ],
+    },
+    {
+        "id": "donnees",
+        "title": "13 — Données personnelles",
+        "paragraphs": [
+            f"Le traitement des données personnelles est décrit dans la Politique de confidentialité : {SITE_URL}/politique-de-confidentialite/",
+            f"Suppression de compte : {SITE_URL}/suppression-de-compte/",
+        ],
+    },
+    {
+        "id": "responsabilite",
+        "title": "14 — Limitation de responsabilité",
+        "paragraphs": [
+            "Dans les limites autorisées par la loi, TimaLove ne saurait être tenu responsable : des interactions entre membres hors plateforme ; des dommages indirects ; des pertes liées à une interruption du Service ; des contenus publiés par des tiers.",
+            "Rien dans les présentes n'exclut une responsabilité qui ne peut être limitée en vertu du droit sénégalais applicable (notamment en cas de faute lourde ou dolosive).",
+        ],
+    },
+    {
+        "id": "resiliation",
+        "title": "15 — Durée, résiliation et suppression",
+        "paragraphs": [
+            "Les CGU s'appliquent tant que vous utilisez le Service. Vous pouvez supprimer votre compte à tout moment (paramètres ou procédure dédiée).",
+            "TimaLove peut résilier ou suspendre l'accès en cas de manquement, d'inactivité prolongée, de risque sécurité ou de cessation du Service, avec préavis raisonnable lorsque cela est possible.",
+        ],
+    },
+    {
+        "id": "droit",
+        "title": "16 — Droit applicable et litiges",
+        "paragraphs": [
+            "Les présentes CGU sont régies par le droit en vigueur en République du Sénégal. En cas de litige, une solution amiable sera recherchée ; à défaut, les tribunaux de Dakar seront compétents, sous réserve des règles d'ordre public applicables.",
+        ],
+    },
+    {
+        "id": "contact-cgu",
+        "title": "17 — Contact",
+        "paragraphs": [
+            f"Pour toute question relative aux CGU : {CONTACT_EMAIL} (objet recommandé : « CGU »).",
         ],
     },
 ]
