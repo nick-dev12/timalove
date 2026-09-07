@@ -246,6 +246,36 @@ nslookup mytimalove.com
 # doit afficher l’IP du VPS (pas vercel-dns)
 ```
 
+### SMTP / e-mails transactionnels (Namecheap vs VPS)
+
+Le site `mytimalove.com` pointe vers le **nouveau VPS** (`149.56.140.166`), mais la messagerie peut rester sur l’**hébergement mutualisé Namecheap**.
+
+| Hôte | IP actuelle (indicatif) | Rôle |
+|---|---|---|
+| `mytimalove.com` / `www` | `149.56.140.166` | Site Django |
+| `mail.mytimalove.com` | `109.234.167.76` | Serveur mail Namecheap |
+| `timalove.goo-bridge.com` | `173.249.41.61` | Autre serveur (ne pas utiliser pour SMTP si la boîte est chez Namecheap) |
+
+**À faire pour que le reset de mot de passe fonctionne :**
+
+1. Dans le **cPanel Namecheap** du compte qui héberge vraiment les mails, créez une boîte du type `service@mytimalove.com` (ou `noreply@mytimalove.com`).
+2. Dans « Email Accounts → Connect Devices », notez le **Outgoing Server** réel (souvent `mail.mytimalove.com` ou un hostname `*.web-hosting.com`), port **465** SSL.
+3. Dans `timalove/.env` (local + VPS) :
+   ```env
+   EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+   EMAIL_HOST=mail.mytimalove.com
+   EMAIL_PORT=465
+   EMAIL_HOST_USER=service@mytimalove.com
+   EMAIL_HOST_PASSWORD=VOTRE_MOT_DE_PASSE_CPANEL
+   EMAIL_USE_SSL=True
+   EMAIL_USE_TLS=False
+   DEFAULT_FROM_EMAIL=TimaLove <service@mytimalove.com>
+   ```
+4. Vérifiez que les DNS mail (`A mail`, MX, SPF) restent sur Namecheap — **ne pointez pas** `mail` vers le VPS Django sauf si vous y migrez Postfix/Exim.
+5. Redémarrez Daphne puis testez : page `/mot-de-passe-oublie/` ou un `send_mail` Django.
+
+Évitez `EMAIL_HOST=timalove.goo-bridge.com` tant que ce nom résout vers un **autre** VPS que celui où la boîte a été créée (erreur typique `535 Incorrect authentication data`).
+
 ---
 
 ## 2. Installation sur le VPS
