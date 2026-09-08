@@ -228,8 +228,26 @@ def image_messages_enabled() -> bool:
     return bool(get_app_config()["image_messages_enabled"])
 
 
+def _quota_rows_enabled() -> bool:
+    """Quotas actifs sur au moins une ligne (messages, likes, swipes, etc.)."""
+    from core.controllers import site_settings_controller
+
+    keys = (
+        "quota_messages_enabled",
+        "quota_likes_enabled",
+        "quota_swipes_enabled",
+        "quota_likes_visible_enabled",
+        "quota_history_visible_enabled",
+    )
+    return any(_as_bool(site_settings_controller.get(key), False) for key in keys)
+
+
 def freemium_enabled() -> bool:
-    return bool(get_app_config()["freemium_limits_enabled"])
+    cfg = get_app_config()
+    if cfg["freemium_limits_enabled"]:
+        return True
+    # Si l’admin configure des lignes sans cocher l’interrupteur général, appliquer quand même.
+    return _quota_rows_enabled()
 
 
 def parse_version(value: str) -> tuple[int, ...]:

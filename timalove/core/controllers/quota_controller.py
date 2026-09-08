@@ -121,8 +121,17 @@ def save_limits_from_post(post) -> dict[str, Any]:
     site_settings_controller.set_value(
         "quota_history_visible_enabled", post.get("quota_history_visible_enabled") == "on"
     )
+    row_keys = (
+        "quota_messages_enabled",
+        "quota_likes_enabled",
+        "quota_swipes_enabled",
+        "quota_likes_visible_enabled",
+        "quota_history_visible_enabled",
+    )
+    any_row_enabled = any(post.get(key) == "on" for key in row_keys)
+    master_enabled = post.get("freemium_limits_enabled") == "on"
     cfg = app_config_controller.get_app_config()
-    cfg["freemium_limits_enabled"] = post.get("freemium_limits_enabled") == "on"
+    cfg["freemium_limits_enabled"] = master_enabled or any_row_enabled
     app_config_controller.save_app_config(cfg)
     return quota_settings()
 
@@ -283,6 +292,18 @@ def check_swipe(swiper: Profile, swiped_id, action: str) -> tuple[bool, str, str
             False,
             f"Limite de {cfg['likes_limit']} likes {cfg['period_window']} atteinte. Passez au plan supérieur pour continuer.",
             "like_limit",
+        )
+
+    counts_as_new_swipe = not existing or not counted_in_period
+    if (
+        cfg["swipes_enabled"]
+        and counts_as_new_swipe
+        and period_swipe_count(swiper) >= cfg["swipes_limit"]
+    ):
+        return (
+            False,
+            f"Limite de {cfg['swipes_limit']} profils parcourus {cfg['period_window']} atteinte. Passez au plan supérieur pour continuer.",
+            "swipe_limit",
         )
     return True, "", ""
 

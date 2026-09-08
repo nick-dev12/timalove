@@ -945,6 +945,38 @@ class FreemiumQuotaTests(TestCase):
         self.assertFalse(like2["ok"])
         self.assertEqual(like2.get("code"), "like_limit")
 
+    def test_daily_swipe_limit_blocks_new_profiles(self):
+        site_settings_controller.set_value("free_swipes_per_day", 2)
+        site_settings_controller.set_value("free_likes_per_day", 20)
+        p4 = make_profile("swipe4@test.com", Gender.FEMALE, "Mariama")
+        p4.photo_url = "https://example.com/photo.webp"
+        p4.onboarding_completed = True
+        p4.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+
+        self.assertTrue(swipe_controller.record_swipe(self.free, self.p2.id, "pass")["ok"])
+        self.assertTrue(swipe_controller.record_swipe(self.free, self.p3.id, "pass")["ok"])
+        blocked = swipe_controller.record_swipe(self.free, p4.id, "pass")
+        self.assertFalse(blocked["ok"])
+        self.assertEqual(blocked.get("code"), "swipe_limit")
+
+    def test_freemium_active_when_rows_enabled_without_master_switch(self):
+        from core.controllers import app_config_controller, quota_controller
+
+        cfg = app_config_controller.get_app_config()
+        cfg["freemium_limits_enabled"] = False
+        app_config_controller.save_app_config(cfg)
+        site_settings_controller.set_value("quota_messages_enabled", True)
+        site_settings_controller.set_value("free_messages_limit", 1)
+        self._match(self.free, self.p2)
+
+        self.assertTrue(app_config_controller.freemium_enabled())
+        self.assertTrue(quota_controller.is_freemium(self.free))
+        ok1, _, _ = message_controller.send_text(self.free, self.p2.id, "Un")
+        ok2, msg, _ = message_controller.send_text(self.free, self.p2.id, "Deux")
+        self.assertTrue(ok1)
+        self.assertFalse(ok2)
+        self.assertIn("limite", msg.lower())
+
     def test_historique_partial_for_freemium_male(self):
         for i in range(6):
             other = make_profile(f"hist{i}@test.com", Gender.FEMALE, f"H{i}")
