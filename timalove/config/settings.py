@@ -265,6 +265,11 @@ FREE_HISTORY_VISIBLE_DEFAULT = 5
 # False = tests complets (messages, swipes, likes, historique, photos sans quota).
 # Remettre True avant l’ouverture publique.
 FREEMIUM_LIMITS_ENABLED = env.bool("FREEMIUM_LIMITS_ENABLED", default=True)
+# Comptes de test store (Google / Apple) : aucun quota freemium appliqué.
+QUOTA_EXEMPT_EMAILS = env.list(
+    "QUOTA_EXEMPT_EMAILS",
+    default=["gooteste@gmail.com"],
+)
 
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND",

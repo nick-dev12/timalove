@@ -22,6 +22,31 @@ MESSAGE_LIMIT_CODE = "message_limit"
 HISTORY_LIMIT_MSG = "Passez au plan supérieur pour voir plus de profils dans votre historique."
 
 
+def _profile_email(profile: Profile | None) -> str:
+    if profile is None:
+        return ""
+    email = (profile.email or "").strip().lower()
+    if email:
+        return email
+    user = getattr(profile, "user", None)
+    if user and getattr(user, "email", None):
+        return str(user.email).strip().lower()
+    return ""
+
+
+def quota_exempt_emails() -> set[str]:
+    raw = getattr(settings, "QUOTA_EXEMPT_EMAILS", None) or []
+    return {str(item).strip().lower() for item in raw if str(item).strip()}
+
+
+def is_quota_exempt(profile: Profile | None) -> bool:
+    """Comptes de test (ex. review Google/Apple) : quotas freemium désactivés."""
+    if profile is None:
+        return False
+    email = _profile_email(profile)
+    return bool(email) and email in quota_exempt_emails()
+
+
 def _as_bool(value: Any, default: bool = True) -> bool:
     if isinstance(value, bool):
         return value
@@ -144,6 +169,8 @@ def is_freemium(profile: Profile | None) -> bool:
     if not getattr(settings, "FREEMIUM_LIMITS_ENABLED", True):
         return False
     if profile is None:
+        return False
+    if is_quota_exempt(profile):
         return False
     if getattr(profile, "is_admin", False):
         return False

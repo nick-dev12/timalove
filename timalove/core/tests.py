@@ -997,6 +997,28 @@ class FreemiumQuotaTests(TestCase):
         femme = make_profile("femme@test.com", Gender.FEMALE, "Awa")
         self.assertFalse(quota_controller.is_freemium(femme))
 
+    @override_settings(QUOTA_EXEMPT_EMAILS=["gooteste@gmail.com"])
+    def test_store_reviewer_exempt_from_all_quotas(self):
+        from core.controllers import quota_controller
+
+        reviewer = make_profile("gooteste@gmail.com", Gender.MALE, "StoreTest")
+        reviewer.photo_url = "https://example.com/photo.webp"
+        reviewer.onboarding_completed = True
+        reviewer.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+        self.assertTrue(quota_controller.is_quota_exempt(reviewer))
+        self.assertFalse(quota_controller.is_freemium(reviewer))
+        self.assertFalse(quota_controller.is_male_freemium(reviewer))
+        self.assertIsNone(quota_controller.messages_remaining(reviewer))
+        self.assertIsNone(quota_controller.history_limit_for(reviewer))
+        self.assertIsNone(quota_controller.likes_visible_cap(reviewer))
+        self._match(reviewer, self.p2)
+        for i in range(8):
+            ok, msg, _ = message_controller.send_text(reviewer, self.p2.id, f"Test {i}")
+            self.assertTrue(ok, msg)
+        ok_swipe, _, code = quota_controller.check_swipe(reviewer, self.p3.id, "like")
+        self.assertTrue(ok_swipe)
+        self.assertEqual(code, "")
+
     def test_likes_page_shows_two_profiles(self):
         p4 = make_profile("quota4@test.com", Gender.FEMALE, "Sokhna")
         p4.photo_url = "https://example.com/photo.webp"
