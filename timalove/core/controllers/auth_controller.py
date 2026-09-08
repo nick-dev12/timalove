@@ -39,6 +39,28 @@ def normalize_phone(phone: str | None) -> str | None:
     return digits or None
 
 
+# Anciennes URLs (site V1 / app legacy) → parcours membre actuel
+LEGACY_POST_LOGIN_PATHS = {
+    "/decouvrir": "/explorer/",
+    "/decouvrir/": "/explorer/",
+}
+
+
+def normalize_post_login_path(path: str | None) -> str | None:
+    """Valide et normalise le paramètre next après connexion."""
+    if not path:
+        return None
+    if not path.startswith("/") or path.startswith("//"):
+        return None
+    base, _, query = path.partition("?")
+    mapped = LEGACY_POST_LOGIN_PATHS.get(base)
+    if mapped is None and base.rstrip("/") == "/decouvrir":
+        mapped = "/explorer/"
+    if mapped:
+        return f"{mapped}?{query}" if query else mapped
+    return path
+
+
 SYNTHETIC_EMAIL_DOMAINS = ("oauth.timalove.local", "phone.timalove.local")
 
 

@@ -7,7 +7,6 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
 
 from core.controllers import (
-    discover_controller,
     likes_controller,
     match_controller,
     message_controller,
@@ -25,44 +24,13 @@ def _profile(request):
 
 
 def decouvrir(request):
-    profile = _profile(request)
-    cards = discover_controller.feed_for(profile)
-    return render(
-        request,
-        "app/decouvrir.html",
-        {
-            "title": "À découvrir",
-            "cards": cards,
-            "blur": discover_controller.should_blur_photos(profile),
-        },
-    )
+    """Ancienne URL — redirige vers l'explorer (nouveau parcours)."""
+    return redirect("public:explorer")
 
 
 @require_POST
 def swipe(request):
-    profile = _profile(request)
-    result = discover_controller  # noqa
-    from core.controllers import swipe_controller
-
-    out = swipe_controller.record_swipe(
-        profile,
-        request.POST.get("swiped_id"),
-        request.POST.get("action", "pass"),
-    )
-    if request.headers.get("HX-Request"):
-        cards = discover_controller.feed_for(profile, limit=1)
-        return render(
-            request,
-            "partials/discover_card.html",
-            {
-                "card": cards[0] if cards else None,
-                "blur": discover_controller.should_blur_photos(profile),
-                "matched": out.get("matched"),
-            },
-        )
-    if out.get("matched"):
-        messages.success(request, "C'est un match !")
-    return redirect("app:decouvrir")
+    return redirect("public:explorer")
 
 
 @ensure_csrf_cookie

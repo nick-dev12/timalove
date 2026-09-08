@@ -12,7 +12,7 @@
     </a>
     <a href="{% url 'app:discussions' %}" class="{% if request.resolver_match.url_name == 'discussions' or request.resolver_match.url_name == 'discussion_detail' %}active{% endif %}">Discussions {% if nav_badges.unread_messages %}<span class="nav-badge">{{ nav_badges.unread_messages }}</span>{% endif %}</a>
     <a href="{% url 'app:likes' %}" class="{% if request.resolver_match.url_name == 'likes' %}active{% endif %}">Likes {% if nav_badges.likes_count %}<span class="nav-badge">{{ nav_badges.likes_count }}</span>{% endif %}</a>
-    <a href="{% url 'app:decouvrir' %}" class="{% if request.resolver_match.url_name == 'decouvrir' %}active{% endif %}">À découvrir</a>
+    <a href="{% url 'public:explorer' %}" class="{% if request.resolver_match.url_name == 'explorer' %}active{% endif %}">À découvrir</a>
     <a href="{% url 'app:rencontres' %}" class="{% if request.resolver_match.url_name == 'rencontres' %}active{% endif %}">Rencontres</a>
     <a href="{% url 'app:profil' %}" class="{% if request.resolver_match.url_name == 'profil' and request.GET.tab != 'settings' %}active{% endif %}">Profil</a>
     <a href="{% url 'app:parametres' %}" class="{% if request.GET.tab == 'settings' %}active{% endif %}">Paramètres</a>
@@ -35,7 +35,7 @@
 <nav class="bottom-nav">
   <a href="{% url 'app:discussions' %}" class="{% if 'discussion' in request.resolver_match.url_name %}active{% endif %}"><span>💬</span>Messages</a>
   <a href="{% url 'app:likes' %}" class="{% if request.resolver_match.url_name == 'likes' %}active{% endif %}"><span>♡</span>Likes</a>
-  <a href="{% url 'app:decouvrir' %}" class="primary-slot {% if request.resolver_match.url_name == 'decouvrir' %}active{% endif %}"><span class="icon-wrap">♥</span>Découvrir</a>
+  <a href="{% url 'public:explorer' %}" class="primary-slot {% if request.resolver_match.url_name == 'explorer' %}active{% endif %}"><span class="icon-wrap">♥</span>Découvrir</a>
   <a href="{% url 'app:rencontres' %}" class="{% if request.resolver_match.url_name == 'rencontres' %}active{% endif %}"><span>✨</span>Matchs</a>
   <a href="{% url 'app:profil' %}" class="{% if request.resolver_match.url_name == 'profil' %}active{% endif %}"><span>👤</span>Profil</a>
 </nav>

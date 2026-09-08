@@ -33,9 +33,7 @@ def _firebase_web_config() -> dict:
 
 def _safe_next(request) -> str | None:
     nxt = request.GET.get("next") or request.POST.get("next") or ""
-    if nxt.startswith("/") and not nxt.startswith("//"):
-        return nxt
-    return None
+    return auth_controller.normalize_post_login_path(nxt)
 
 
 def _wants_json(request) -> bool:

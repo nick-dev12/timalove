@@ -632,9 +632,8 @@ def auth_apple(request):
 
 
 def _signup_next(next_url: str) -> str:
-    if next_url.startswith("/") and not next_url.startswith("//"):
-        return next_url
-    return "/explorer/"
+    normalized = auth_controller.normalize_post_login_path(next_url)
+    return normalized or "/explorer/"
 
 
 def _auth_oauth(request, provider: str):

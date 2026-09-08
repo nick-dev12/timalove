@@ -77,13 +77,23 @@ class AuthGuardsMiddleware:
 
         if any(path.startswith(p) for p in MEMBER_PREFIXES):
             if not request.user.is_authenticated:
-                return redirect(f"{reverse('auth:connexion')}?next={path}")
+                from core.controllers import auth_controller
+
+                next_path = auth_controller.normalize_post_login_path(path) or path
+                if path.startswith("/decouvrir"):
+                    next_path = "/explorer/"
+                return redirect(f"{reverse('auth:connexion')}?next={next_path}")
             profile = getattr(request.user, "profile", None)
             if profile and profile.banned_at:
                 logout(request)
                 return redirect("auth:connexion")
             if profile and not profile.is_admin and not profile.is_profile_complete:
-                return redirect(f"/connexion/?signup=1&next={path}")
+                from core.controllers import auth_controller
+
+                next_path = auth_controller.normalize_post_login_path(path) or path
+                if path.startswith("/decouvrir"):
+                    next_path = "/explorer/"
+                return redirect(f"/connexion/?signup=1&next={next_path}")
 
         if path.startswith(COMPLETER_PATH):
             if not request.user.is_authenticated:

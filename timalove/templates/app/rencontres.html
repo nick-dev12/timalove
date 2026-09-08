@@ -7,7 +7,7 @@
     <div><strong>{{ item.partner.first_name }}</strong><p style="margin:0;font-size:.85rem;color:var(--text-muted);">{{ item.partner.city }}</p></div>
   </a>
 {% empty %}
-  <div class="empty-state"><h2>Pas encore de rencontres</h2><p>Likez des profils pour matcher.</p><a class="btn btn-primary" href="{% url 'app:decouvrir' %}">Découvrir</a></div>
+  <div class="empty-state"><h2>Pas encore de rencontres</h2><p>Likez des profils pour matcher.</p><a class="btn btn-primary" href="{% url 'public:explorer' %}">Découvrir</a></div>
 {% endfor %}
 </div>
 {% endblock %}

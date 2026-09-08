@@ -1118,6 +1118,41 @@ class SearchFeatureFlagsTests(TestCase):
         self.assertContains(r, "Rechercher un profil")
 
 
+class LoginRedirectTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        self.member = make_profile("login.redirect@test.com", Gender.MALE, "Login")
+        self.member.onboarding_completed = True
+        self.member.save(update_fields=["onboarding_completed"])
+
+    def test_decouvrir_redirects_to_explorer(self):
+        self.client.force_login(self.member.user)
+        resp = self.client.get("/decouvrir/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/explorer/", resp.url)
+
+    def test_login_with_legacy_next_decouvrir_goes_to_explorer(self):
+        resp = self.client.post(
+            "/connexion/",
+            {
+                "email": "login.redirect@test.com",
+                "password": "pass12345",
+                "login_mode": "email",
+                "next": "/decouvrir/",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/explorer/", resp.url)
+        self.assertNotIn("/decouvrir/", resp.url)
+
+    def test_guest_decouvrir_login_next_is_explorer(self):
+        resp = self.client.get("/decouvrir/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/connexion/", resp.url)
+        self.assertIn("/explorer/", resp.url)
+        self.assertNotIn("/decouvrir/", resp.url)
+
+
 def make_staff(email: str, role: str, name: str = "Staff"):
     user = User.objects.create_user(
         username=email,
