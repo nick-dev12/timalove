@@ -686,10 +686,29 @@ CGU_SECTIONS = [
     },
     {
         "id": "responsabilite",
-        "title": "14 — Limitation de responsabilité",
+        "title": "14 — Limitation de responsabilité de l'Éditeur",
         "paragraphs": [
-            "Dans les limites autorisées par la loi, TimaLove ne saurait être tenu responsable : des interactions entre membres hors plateforme ; des dommages indirects ; des pertes liées à une interruption du Service ; des contenus publiés par des tiers.",
-            "Rien dans les présentes n'exclut une responsabilité qui ne peut être limitée en vertu du droit sénégalais applicable (notamment en cas de faute lourde ou dolosive).",
+            "L'Application a pour objet de permettre aux utilisateurs d'entrer en contact et d'échanger entre eux. L'Éditeur n'intervient pas dans les relations qui peuvent se créer entre les utilisateurs et ne peut pas contrôler l'ensemble des informations, comportements ou échanges réalisés dans le cadre de l'utilisation de l'Application.",
+            "Chaque utilisateur est responsable des informations qu'il communique, des contenus qu'il publie, de ses échanges avec les autres utilisateurs ainsi que de ses décisions et de son comportement.",
+            "Dans les limites autorisées par la réglementation applicable, l'Éditeur ne pourra notamment être tenu responsable :",
+        ],
+        "list": [
+            "des informations inexactes, incomplètes ou trompeuses communiquées par un utilisateur ;",
+            "du comportement, des propos ou des agissements d'un utilisateur à l'égard d'un autre utilisateur ;",
+            "des échanges, conversations ou contenus transmis directement entre utilisateurs ;",
+            "des conséquences des décisions prises par un utilisateur à la suite d'échanges ou de contacts établis par l'intermédiaire de l'Application ;",
+            "des rencontres organisées entre utilisateurs, qu'elles aient lieu dans un lieu public ou privé ;",
+            "des dommages ou préjudices pouvant résulter d'une rencontre entre utilisateurs, lorsque ceux-ci résultent du comportement ou des agissements d'un utilisateur ;",
+            "des transactions, paiements, prêts ou échanges de biens réalisés directement entre utilisateurs ;",
+            "des contenus publiés ou transmis par les utilisateurs, sous réserve des obligations qui incombent à l'Éditeur en application de la loi ;",
+            "de l'utilisation d'un compte par un tiers lorsque celle-ci résulte notamment de la communication, de la perte ou de la négligence de l'utilisateur dans la conservation de ses identifiants ;",
+            "des interruptions, ralentissements ou dysfonctionnements temporaires de l'Application résultant notamment d'opérations de maintenance, de difficultés liées aux réseaux de télécommunication, de défaillances de prestataires tiers ou d'événements échappant au contrôle raisonnable de l'Éditeur.",
+        ],
+        "paragraphs_after": [
+            "L'Éditeur met en œuvre les moyens raisonnables dont il dispose pour assurer le bon fonctionnement et la sécurité de l'Application. Toutefois, il ne peut garantir que l'Application sera disponible de manière continue, exempte d'erreurs ou totalement sécurisée.",
+            "L'Éditeur ne garantit pas non plus l'identité, la sincérité, les intentions, la situation personnelle ou le comportement futur des utilisateurs. Toute vérification éventuellement effectuée par l'Éditeur ne constitue pas une garantie générale concernant l'identité ou la fiabilité d'un utilisateur.",
+            "Les utilisateurs sont invités à faire preuve de prudence dans leurs échanges et à prendre les précautions nécessaires avant de communiquer des informations personnelles ou d'organiser une rencontre avec une autre personne.",
+            "Aucune disposition des présentes CGU ne saurait avoir pour effet d'exclure ou de limiter une responsabilité qui ne peut légalement être exclue ou limitée, notamment en cas de faute de l'Éditeur ou lorsque la loi impose une telle responsabilité.",
         ],
     },
     {
