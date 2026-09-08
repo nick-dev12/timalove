@@ -304,6 +304,10 @@ if ! $SKIP_STATIC; then
         exit 1
     fi
     ok "Fichiers statiques publiés ($(find "$DJANGO_DIR/staticfiles" -type f 2>/dev/null | wc -l) fichiers)"
+    # Nginx (www-data) doit lire staticfiles / media
+    chmod 755 "/home/$APP_USER" 2>/dev/null || true
+    chmod -R o+rX "$DJANGO_DIR/staticfiles" 2>/dev/null || true
+    [[ -d "$DJANGO_DIR/media" ]] && chmod -R o+rX "$DJANGO_DIR/media" 2>/dev/null || true
 else
     log "Étape 4/5 — collectstatic (ignoré)"
 fi

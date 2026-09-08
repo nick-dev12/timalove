@@ -156,6 +156,11 @@ def explorer(request):
         "swipe_quota": quota,
         **filters_ctx,
     }
+    profile = getattr(request.user, "profile", None) if request.user.is_authenticated else None
+    if profile is not None:
+        from core.controllers import profile_controller
+
+        context.update(profile_controller.freemium_subscription_context(profile))
 
     if is_hx:
         return render(request, "partials/explorer_slides.html", context)
@@ -271,37 +276,23 @@ def historique(request):
     if request.user.is_authenticated:
         profile = getattr(request.user, "profile", None)
         if profile:
-            if quota_controller.history_locked(profile):
-                return render(
-                    request,
-                    "app/historique.html",
-                    {
-                        "title": "Historique",
-                        "items": [],
-                        "stories": [],
-                        "has_more": False,
-                        "next_offset": 0,
-                        "is_preview": False,
-                        "history_locked": True,
-                    },
-                )
             page = likes_controller.outgoing(profile)
             items = page["items"]
-            return render(
-                request,
-                "app/historique.html",
-                {
-                    "title": "Historique",
-                    "items": items,
-                    "stories": items[:12],
-                    "has_more": page["has_more"],
-                    "next_offset": page["next_offset"],
-                    "is_preview": False,
-                    "history_locked": False,
-                    "history_locked_extra": page.get("history_locked_extra", 0),
-                    "history_limit": page.get("history_limit"),
-                },
-            )
+            hist_limit = page.get("history_limit")
+            locked_extra = page.get("history_locked_extra", 0)
+            from core.controllers import profile_controller
+
+            ctx = {
+                "title": "Historique",
+                "items": items,
+                "stories": items[:12],
+                "has_more": page["has_more"],
+                "next_offset": page["next_offset"],
+                "is_preview": False,
+                "subscription_gated": hist_limit is not None and (locked_extra > 0 or page["has_more"]),
+            }
+            ctx.update(profile_controller.freemium_subscription_context(profile))
+            return render(request, "app/historique.html", ctx)
     return render(
         request,
         "app/historique.html",
@@ -312,7 +303,6 @@ def historique(request):
             "has_more": False,
             "next_offset": 0,
             "is_preview": True,
-            "history_locked": False,
         },
     )
 

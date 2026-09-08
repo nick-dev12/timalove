@@ -1,0 +1,92 @@
+<div class="visit-settings-modal" id="settings-modal-subscription" hidden data-settings-modal="subscription" data-msg-subscription-modal>
+  <div class="visit-settings-modal__backdrop" data-settings-modal-close tabindex="-1"></div>
+  <div class="visit-settings-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="settings-modal-subscription-title">
+    <header class="visit-settings-modal__top">
+      <h2 class="visit-settings-modal__title" id="settings-modal-subscription-title">Abonnements</h2>
+      <button type="button" class="visit-settings-modal__close" data-settings-modal-close aria-label="Fermer">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+      </button>
+    </header>
+    <div class="visit-settings-modal__body">
+      <article class="visit-glass visit__card visit__card--plans" data-block="subscription">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Abonnement</p>
+          <h2 class="visit__card-title">Choisissez votre formule</h2>
+        </div>
+        <div class="visit-sub-status">
+          <p class="visit__meta-line">Statut : <strong>{{ status_label }}</strong></p>
+          <p class="visit__meta-line">Offre : <strong>{{ tier_label }}</strong></p>
+          {% if payment_status.has_active_subscription and subscription_end_display %}
+          <p class="visit__meta-line">Valable jusqu’au {{ subscription_end_display }}</p>
+          {% endif %}
+          {% if payment_status.is_boosted and boost_end_display %}
+          <p class="visit__meta-line">Profil mis en avant jusqu’au {{ boost_end_display }}</p>
+          {% endif %}
+        </div>
+        <p class="visit__save-msg visit__save-msg--plans" data-save-msg="subscription" hidden aria-live="assertive"></p>
+        <div class="tl-plans-rail"{% if plans|length > 1 %} data-plans-rail-multiple{% endif %} role="region" aria-label="Formules d’abonnement">
+          {% if plans|length > 1 %}
+          <p class="tl-plans-rail__hint" aria-hidden="true">
+            <span>Glissez pour voir les autres formules</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </p>
+          {% endif %}
+          <div class="tl-plans-grid">
+          {% for plan in plans %}
+          <article class="tl-plan tl-plan--{{ plan.id }}{% if plan.is_featured %} tl-plan--featured{% endif %}{% if plan.is_vip %} tl-plan--vip{% endif %}{% if payment_status.tier == plan.id %} is-current{% endif %}">
+            {% if plan.badge %}
+            <p class="tl-plan__ribbon">{{ plan.badge }}</p>
+            {% endif %}
+            {% if payment_status.tier == plan.id %}
+            <p class="tl-plan__tag">Ma formule</p>
+            {% endif %}
+
+            <header class="tl-plan__header">
+              <p class="tl-plan__brand">
+                <span class="tl-plan__brand-name">TimaLove</span>
+                <span class="tl-plan__brand-plan">{{ plan.label }}</span>
+              </p>
+              <p class="tl-plan__duration">{{ plan.duration_label }}</p>
+              <p class="tl-plan__price">{{ plan.price_label }}</p>
+            </header>
+
+            <button type="button" class="tl-plan__cta tl-plan__cta--primary" data-checkout="{{ plan.id }}"{% if payment_status.tier == plan.id %} disabled{% endif %}>
+              {% if payment_status.tier == plan.id %}
+              Formule active
+              {% else %}
+              Profitez de {{ plan.label }}
+              {% endif %}
+            </button>
+
+            <div class="tl-plan__compare" role="table" aria-label="Comparatif Gratuit et {{ plan.label }}">
+              <div class="tl-plan__compare-head" role="row">
+                <span class="tl-plan__compare-label" role="columnheader"></span>
+                <span class="tl-plan__compare-col" role="columnheader">Gratuit</span>
+                <span class="tl-plan__compare-col tl-plan__compare-col--plan" role="columnheader">{{ plan.label }}</span>
+              </div>
+              {% for benefit in plan.benefits %}
+              <div class="tl-plan__compare-row" role="row">
+                <p class="tl-plan__feature" role="cell">{{ benefit }}</p>
+                <span class="tl-plan__mark tl-plan__mark--no" role="cell" aria-label="Non inclus dans Gratuit">
+                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M7 7l10 10M17 7 7 17"/></svg>
+                </span>
+                <span class="tl-plan__mark tl-plan__mark--yes" role="cell" aria-label="Inclus dans {{ plan.label }}">
+                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M6 12.5l3.5 3.5L18 8"/></svg>
+                </span>
+              </div>
+              {% endfor %}
+            </div>
+
+            <button type="button" class="tl-plan__cta tl-plan__cta--ghost" data-checkout="{{ plan.id }}"{% if payment_status.tier == plan.id %} disabled{% endif %}>
+              {% if payment_status.tier == plan.id %}Formule en cours{% else %}Choisir {{ plan.label }}{% endif %}
+            </button>
+          </article>
+          {% empty %}
+          <p class="visit__meta-line">Les formules seront bientôt disponibles.</p>
+          {% endfor %}
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</div>

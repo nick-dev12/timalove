@@ -146,6 +146,13 @@
     });
   }
 
+  function handleSwipeLimit(data) {
+    if (window.timaloveSubscriptionModal && window.timaloveSubscriptionModal.handleLimitError(data || {})) {
+      return true;
+    }
+    return false;
+  }
+
   document.addEventListener("click", function (event) {
     const btn = event.target.closest("[data-swipe]");
     if (!btn) return;
@@ -161,7 +168,7 @@
     postSwipe(id, action)
       .then(function (result) {
         if (!result.ok || !result.data.ok) {
-          if (result.data && result.data.quota) updateQuota(result.data.quota);
+          if (handleSwipeLimit(result.data)) return;
           throw new Error((result.data && result.data.error) || "Impossible d’enregistrer.");
         }
         if (result.data.quota) updateQuota(result.data.quota);
@@ -181,7 +188,9 @@
         );
       })
       .catch(function (err) {
-        showError(err && err.message ? err.message : "Impossible d’enregistrer.");
+        if (!handleSwipeLimit({ message: err && err.message })) {
+          showError(err && err.message ? err.message : "Impossible d’enregistrer.");
+        }
       })
       .finally(function () {
         btn.classList.remove("is-busy");

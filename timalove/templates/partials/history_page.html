@@ -2,5 +2,5 @@
 {% include "partials/history_card.html" %}
 {% endfor %}
 {% if has_more %}
-{% include "partials/history_more_btn.html" %}
+{% include "partials/history_more_btn.html" with subscription_gated=subscription_gated %}
 {% endif %}

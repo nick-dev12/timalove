@@ -988,7 +988,8 @@ class FreemiumQuotaTests(TestCase):
         page = self.client.get("/historique/")
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "history__grid")
-        self.assertContains(page, "plan supérieur")
+        self.assertContains(page, "data-subscription-upgrade")
+        self.assertContains(page, "Voir plus")
 
     def test_female_unlimited_freemium(self):
         from core.controllers import quota_controller

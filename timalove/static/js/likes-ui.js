@@ -74,6 +74,14 @@
     applyFilter((active && active.getAttribute("data-likes-filter")) || "all");
   }
 
+  function handleLimit(err, data) {
+    const payload = data || { message: err && err.message, code: err && err.code };
+    if (window.timaloveSubscriptionModal && window.timaloveSubscriptionModal.handleLimitError(payload)) {
+      return true;
+    }
+    return false;
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     const root = document.querySelector("[data-likes-root]");
     if (!root) return;
@@ -162,11 +170,14 @@
           .then(function (_ref) {
             var ok = _ref.ok;
             var data = _ref.data;
-            if (!ok || !data.ok) throw new Error((data && data.error) || "Impossible d'enregistrer.");
+            if (!ok || !data.ok) {
+              if (handleLimit(null, data)) return;
+              throw new Error((data && data.error) || "Impossible d'enregistrer.");
+            }
             hideCard(card, root, applyFilter);
           })
           .catch(function (err) {
-            showError(err && err.message ? err.message : "Impossible d'enregistrer.");
+            if (!handleLimit(err)) showError(err && err.message ? err.message : "Impossible d'enregistrer.");
           })
           .finally(function () {
             pass.classList.remove("is-busy");
@@ -188,7 +199,10 @@
           .then(function (_ref2) {
             var ok = _ref2.ok;
             var data = _ref2.data;
-            if (!ok || !data.ok) throw new Error((data && data.error) || "Impossible d'enregistrer.");
+            if (!ok || !data.ok) {
+              if (handleLimit(null, data)) return;
+              throw new Error((data && data.error) || "Impossible d'enregistrer.");
+            }
             setPressed(back, true, "Aimé", "Liker en retour");
             if (data.matched && data.match_id) {
               window.setTimeout(function () {
@@ -197,7 +211,7 @@
             }
           })
           .catch(function (err) {
-            showError(err && err.message ? err.message : "Impossible d'enregistrer.");
+            if (!handleLimit(err)) showError(err && err.message ? err.message : "Impossible d'enregistrer.");
           })
           .finally(function () {
             back.classList.remove("is-busy");
@@ -218,7 +232,10 @@
           .then(function (_ref3) {
             var ok = _ref3.ok;
             var data = _ref3.data;
-            if (!ok || !data.ok) throw new Error((data && data.error) || "Impossible d'enregistrer.");
+            if (!ok || !data.ok) {
+              if (handleLimit(null, data)) return;
+              throw new Error((data && data.error) || "Impossible d'enregistrer.");
+            }
             setPressed(superBtn, true);
             const card = superBtn.closest("[data-filter-item]");
             if (card) card.setAttribute("data-super", "1");
@@ -229,7 +246,7 @@
             }
           })
           .catch(function (err) {
-            showError(err && err.message ? err.message : "Impossible d'enregistrer.");
+            if (!handleLimit(err)) showError(err && err.message ? err.message : "Impossible d'enregistrer.");
           })
           .finally(function () {
             superBtn.classList.remove("is-busy");

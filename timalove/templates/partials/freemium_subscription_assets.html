@@ -1,0 +1,5 @@
+{% load static %}
+{% if show_subscription_modal %}
+{% include "partials/subscription_settings_modal.html" %}
+<script src="{% static 'js/subscription-modal.js' %}?v=20260908sub1" defer></script>
+{% endif %}

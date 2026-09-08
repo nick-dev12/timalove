@@ -91,8 +91,11 @@ class Command(BaseCommand):
 
         self.stdout.write("Pass 1/3 - profiles & settings...")
         target1 = only & {"profiles", "settings"} if only else {"profiles", "settings"}
-        self.profile_ids = set()
+        # Reprise possible : IDs déjà en base (import interrompu)
+        self.profile_ids = {str(x) for x in Profile.objects.values_list("id", flat=True)}
         self.match_ids = set()
+        if self.profile_ids:
+            self.stdout.write(f"  (reprise: {len(self.profile_ids)} profils déjà présents)")
         self._scan(dump, target1, counts)
         self.profile_ids = {str(x) for x in Profile.objects.values_list("id", flat=True)}
         self.stdout.write(f"  -> {len(self.profile_ids)} profils")
@@ -114,7 +117,14 @@ class Command(BaseCommand):
         self._scan(dump, target3, counts)
 
         self.stdout.write(self.style.SUCCESS(f"Import terminé: {counts}"))
-        self.stdout.write(self.style.WARNING("Mots de passe importés = ChangeMe123!"))
+        from core.controllers.auth_controller import PROVISIONAL_IMPORT_PASSWORD
+
+        self.stdout.write(
+            self.style.WARNING(
+                f"Mots de passe importes = {PROVISIONAL_IMPORT_PASSWORD} "
+                "(remplaces a la 1ere connexion email/telephone)"
+            )
+        )
 
     def _scan(self, dump: Path, allowed: set[str], counts: dict) -> None:
         if not allowed:
@@ -123,34 +133,52 @@ class Command(BaseCommand):
         batch: list = []
         batch_table = None
 
-        def flush():
+        def flush(line_no: int = 0):
             nonlocal batch, batch_table
             if not batch or not batch_table:
                 batch = []
                 return
             n = self._flush(batch_table, batch)
             counts[batch_table] = counts.get(batch_table, 0) + n
+            total = counts[batch_table]
+            if n and (total % 1000 < max(n, 1) or total <= 500):
+                self.stdout.write(f"  … {batch_table}={total} (ligne {line_no})")
+                self.stdout.flush()
             batch = []
 
         with dump.open("r", encoding="utf-8", errors="ignore") as fh:
             for line_no, line in enumerate(fh, 1):
+                if line.startswith("\\") or line.startswith("--"):
+                    continue
                 if line.startswith("INSERT INTO public."):
-                    flush()
                     table = line.split("INSERT INTO public.")[1].split(" ")[0].split("(")[0]
                     section = TABLE_MAP.get(table)
+                    # Ne flush que si on change de table (sinon 1 INSERT/ligne = 1 flush = très lent)
+                    if batch and batch_table and section != batch_table:
+                        flush(line_no)
                     batch_table = section
+                    # Format pg_dump --inserts : INSERT ... VALUES (...); sur une seule ligne
+                    upper = line.upper()
+                    idx = upper.find(" VALUES ")
+                    if idx >= 0 and section and section in allowed:
+                        values_part = line[idx + len(" VALUES ") :].strip()
+                        if values_part.startswith("("):
+                            row = self._parse_row(values_part)
+                            if row:
+                                batch.append(row)
+                            if len(batch) >= 500:
+                                flush(line_no)
                     continue
                 if not section or section not in allowed:
                     continue
+                # Ancien format multi-lignes : lignes "(...)," après INSERT ... VALUES
                 if not line.strip().startswith("("):
                     continue
                 row = self._parse_row(line)
                 if row:
                     batch.append(row)
                 if len(batch) >= 500:
-                    flush()
-                    if line_no % 80000 == 0:
-                        self.stdout.write(f"  … ligne {line_no}")
+                    flush(line_no)
         flush()
 
     def _flush(self, table: str, rows: list) -> int:
@@ -261,59 +289,70 @@ class Command(BaseCommand):
         return n
 
     def _import_profiles(self, rows) -> int:
+        from django.db import transaction
+        from core.controllers.auth_controller import PROVISIONAL_IMPORT_PASSWORD
+
         n = 0
-        for r in rows:
-            if len(r) < 9:
-                continue
-            pid = self._v(r[0])
-            email = self._v(r[3]) or f"user_{str(pid)[:8]}@import.timalove.local"
-            user, created = User.objects.get_or_create(username=email[:150], defaults={"email": email})
-            if created:
-                user.set_password("ChangeMe123!")
-                user.first_name = self._v(r[1]) or ""
-                user.last_name = self._v(r[2]) or ""
-                user.save()
-            role = self._v(r[18]) if len(r) > 18 else "member"
-            reg = self._v(r[17]) if len(r) > 17 else "approved"
-            Profile.objects.update_or_create(
-                id=pid,
-                defaults={
-                    "user": user,
-                    "first_name": self._v(r[1]) or "Membre",
-                    "last_name": self._v(r[2]) or "",
-                    "email": email,
-                    "phone": self._v(r[4]),
-                    "date_of_birth": self._date(r[5]),
-                    "gender": self._v(r[6]) if self._v(r[6]) in Gender.values else Gender.FEMALE,
-                    "city": self._v(r[7]) or "Dakar",
-                    "country": self._v(r[8]) or "Sénégal",
-                    "residence_country": self._v(r[9]) if len(r) > 9 else None,
-                    "religion": self._v(r[10]) if len(r) > 10 else None,
-                    "profession": self._v(r[11]) if len(r) > 11 else None,
-                    "bio": self._v(r[12]) if len(r) > 12 else None,
-                    "looking_for": self._v(r[13]) if len(r) > 13 else None,
-                    "photo_url": self._v(r[14]) if len(r) > 14 else None,
-                    "photo_url_2": self._v(r[15]) if len(r) > 15 else None,
-                    "photo_url_3": self._v(r[16]) if len(r) > 16 else None,
-                    "registration_status": reg if reg in RegistrationStatus.values else RegistrationStatus.APPROVED,
-                    "role": UserRole.ADMIN if role == "admin" else UserRole.MEMBER,
-                    "is_verified": bool(self._v(r[19])) if len(r) > 19 else False,
-                    "subscription_tier": self._v(r[21]) if len(r) > 21 and self._v(r[21]) in SubscriptionTier.values else SubscriptionTier.FREE,
-                    "subscription_status": self._v(r[22]) if len(r) > 22 and self._v(r[22]) in SubscriptionStatus.values else SubscriptionStatus.INACTIVE,
-                    "subscription_end_date": self._dt(r[23]) if len(r) > 23 else None,
-                    "likes_received_count": int(self._v(r[24]) or 0) if len(r) > 24 else 0,
-                    "likes_given_count": int(self._v(r[25]) or 0) if len(r) > 25 else 0,
-                    "matches_count": int(self._v(r[26]) or 0) if len(r) > 26 else 0,
-                    "is_boosted": bool(self._v(r[27])) if len(r) > 27 else False,
-                    "boost_end_date": self._dt(r[28]) if len(r) > 28 else None,
-                    "last_active_at": self._dt(r[29]) if len(r) > 29 else timezone.now(),
-                    "is_online": bool(self._v(r[30])) if len(r) > 30 else False,
-                    "is_hidden": bool(self._v(r[33])) if len(r) > 33 else False,
-                    "hide_age": bool(self._v(r[35])) if len(r) > 35 else False,
-                },
-            )
-            self.profile_ids.add(str(pid))
-            n += 1
+        with transaction.atomic():
+            for r in rows:
+                if len(r) < 9:
+                    continue
+                pid = self._v(r[0])
+                # Reprise : profil déjà présent → skip (évite re-hash / update_or_create)
+                if str(pid) in self.profile_ids:
+                    n += 1
+                    continue
+                email = self._v(r[3]) or f"user_{str(pid)[:8]}@import.timalove.local"
+                user, created = User.objects.get_or_create(username=email[:150], defaults={"email": email})
+                if created:
+                    user.set_password(PROVISIONAL_IMPORT_PASSWORD)
+                    user.first_name = self._v(r[1]) or ""
+                    user.last_name = self._v(r[2]) or ""
+                    user.save()
+                else:
+                    # Évite core_profile_user_id_key si un autre profil local pointe déjà sur ce user
+                    Profile.objects.filter(user=user).exclude(id=pid).delete()
+                role = self._v(r[18]) if len(r) > 18 else "member"
+                reg = self._v(r[17]) if len(r) > 17 else "approved"
+                Profile.objects.update_or_create(
+                    id=pid,
+                    defaults={
+                        "user": user,
+                        "first_name": self._v(r[1]) or "Membre",
+                        "last_name": self._v(r[2]) or "",
+                        "email": email,
+                        "phone": self._v(r[4]),
+                        "date_of_birth": self._date(r[5]),
+                        "gender": self._v(r[6]) if self._v(r[6]) in Gender.values else Gender.FEMALE,
+                        "city": self._v(r[7]) or "Dakar",
+                        "country": self._v(r[8]) or "Sénégal",
+                        "residence_country": self._v(r[9]) if len(r) > 9 else None,
+                        "religion": self._v(r[10]) if len(r) > 10 else None,
+                        "profession": self._v(r[11]) if len(r) > 11 else None,
+                        "bio": self._v(r[12]) if len(r) > 12 else None,
+                        "looking_for": self._v(r[13]) if len(r) > 13 else None,
+                        "photo_url": self._v(r[14]) if len(r) > 14 else None,
+                        "photo_url_2": self._v(r[15]) if len(r) > 15 else None,
+                        "photo_url_3": self._v(r[16]) if len(r) > 16 else None,
+                        "registration_status": reg if reg in RegistrationStatus.values else RegistrationStatus.APPROVED,
+                        "role": UserRole.ADMIN if role == "admin" else UserRole.MEMBER,
+                        "is_verified": bool(self._v(r[19])) if len(r) > 19 else False,
+                        "subscription_tier": self._v(r[21]) if len(r) > 21 and self._v(r[21]) in SubscriptionTier.values else SubscriptionTier.FREE,
+                        "subscription_status": self._v(r[22]) if len(r) > 22 and self._v(r[22]) in SubscriptionStatus.values else SubscriptionStatus.INACTIVE,
+                        "subscription_end_date": self._dt(r[23]) if len(r) > 23 else None,
+                        "likes_received_count": int(self._v(r[24]) or 0) if len(r) > 24 else 0,
+                        "likes_given_count": int(self._v(r[25]) or 0) if len(r) > 25 else 0,
+                        "matches_count": int(self._v(r[26]) or 0) if len(r) > 26 else 0,
+                        "is_boosted": bool(self._v(r[27])) if len(r) > 27 else False,
+                        "boost_end_date": self._dt(r[28]) if len(r) > 28 else None,
+                        "last_active_at": self._dt(r[29]) if len(r) > 29 else timezone.now(),
+                        "is_online": bool(self._v(r[30])) if len(r) > 30 else False,
+                        "is_hidden": bool(self._v(r[33])) if len(r) > 33 else False,
+                        "hide_age": bool(self._v(r[35])) if len(r) > 35 else False,
+                    },
+                )
+                self.profile_ids.add(str(pid))
+                n += 1
         return n
 
     def _import_gallery(self, rows) -> int:

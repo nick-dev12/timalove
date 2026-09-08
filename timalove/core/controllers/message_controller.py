@@ -660,7 +660,7 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
         "thread_items": items,
         "match": match,
         **flags,
-        "can_send": not blocked and not denied and not pending_block and quota_ok,
+        "can_send": not blocked and not denied and not pending_block,
         "quota_locked": (not blocked) and not pending_block and not quota_ok,
         "quota_message": pending_msg or (quota_err if (not blocked and not quota_ok) else ""),
         "messages_remaining": quota_controller.messages_remaining(profile),

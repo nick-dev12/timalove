@@ -555,200 +555,16 @@
     return err;
   }
 
-  function isLimitError(err) {
-    if (!err) return false;
-    if (err.code === "message_limit") return true;
-    return /limite/i.test(err.message || "");
-  }
-
-  const limitPopup = document.getElementById("upgrade-limit-popup");
-  const plansModal = document.getElementById("upgrade-plans-modal");
-  const plansStatus = document.querySelector("[data-upgrade-plans-status]");
-
-  function setQuotaLocked(locked) {
-    if (!form) return;
-    form.setAttribute("data-quota-locked", locked ? "1" : "0");
-  }
-
-  function showLimitPopup() {
-    if (!limitPopup) {
-      toast("Votre limite a été atteinte. Passez au plan supérieur.");
-      return;
-    }
-    setQuotaLocked(true);
-    limitPopup.hidden = false;
-    document.body.classList.add("is-upgrade-popup");
-    const focusBtn = limitPopup.querySelector("[data-upgrade-open-plans]");
-    if (focusBtn) focusBtn.focus();
-  }
-
-  function hideLimitPopup() {
-    if (!limitPopup) return;
-    limitPopup.hidden = true;
-    if (!plansModal || plansModal.hidden) {
-      document.body.classList.remove("is-upgrade-popup");
-    }
-  }
-
-  function showPlansModal() {
-    if (!plansModal) return;
-    hideLimitPopup();
-    plansModal.hidden = false;
-    document.body.classList.add("is-upgrade-popup");
-    const closeBtn = plansModal.querySelector("[data-upgrade-plans-close]");
-    if (closeBtn) closeBtn.focus();
-  }
-
-  function hidePlansModal() {
-    if (!plansModal) return;
-    plansModal.hidden = true;
-    document.body.classList.remove("is-upgrade-popup");
-  }
-
   function handleLimitFailure(err) {
-    if (isLimitError(err)) {
-      showLimitPopup();
+    if (window.timaloveSubscriptionModal && window.timaloveSubscriptionModal.handleLimitError(err)) {
+      return true;
+    }
+    if (err && (err.code === "message_limit" || /limite/i.test(err.message || ""))) {
+      toast("Passez au plan supérieur pour continuer.");
       return true;
     }
     return false;
   }
-
-  if (limitPopup) {
-    limitPopup.querySelectorAll("[data-upgrade-limit-close]").forEach(function (el) {
-      el.addEventListener("click", hideLimitPopup);
-    });
-    const openPlans = limitPopup.querySelector("[data-upgrade-open-plans]");
-    if (openPlans) {
-      openPlans.addEventListener("click", showPlansModal);
-    }
-  }
-
-  if (plansModal) {
-    plansModal.querySelectorAll("[data-upgrade-plans-close]").forEach(function (el) {
-      el.addEventListener("click", hidePlansModal);
-    });
-
-    const promoInput = plansModal.querySelector("[data-upgrade-promo-code]");
-    const promoFeedback = plansModal.querySelector("[data-upgrade-promo-feedback]");
-    const promoApply = plansModal.querySelector("[data-upgrade-promo-apply]");
-
-    function setPromoFeedback(message, isError) {
-      if (!promoFeedback) return;
-      promoFeedback.hidden = !message;
-      promoFeedback.textContent = message || "";
-      promoFeedback.classList.toggle("is-error", Boolean(isError));
-    }
-
-    function currentPromoCode() {
-      return (promoInput && promoInput.value.trim()) || "";
-    }
-
-    if (promoApply) {
-      promoApply.addEventListener("click", function () {
-        const code = currentPromoCode();
-        if (!code) {
-          setPromoFeedback("Saisissez un code promo.", true);
-          return;
-        }
-        const tierBtn = plansModal.querySelector("[data-checkout]");
-        const tier = tierBtn && tierBtn.getAttribute("data-checkout");
-        if (!tier) {
-          setPromoFeedback("Aucune formule disponible pour le moment.", true);
-          return;
-        }
-        promoApply.disabled = true;
-        fetch("/api/payments/promo/validate/", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf(),
-            "X-Requested-With": "XMLHttpRequest",
-          },
-          body: JSON.stringify({ promo_code: code, tier: tier }),
-        })
-          .then(function (res) {
-            return res.json().then(function (payload) {
-              if (!res.ok || !payload.ok) {
-                throw new Error((payload && payload.message) || "Code promo invalide.");
-              }
-              return payload;
-            });
-          })
-          .then(function (data) {
-            setPromoFeedback(
-              "Code " + data.code + " appliqué : −" + data.discount_percent + " % (" + data.final_amount + " FCFA).",
-              false
-            );
-          })
-          .catch(function (err) {
-            setPromoFeedback(err.message || "Code promo invalide.", true);
-          })
-          .finally(function () {
-            promoApply.disabled = false;
-          });
-      });
-    }
-
-    plansModal.addEventListener("click", function (event) {
-      const btn = event.target.closest("[data-checkout]");
-      if (!btn || btn.disabled) return;
-      event.preventDefault();
-      const original = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = "Ouverture du paiement…";
-      if (plansStatus) {
-        plansStatus.hidden = true;
-        plansStatus.textContent = "";
-      }
-      const payload = { tier: btn.getAttribute("data-checkout") };
-      const promoCode = currentPromoCode();
-      if (promoCode) payload.promo_code = promoCode;
-      fetch("/api/payments/checkout/", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrf(),
-          "X-Requested-With": "XMLHttpRequest",
-        },
-        body: JSON.stringify(payload),
-      })
-        .then(function (res) {
-          return res.json().then(function (payload) {
-            if (!res.ok || !payload.ok) {
-              throw new Error((payload && payload.message) || "Lien de paiement indisponible.");
-            }
-            return payload;
-          });
-        })
-        .then(function (data) {
-          if (!data.checkout_url) throw new Error("Lien de paiement indisponible.");
-          window.location.href = data.checkout_url;
-        })
-        .catch(function (err) {
-          if (plansStatus) {
-            plansStatus.hidden = false;
-            plansStatus.textContent = err.message || "Paiement indisponible pour le moment.";
-          } else {
-            toast(err.message || "Paiement indisponible pour le moment.");
-          }
-        })
-        .finally(function () {
-          btn.disabled = false;
-          btn.textContent = original;
-        });
-    });
-  }
-
-  document.addEventListener("keydown", function (event) {
-    if (event.key !== "Escape") return;
-    if (plansModal && !plansModal.hidden) {
-      hidePlansModal();
-      return;
-    }
-    if (limitPopup && !limitPopup.hidden) hideLimitPopup();
-  });
 
   function sendTextMessage(content) {
     return fetch("/api/messages/", {
@@ -808,10 +624,6 @@
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       if (!input || !input.value.trim() || !partnerId) return;
-      if (form.getAttribute("data-quota-locked") === "1") {
-        showLimitPopup();
-        return;
-      }
       if (form.getAttribute("data-text-enabled") === "0") {
         toast("Les messages texte sont temporairement désactivés.");
         return;
@@ -853,10 +665,6 @@
     if (voiceBtn) {
       event.preventDefault();
       if (voiceBtn.hidden) return;
-      if (form && form.getAttribute("data-quota-locked") === "1") {
-        showLimitPopup();
-        return;
-      }
       startRecord();
       return;
     }
@@ -864,10 +672,6 @@
     if (photoBtn && photoInput) {
       event.preventDefault();
       if (photoBtn.hidden) return;
-      if (form && form.getAttribute("data-quota-locked") === "1") {
-        showLimitPopup();
-        return;
-      }
       photoInput.click();
       return;
     }

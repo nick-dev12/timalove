@@ -11,6 +11,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from core.controllers import site_settings_controller
+from core.controllers.auth_controller import PROVISIONAL_IMPORT_PASSWORD
 from core.models import Profile, SiteSetting, Testimonial
 from core.models.choices import Gender, RegistrationStatus, UserRole
 
@@ -77,7 +78,10 @@ class Command(BaseCommand):
             )
         )
         self.stdout.write(
-            self.style.WARNING("Mots de passe importés = ChangeMe123! (non portables depuis Supabase)")
+            self.style.WARNING(
+                f"Mots de passe importés = {PROVISIONAL_IMPORT_PASSWORD} "
+                "(remplacés à la 1ʳᵉ connexion email/téléphone ; non portables depuis Supabase)"
+            )
         )
 
     @transaction.atomic
@@ -128,7 +132,7 @@ class Command(BaseCommand):
                 defaults={"email": email},
             )
             if created:
-                user.set_password("ChangeMe123!")
+                user.set_password(PROVISIONAL_IMPORT_PASSWORD)
                 user.first_name = first_name
                 user.last_name = last_name
                 user.save()

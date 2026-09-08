@@ -11,7 +11,6 @@ from core.controllers import (
     match_controller,
     message_controller,
     moderation_controller,
-    payment_controller,
     profile_controller,
 )
 from core.data.countries import COUNTRIES_FR
@@ -49,6 +48,7 @@ def likes(request):
             "super_count": sum(1 for item in ctx["likes"] if item.get("is_super_like")),
         }
     )
+    ctx.update(profile_controller.freemium_subscription_context(profile))
     return render(request, "app/likes.html", ctx)
 
 
@@ -115,7 +115,10 @@ def discussion_detail(request, partner_id):
     if request.method == "POST":
         ok, msg, _ = message_controller.send_text(profile, partner_id, request.POST.get("content", ""))
         if not ok:
-            messages.error(request, msg)
+            from core.controllers import quota_controller
+
+            if not quota_controller.limit_code_for(profile):
+                messages.error(request, msg)
         else:
             message_controller.mark_read(profile, partner_id)
         return redirect("app:discussion_detail", partner_id=partner_id)
@@ -136,31 +139,29 @@ def discussion_detail(request, partner_id):
     message_controller.mark_read(profile, partner_id)
     notification_controller.mark_read_for_context(profile, "messages", partner_id=partner_id)
     inbox_back = len(message_controller.list_conversations(profile)) > 1
-    return render(
-        request,
-        "app/message_thread.html",
-        {
-            "title": thread["partner"]["first_name"],
-            "is_preview": False,
-            "me": thread["me"],
-            "partner": thread["partner"],
-            "thread_items": thread["thread_items"],
-            "partner_id": partner_id,
-            "inbox_back": inbox_back,
-            "payment_status": payment_controller.payment_status(profile),
-            "blocked_by_me": thread.get("blocked_by_me", False),
-            "blocked_me": thread.get("blocked_me", False),
-            "can_send": thread.get("can_send", True),
-            "quota_locked": thread.get("quota_locked", False),
-            "quota_message": thread.get("quota_message", ""),
-            "messages_remaining": thread.get("messages_remaining"),
-            "conversation_pending": thread.get("conversation_pending", False),
-            "can_accept": thread.get("can_accept", False),
-            "partner_profile_id": thread.get("partner_profile_id", partner_id),
-            "report_reasons": ReportReason.choices,
-            "plans": profile_controller.subscription_plans_for(profile) if thread.get("messages_remaining") is not None or thread.get("quota_locked") else [],
-        },
-    )
+    ctx = {
+        "title": thread["partner"]["first_name"],
+        "is_preview": False,
+        "me": thread["me"],
+        "partner": thread["partner"],
+        "thread_items": thread["thread_items"],
+        "partner_id": partner_id,
+        "inbox_back": inbox_back,
+        "blocked_by_me": thread.get("blocked_by_me", False),
+        "blocked_me": thread.get("blocked_me", False),
+        "can_send": thread.get("can_send", True),
+        "quota_message": thread.get("quota_message", ""),
+        "messages_remaining": thread.get("messages_remaining"),
+        "conversation_pending": thread.get("conversation_pending", False),
+        "can_accept": thread.get("can_accept", False),
+        "partner_profile_id": thread.get("partner_profile_id", partner_id),
+        "report_reasons": ReportReason.choices,
+    }
+    if thread.get("messages_remaining") is not None:
+        ctx.update(profile_controller.freemium_subscription_context(profile))
+    else:
+        ctx["show_subscription_modal"] = False
+    return render(request, "app/message_thread.html", ctx)
 
 
 @login_required

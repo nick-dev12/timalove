@@ -269,6 +269,17 @@ def account_context(profile: Profile) -> dict:
     }
 
 
+def freemium_subscription_context(profile: Profile | None) -> dict:
+    """Plans + flag modal pour hommes freemium (explorer, likes, historique, messages)."""
+    from core.controllers import quota_controller
+
+    if not profile or not quota_controller.is_male_freemium(profile):
+        return {"show_subscription_modal": False}
+    ctx = settings_context(profile)
+    ctx["show_subscription_modal"] = True
+    return ctx
+
+
 def settings_context(profile: Profile) -> dict:
     from core.controllers import payment_controller, site_settings_controller
 

@@ -21,7 +21,7 @@
 {% if user.is_authenticated %}
 <script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
 <script src="{% static 'js/explorer-match.js' %}?v=20260830m1" defer></script>
-<script src="{% static 'js/explorer-swipe.js' %}?v=20260826s9" defer></script>
+<script src="{% static 'js/explorer-swipe.js' %}?v=20260908sub1" defer></script>
 {% else %}
 <script src="{% static 'js/explorer-match.js' %}?v=20260830m1" defer></script>
 {% endif %}
@@ -513,4 +513,5 @@
 {% include "partials/message_invite_modal.html" %}
 {% include "partials/profile_modal.html" %}
 {% include "partials/explorer_filters_modal.html" %}
+{% include "partials/freemium_subscription_assets.html" %}
 {% endblock %}

@@ -323,6 +323,9 @@ log "Python : $PYTHON_BIN ($PY_VER)"
 
 mkdir -p "$RUN_DIR" "$DJANGO_DIR/media" "$DJANGO_DIR/staticfiles"
 chown -R "$APP_USER:$APP_USER" "$REPO_DIR"
+# Nginx (www-data) doit pouvoir traverser /home/<user> pour servir /static et /media
+chmod 755 "/home/$APP_USER" 2>/dev/null || true
+chmod -R o+rX "$DJANGO_DIR/staticfiles" "$DJANGO_DIR/media" 2>/dev/null || true
 
 if [[ ! -f "$VENV_DIR/bin/activate" ]]; then
     run_as_app "$PYTHON_BIN -m venv '$VENV_DIR'"

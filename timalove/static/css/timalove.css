@@ -8758,6 +8758,11 @@ body.is-settings-modal {
   color: var(--vip);
 }
 
+.visit__card-lead--notice {
+  color: var(--rose-primary);
+  font-weight: 600;
+}
+
 @media (max-width: 767px) {
   #settings-modal-subscription .visit__card--plans {
     overflow: visible;
