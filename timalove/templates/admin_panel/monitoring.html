@@ -7,7 +7,7 @@
   <div class="adm-hero__copy">
     <p class="adm-hero__eyebrow">Monitoring</p>
     <h2 class="adm-hero__title">État de la plateforme</h2>
-    <p class="adm-hero__lead">Erreurs HTTP, exceptions, requêtes lentes et dysfonctionnements — avec le chemin et le fichier concernés.</p>
+    <p class="adm-hero__lead">Exceptions, erreurs HTTP 5xx et logs ERROR/CRITICAL — avec le chemin et le fichier concernés.</p>
   </div>
 </section>
 
@@ -62,10 +62,9 @@
     <label class="adm-monitor-filters__field">
       <span>Sévérité</span>
       <select name="level" class="adm-input" onchange="this.form.submit()">
-        <option value="" {% if not overview.filter_level %}selected{% endif %}>Toutes</option>
-        <option value="critical" {% if overview.filter_level == 'critical' %}selected{% endif %}>Critique</option>
-        <option value="error" {% if overview.filter_level == 'error' %}selected{% endif %}>Erreur</option>
-        <option value="warning" {% if overview.filter_level == 'warning' %}selected{% endif %}>Avertissement</option>
+        <option value="" {% if not overview.filter_level %}selected{% endif %}>Erreurs & critiques</option>
+        <option value="critical" {% if overview.filter_level == 'critical' %}selected{% endif %}>Critique uniquement</option>
+        <option value="error" {% if overview.filter_level == 'error' %}selected{% endif %}>Erreur uniquement</option>
       </select>
     </label>
     <label class="adm-monitor-filters__field">
@@ -73,8 +72,7 @@
       <select name="source" class="adm-input" onchange="this.form.submit()">
         <option value="" {% if not overview.filter_source %}selected{% endif %}>Toutes</option>
         <option value="exception" {% if overview.filter_source == 'exception' %}selected{% endif %}>Exception</option>
-        <option value="http" {% if overview.filter_source == 'http' %}selected{% endif %}>HTTP</option>
-        <option value="slow" {% if overview.filter_source == 'slow' %}selected{% endif %}>Requête lente</option>
+        <option value="http" {% if overview.filter_source == 'http' %}selected{% endif %}>HTTP 5xx</option>
         <option value="logging" {% if overview.filter_source == 'logging' %}selected{% endif %}>Logger</option>
         <option value="payment" {% if overview.filter_source == 'payment' %}selected{% endif %}>Paiement</option>
         <option value="email" {% if overview.filter_source == 'email' %}selected{% endif %}>Email</option>
@@ -133,7 +131,7 @@
     </table>
   </div>
   {% else %}
-  <p class="adm-empty">Aucune erreur capturée pour ce filtre. Les prochaines exceptions HTTP 5xx, logs ERROR et requêtes lentes apparaîtront ici.</p>
+  <p class="adm-empty">Aucune erreur critique ou applicative pour ce filtre. Seuls les HTTP 5xx, exceptions et logs ERROR/CRITICAL apparaissent ici.</p>
   {% endif %}
 </section>
 

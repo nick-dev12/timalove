@@ -28,6 +28,8 @@ DEDUP_MINUTES = 30
 MAX_EVENTS_RETAINED = 800
 TRACE_MAX = 4000
 MSG_MAX = 2000
+# Niveaux affichés dans le journal Monitoring (pas les avertissements / requêtes lentes).
+JOURNAL_LEVELS = ("error", "critical")
 
 
 def _client_ip(request) -> str | None:
@@ -213,18 +215,13 @@ def record_exception(request, exception: Exception) -> None:
 
 
 def record_http_error(request, status_code: int, *, detail: str = "") -> None:
-    if status_code < 400:
+    if status_code < 500:
         return
-    # Ignore bruit 404 courant hors API critique
     path = getattr(request, "path", "") or ""
-    if status_code == 404 and not path.startswith("/api/"):
-        return
-    level = "critical" if status_code >= 500 else "warning"
-    title = f"HTTP {status_code} sur {path}"[:220]
     record_event(
-        level=level,
+        level="critical",
         source="http",
-        title=title,
+        title=f"HTTP {status_code} sur {path}"[:220],
         message=detail or f"Réponse {status_code}",
         status_code=status_code,
         request=request,
@@ -232,25 +229,22 @@ def record_http_error(request, status_code: int, *, detail: str = "") -> None:
 
 
 def record_slow_request(request, duration_ms: float) -> None:
-    record_event(
-        level="warning",
-        source="slow",
-        title=f"Requête lente ({duration_ms:.0f} ms)",
-        message=f"{request.method} {request.path} a pris {duration_ms:.1f} ms",
-        status_code=getattr(getattr(request, "_monitoring_status", None), "status_code", None),
-        request=request,
-        metadata={"duration_ms": round(duration_ms, 1)},
-    )
+    """Conservé pour compatibilité — les requêtes lentes ne sont plus journalisées."""
+    return
 
 
 def list_events(*, level: str = "", source: str = "", limit: int = 60) -> list:
     from core.models import SystemEvent
 
-    qs = SystemEvent.objects.all()
-    if level:
+    qs = SystemEvent.objects.filter(level__in=JOURNAL_LEVELS)
+    if level in JOURNAL_LEVELS:
         qs = qs.filter(level=level)
     if source:
+        if source == SystemEvent.Source.SLOW:
+            return []
         qs = qs.filter(source=source)
+    else:
+        qs = qs.exclude(source=SystemEvent.Source.SLOW)
     return list(qs[:limit])
 
 
@@ -261,10 +255,10 @@ def events_summary() -> dict[str, Any]:
 
     now = timezone.now()
     day_ago = now - timedelta(days=1)
-    qs = SystemEvent.objects.filter(last_seen_at__gte=day_ago)
+    qs = SystemEvent.objects.filter(last_seen_at__gte=day_ago, level__in=JOURNAL_LEVELS)
     return {
-        "errors_24h": qs.filter(level__in=["error", "critical"]).count(),
-        "warnings_24h": qs.filter(level="warning").count(),
+        "errors_24h": qs.filter(level="error").count(),
+        "warnings_24h": 0,
         "critical_24h": qs.filter(level="critical").count(),
         "by_source": list(
             qs.values("source").annotate(n=Count("id")).order_by("-n")[:8]

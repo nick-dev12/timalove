@@ -12,7 +12,7 @@ class ExceptionLoggingMiddleware:
     def __call__(self, request: HttpRequest) -> HttpResponse:
         response = self.get_response(request)
         status = getattr(response, "status_code", 200) or 200
-        if status >= 500 or (status == 404 and (request.path or "").startswith("/api/")):
+        if status >= 500:
             try:
                 from core.controllers import monitoring_controller
 

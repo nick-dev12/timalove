@@ -1053,7 +1053,6 @@ def monitoring_overview(*, level: str = "", source: str = "") -> dict:
         "metrics": [
             {"label": "Erreurs 24 h", "value": event_summary["errors_24h"], "href": None},
             {"label": "Critiques 24 h", "value": event_summary["critical_24h"], "href": None},
-            {"label": "Alertes 24 h", "value": event_summary["warnings_24h"], "href": None},
             {"label": "Signalements ouverts", "value": pending_reports, "href": "admin_panel:signalements"},
             {"label": "Inscriptions en attente", "value": pending_regs, "href": "admin_panel:membres"},
             {"label": "Messages 24 h", "value": messages_24h, "href": None},

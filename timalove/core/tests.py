@@ -1366,3 +1366,29 @@ class MonitoringSystemEventTests(TestCase):
         self.assertContains(resp, "Echec envoi message test")
         self.assertContains(resp, "Journal des erreurs")
 
+    def test_journal_excludes_warnings_and_slow_requests(self):
+        from django.test import RequestFactory
+
+        from core.controllers import monitoring_controller
+        from core.models import SystemEvent
+
+        rf = RequestFactory()
+        req = rf.get("/api/likes/count/")
+
+        monitoring_controller.record_slow_request(req, 2500.0)
+        monitoring_controller.record_http_error(req, 404)
+        monitoring_controller.record_http_error(req, 500)
+        monitoring_controller.record_exception(req, RuntimeError("Erreur reelle"))
+
+        listed = monitoring_controller.list_events()
+        levels = {e.level for e in listed}
+        sources = {e.source for e in listed}
+        titles = " ".join(e.title for e in listed)
+
+        self.assertNotIn("warning", levels)
+        self.assertNotIn(SystemEvent.Source.SLOW, sources)
+        self.assertIn("Erreur reelle", titles)
+        self.assertIn("HTTP 500", titles)
+        self.assertNotIn("HTTP 404", titles)
+        self.assertNotIn("Requête lente", titles)
+
