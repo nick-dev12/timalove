@@ -515,7 +515,10 @@
       busy = true;
       nextBtn.disabled = true;
       setStatus("Création du compte…", false);
-      const payload = Object.assign({}, draft, { next: nextUrl });
+      const payload = Object.assign({}, draft, {
+        next: nextUrl,
+        terms_accepted: hasTermsAccepted() || draft.terms_accepted,
+      });
       try {
         const res = await fetch("/api/auth/signup/complete/", {
           method: "POST",
@@ -547,7 +550,8 @@
     }
 
     function startChannel(channel) {
-      draft = Object.assign({}, loadDraft(), { channel });
+      if (!requireTermsAccepted()) return;
+      draft = Object.assign({}, loadDraft(), { channel, terms_accepted: true });
       if (channel === "email") steps = EMAIL_STEPS;
       else if (channel === "phone") steps = PHONE_STEPS;
       else steps = OAUTH_STEPS;
@@ -557,7 +561,11 @@
     }
 
     function startOauth(profile) {
-      draft = Object.assign({}, loadDraft(), profile || {}, { channel: "oauth" });
+      if (!requireTermsAccepted()) {
+        showView("choice");
+        return;
+      }
+      draft = Object.assign({}, loadDraft(), profile || {}, { channel: "oauth", terms_accepted: true });
       steps = OAUTH_STEPS.filter((step) => {
         if (step === "email" && (draft.email || "").includes("@")) return false;
         return true;
@@ -566,6 +574,39 @@
       showView("wizard");
       showSlide(0, true);
     }
+
+    const termsErrorEl = panel.querySelector("[data-signup-terms-error]");
+    const termsInput = panel.querySelector("[data-signup-terms]");
+
+    function hasTermsAccepted() {
+      return termsInput ? termsInput.checked : false;
+    }
+
+    function showTermsError() {
+      if (termsErrorEl) termsErrorEl.hidden = false;
+      termsInput?.focus();
+    }
+
+    function clearTermsError() {
+      if (termsErrorEl) termsErrorEl.hidden = true;
+    }
+
+    function requireTermsAccepted() {
+      if (hasTermsAccepted()) {
+        clearTermsError();
+        return true;
+      }
+      showTermsError();
+      return false;
+    }
+
+    termsInput?.addEventListener("change", () => {
+      if (hasTermsAccepted()) clearTermsError();
+    });
+
+    api.hasTermsAccepted = hasTermsAccepted;
+    api.showTermsError = showTermsError;
+    api.requireTermsAccepted = requireTermsAccepted;
 
     api.showChoice = () => {
       showView("choice");

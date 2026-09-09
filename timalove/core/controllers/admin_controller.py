@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, Sum
-from django.db.models.functions import TruncDate
+from django.db.models import Case, Count, F, Q, Sum, When
+from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 
 from core.models import (
@@ -320,16 +320,26 @@ def _engagement_funnel() -> dict:
     }
 
 
-def _top_cities(limit: int = 8) -> dict:
+def _top_countries(limit: int = 8) -> dict:
+    """Répartition des membres par pays (résidence prioritaire, sinon pays d'origine)."""
     rows = (
         Profile.objects.filter(role="member")
-        .exclude(Q(city__isnull=True) | Q(city=""))
-        .values("city")
+        .annotate(
+            member_country=Case(
+                When(
+                    ~Q(residence_country__isnull=True) & ~Q(residence_country=""),
+                    then=F("residence_country"),
+                ),
+                default=F("country"),
+            )
+        )
+        .exclude(Q(member_country__isnull=True) | Q(member_country=""))
+        .values("member_country")
         .annotate(count=Count("id"))
         .order_by("-count")[:limit]
     )
     return {
-        "labels": [row["city"] for row in rows],
+        "labels": [row["member_country"] for row in rows],
         "values": [row["count"] for row in rows],
     }
 
@@ -440,7 +450,7 @@ def dashboard_analytics(days: int = 30) -> dict:
             "values": [likes_week, passes_week, super_week],
         },
         "funnel": _engagement_funnel(),
-        "geography": _top_cities(),
+        "geography": _top_countries(),
         "moderation": {
             "pending_reports": Report.objects.filter(status=ReportStatus.PENDING).count(),
             "pending_inscriptions": Profile.objects.filter(

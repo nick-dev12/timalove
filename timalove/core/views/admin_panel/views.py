@@ -21,6 +21,7 @@ from core.controllers import (
     site_settings_controller,
     two_factor_controller,
 )
+from core.models import Profile
 from core.models.choices import RegistrationStatus, ReportStatus, SubscriptionTier, TransactionStatus, TransactionType
 
 def _admin_profile(request):
@@ -958,6 +959,20 @@ def roles_audit(request):
                     request=request,
                 )
                 messages.success(request, "Compte staff désactivé.")
+            elif action == "delete_staff":
+                profile_id = request.POST.get("profile_id")
+                target = Profile.objects.filter(pk=profile_id).first()
+                name = target.display_name if target else "Staff"
+                rbac_controller.delete_staff(actor, profile_id)
+                audit_controller.log_action(
+                    actor,
+                    "staff.delete",
+                    f"a supprimé le compte staff {name}",
+                    target_type="profile",
+                    target_id=str(profile_id),
+                    request=request,
+                )
+                messages.success(request, "Compte staff supprimé.")
             elif action == "save_2fa_policy":
                 if not actor.is_super_admin:
                     raise PermissionError("Seul un super administrateur peut modifier la politique 2FA.")

@@ -11891,6 +11891,36 @@ body.is-auth-login-modal {
   max-width: 28rem;
 }
 
+.auth-terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 1rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.auth-terms-check input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+  accent-color: var(--rose-primary);
+}
+
+.auth-terms-check a {
+  color: var(--rose-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-terms-error {
+  margin: 0.5rem 0 0;
+  text-align: left;
+}
+
 .auth-gate__links {
   display: flex;
   justify-content: space-between;

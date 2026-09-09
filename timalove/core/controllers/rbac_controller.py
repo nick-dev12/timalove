@@ -193,6 +193,25 @@ def update_staff_role(actor: Profile, profile_id, new_role: str) -> Profile:
     return target
 
 
+@transaction.atomic
+def delete_staff(actor: Profile, profile_id) -> None:
+    """Suppression définitive d'un compte staff (hors soi-même et super admins protégés)."""
+    if not _actor_can_manage_staff(actor):
+        raise PermissionError("Permission refusée.")
+    target = Profile.objects.select_related("user").get(pk=profile_id)
+    if target.id == actor.id:
+        raise ValueError("Vous ne pouvez pas supprimer votre propre compte.")
+    if not target.is_staff_member:
+        raise ValueError("Ce membre n'est pas un compte staff.")
+    if target.is_super_admin and not actor.is_super_admin:
+        raise PermissionError("Impossible de supprimer un super administrateur.")
+    user = target.user
+    if user:
+        user.delete()
+    else:
+        target.delete()
+
+
 def deactivate_staff(actor: Profile, profile_id) -> Profile:
     if not _actor_can_manage_staff(actor):
         raise PermissionError("Permission refusée.")

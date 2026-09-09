@@ -9,8 +9,8 @@
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.6.0/build/js/intlTelInput.min.js"></script>
 <script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
 <script src="{% static 'js/fcm.js' %}?v=20260826fcm2" defer></script>
-<script src="{% static 'js/auth-signup.js' %}?v=20260827su1" defer></script>
-<script src="{% static 'js/auth-google.js' %}?v=20260830native1" defer></script>
+<script src="{% static 'js/auth-signup.js' %}?v=20260909terms1" defer></script>
+<script src="{% static 'js/auth-google.js' %}?v=20260909terms1" defer></script>
 <script src="{% static 'js/commencer-transit.js' %}?v=20260826t1" defer></script>
 {% endblock %}
 {% block body %}
@@ -135,12 +135,11 @@
           Continuer avec Apple
         </button>
       </div>
-      <p class="auth-legal-consent">
-        En continuant, vous acceptez les
-        <a href="{% url 'public:conditions' %}" target="_blank" rel="noopener">Conditions d'utilisation</a>
-        et la
-        <a href="{% url 'public:confidentialite' %}" target="_blank" rel="noopener">Politique de confidentialité</a>.
-      </p>
+      <label class="auth-terms-check">
+        <input type="checkbox" name="accept_terms" data-signup-terms required>
+        <span>J'accepte les <a href="{% url 'public:conditions' %}" target="_blank" rel="noopener">Conditions d'utilisation</a> et la <a href="{% url 'public:confidentialite' %}" target="_blank" rel="noopener">Politique de confidentialité</a>.</span>
+      </label>
+      <p class="form-error auth-terms-error" data-signup-terms-error hidden>Vous devez accepter les conditions pour continuer.</p>
       <p class="auth-gate__links auth-gate__links--center">
         <button type="button" class="auth-gate__text-btn" data-auth-back-login>Déjà un compte ? Se connecter</button>
       </p>

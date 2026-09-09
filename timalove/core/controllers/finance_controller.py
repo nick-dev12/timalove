@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q, Sum
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -89,11 +90,12 @@ def _apply_filters(qs, *, status=None, product_type=None, period=None, date_from
         qs = qs.filter(status=status)
     if product_type:
         qs = qs.filter(type=product_type)
+    qs = qs.annotate(event_at=Coalesce("paid_at", "created_at"))
     start, end = _period_bounds(period, date_from, date_to)
     if start:
-        qs = qs.filter(created_at__date__gte=start)
+        qs = qs.filter(event_at__date__gte=start)
     if end:
-        qs = qs.filter(created_at__date__lte=end)
+        qs = qs.filter(event_at__date__lte=end)
     if search:
         qs = qs.filter(
             Q(order_id__icontains=search)
@@ -159,11 +161,19 @@ def transaction_status_admin_label(status: str) -> str:
 
 def transaction_row(tx: Transaction) -> dict:
     currency = tx.currency or "XOF"
+    profile = tx.user
+    user_name = "—"
+    user_email = ""
+    if profile:
+        user_name = profile.display_name or f"{profile.first_name} {profile.last_name}".strip() or "Membre"
+        user_email = profile.email or getattr(profile.user, "email", "") or ""
     return {
         "id": tx.id,
         "id_short": str(tx.id).replace("-", "")[:8],
         "order_id": tx.order_id,
         "user_ref": anonymized_user_id(tx.user),
+        "user_name": user_name,
+        "user_email": user_email,
         "provider": transaction_provider_label(tx),
         "amount": tx.amount,
         "amount_label": _format_money(tx.amount, currency),
@@ -259,14 +269,14 @@ def list_transactions(
     per_page: int = 30,
 ):
     qs = _apply_filters(
-        Transaction.objects.select_related("user").order_by("-created_at"),
+        Transaction.objects.select_related("user"),
         status=status,
         product_type=product_type,
         period=period,
         date_from=date_from,
         date_to=date_to,
         search=search,
-    )
+    ).order_by("-event_at")
     paginator = Paginator(qs, per_page)
     return paginator.get_page(page)
 
@@ -291,14 +301,14 @@ def refund_transaction(transaction_id, admin: Profile | None, notes: str = "") -
 
 def _export_queryset(params: dict):
     return _apply_filters(
-        Transaction.objects.select_related("user").order_by("-created_at"),
+        Transaction.objects.select_related("user"),
         status=params.get("status") or None,
         product_type=params.get("product_type") or None,
         period=params.get("period") or None,
         date_from=params.get("date_from") or None,
         date_to=params.get("date_to") or None,
         search=(params.get("q") or "").strip(),
-    )
+    ).order_by("-event_at")
 
 
 def export_transactions_csv_response(params: dict, *, excel: bool = False) -> HttpResponse:
@@ -309,7 +319,8 @@ def export_transactions_csv_response(params: dict, *, excel: bool = False) -> Ht
         [
             "ID transaction",
             "Référence commande",
-            "ID utilisateur",
+            "Utilisateur",
+            "Email",
             "Prestataire",
             "Montant",
             "Devise",
@@ -321,18 +332,26 @@ def export_transactions_csv_response(params: dict, *, excel: bool = False) -> Ht
         ]
     )
     for tx in qs.iterator():
+        profile = tx.user
+        user_name = ""
+        user_email = ""
+        if profile:
+            user_name = profile.display_name or f"{profile.first_name} {profile.last_name}".strip()
+            user_email = profile.email or getattr(profile.user, "email", "") or ""
+        paid_at = tx.paid_at or tx.created_at
         writer.writerow(
             [
                 str(tx.id),
                 tx.order_id,
-                anonymized_user_id(tx.user),
+                user_name,
+                user_email,
                 transaction_provider_label(tx),
                 tx.amount,
                 tx.currency or "XOF",
                 transaction_product_label(tx),
                 transaction_status_admin_label(tx.status),
                 timezone.localtime(tx.created_at).strftime("%Y-%m-%d %H:%M"),
-                timezone.localtime(tx.paid_at).strftime("%Y-%m-%d %H:%M") if tx.paid_at else "",
+                timezone.localtime(paid_at).strftime("%Y-%m-%d %H:%M") if tx.paid_at else "",
                 timezone.localtime(tx.refunded_at).strftime("%Y-%m-%d %H:%M") if tx.refunded_at else "",
             ]
         )

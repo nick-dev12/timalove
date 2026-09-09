@@ -2,7 +2,14 @@
 {% for tx in page_obj %}
 <tr>
   <td data-label="ID transaction"><code class="adm-plan-id" title="{{ tx.order_id }}">#{{ tx.id.hex|slice:":8" }}</code></td>
-  <td data-label="Utilisateur"><code class="adm-plan-id">{{ tx.user|profile_ref }}</code></td>
+  <td data-label="Utilisateur">
+    {% if tx.user %}
+    <strong>{{ tx.user.display_name|default:tx.user.first_name }}</strong>
+    <span class="adm-table__meta">{{ tx.user.email|default:tx.user.user.email }}</span>
+    {% else %}
+    <span class="adm-table-muted">—</span>
+    {% endif %}
+  </td>
   <td data-label="Prestataire">{{ tx|tx_provider }}</td>
   <td data-label="Montant"><strong>{{ tx.amount|floatformat:0 }}</strong></td>
   <td data-label="Devise">{{ tx.currency|default:"XOF" }}</td>
@@ -10,7 +17,7 @@
   <td data-label="Statut">
     <span class="adm-badge adm-badge--{{ tx.status|tx_status_badge }}">{{ tx|tx_status_admin }}</span>
   </td>
-  <td data-label="Date">{{ tx.created_at|date:"d/m/Y H:i" }}</td>
+  <td data-label="Date">{% if tx.paid_at %}{{ tx.paid_at|date:"d/m/Y H:i" }}{% else %}{{ tx.created_at|date:"d/m/Y H:i" }}{% endif %}</td>
   <td class="adm-table__actions" data-label="">
     {% if tx.status == 'paid' %}
     <form method="post" class="adm-inline-form" data-confirm="Confirmer le remboursement de cette transaction ?">

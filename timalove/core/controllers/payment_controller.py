@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from core.controllers import (
     cinetpay_controller,
@@ -27,6 +28,56 @@ from core.models.choices import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_provider_datetime(value) -> datetime | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            dt = datetime.fromtimestamp(float(value), tz=timezone.utc)
+            return timezone.localtime(dt)
+        except (OSError, OverflowError, ValueError):
+            return None
+    text = str(value).strip()
+    if not text:
+        return None
+    parsed = parse_datetime(text.replace("Z", "+00:00"))
+    if parsed is None:
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
+
+
+def _paid_at_from_provider(extra: dict | None) -> datetime | None:
+    """Date réelle du paiement NabooPay / prestataire (si disponible dans le payload)."""
+    extra = extra or {}
+    blobs: list[dict] = [extra]
+    for key in ("webhook", "check", "raw"):
+        blob = extra.get(key)
+        if isinstance(blob, dict):
+            blobs.append(blob)
+    date_keys = (
+        "paid_at",
+        "payment_date",
+        "transaction_date",
+        "completed_at",
+        "updated_at",
+        "created_at",
+        "date",
+    )
+    for blob in blobs:
+        for key in date_keys:
+            if key not in blob:
+                continue
+            parsed = _parse_provider_datetime(blob.get(key))
+            if parsed:
+                return parsed
+    return None
 
 TIER_DURATIONS = {
     SubscriptionTier.JOURNEE_AMOUREUSE: timedelta(days=1),
@@ -414,7 +465,7 @@ def fulfill_order(order_id: str, provider_ref: str | None = None, extra: dict | 
         return True, "Déjà payée."
 
     tx.status = TransactionStatus.PAID
-    tx.paid_at = timezone.now()
+    tx.paid_at = _paid_at_from_provider(extra) or timezone.now()
     if provider_ref:
         tx.naboo_transaction_id = provider_ref
     details = dict(tx.payment_details or {})

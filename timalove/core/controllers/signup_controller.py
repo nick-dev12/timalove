@@ -29,6 +29,19 @@ from core.models.choices import Gender, RegistrationStatus, RelationshipIntent, 
 
 User = get_user_model()
 
+TERMS_ERROR = (
+    "Vous devez accepter les Conditions d'utilisation et la Politique de confidentialité pour continuer."
+)
+
+
+def terms_accepted(data: dict) -> bool:
+    val = data.get("terms_accepted")
+    if val is True:
+        return True
+    if isinstance(val, str):
+        return val.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(val)
+
 EMAIL_STEPS = [
     "email",
     "password",
@@ -161,6 +174,9 @@ def first_invalid_step(data: dict, *, channel: str, profile: Profile | None = No
 
 @transaction.atomic
 def register_from_draft(data: dict) -> tuple[bool, str, Profile | None, dict[str, str], str | None]:
+    if not terms_accepted(data):
+        return False, TERMS_ERROR, None, {"_form": TERMS_ERROR}, "terms"
+
     channel = (data.get("channel") or "email").strip() or "email"
     if channel == "oauth":
         return False, "Ce compte doit être complété une fois connecté.", None, {"_form": "Session requise."}, "identity"
@@ -190,6 +206,9 @@ def register_from_draft(data: dict) -> tuple[bool, str, Profile | None, dict[str
 
 @transaction.atomic
 def complete_oauth_profile(profile: Profile, data: dict) -> tuple[bool, str, dict[str, str], str | None]:
+    if not terms_accepted(data):
+        return False, TERMS_ERROR, {"_form": TERMS_ERROR}, "terms"
+
     data = dict(data)
     data["channel"] = "oauth"
     step, errors = first_invalid_step(data, channel="oauth", profile=profile)

@@ -85,7 +85,7 @@
             <span class="adm-table__meta">{{ member|profile_ref }}</span>
           </td>
           <td data-label="Rôle"><span class="adm-badge adm-badge--role">{{ member.role|staff_role_label }}</span></td>
-          <td data-label="Email">{{ member.email|mask_email }}</td>
+          <td data-label="Email">{{ member.email|default:member.user.email }}</td>
           {% if can_manage_staff %}
           <td class="adm-table__actions" data-label="">
             {% if member.id != request.user.profile.id %}
@@ -104,6 +104,12 @@
               <input type="hidden" name="action" value="deactivate_staff">
               <input type="hidden" name="profile_id" value="{{ member.id }}">
               <button class="adm-btn adm-btn--ghost adm-btn--sm adm-btn--danger" type="submit">Désactiver</button>
+            </form>
+            <form method="post" class="adm-inline-form" onsubmit="return confirm('Supprimer définitivement ce compte staff ? Cette action est irréversible.');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_staff">
+              <input type="hidden" name="profile_id" value="{{ member.id }}">
+              <button class="adm-btn adm-btn--ghost adm-btn--sm adm-btn--danger" type="submit">Supprimer</button>
             </form>
             {% endif %}
           </td>
