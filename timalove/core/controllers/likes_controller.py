@@ -106,6 +106,8 @@ def _incoming_item(
 
 
 def incoming(profile: Profile, limit: int | None = None) -> list[dict]:
+    from core.controllers.profile_controller import can_view_profile_by_gender
+
     liked_me = Swipe.objects.filter(swiped=profile).filter(LIKE_Q).select_related("swiper")
     my_likes = set(
         Swipe.objects.filter(swiper=profile).filter(LIKE_Q).values_list("swiped_id", flat=True)
@@ -129,6 +131,8 @@ def incoming(profile: Profile, limit: int | None = None) -> list[dict]:
         swiper = swipe.swiper
         if not _is_visible_partner(swiper):
             continue
+        if not can_view_profile_by_gender(profile, swiper):
+            continue
         seen_swiper_ids.add(swipe.swiper_id)
         results.append(
             _incoming_item(
@@ -150,6 +154,8 @@ def incoming(profile: Profile, limit: int | None = None) -> list[dict]:
                 continue
             partner = partners.get(partner_id)
             if not partner or not _is_visible_partner(partner):
+                continue
+            if not can_view_profile_by_gender(profile, partner):
                 continue
             seen_swiper_ids.add(partner_id)
             results.append(

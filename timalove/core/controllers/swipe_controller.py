@@ -79,6 +79,11 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
     if swiped.pk == swiper.pk:
         return {"ok": False, "error": "Action invalide."}
 
+    from core.controllers.profile_controller import can_view_profile_by_gender
+
+    if not can_view_profile_by_gender(swiper, swiped):
+        return {"ok": False, "error": "Profil non disponible."}
+
     is_like = bool(is_like)
     is_super_like = bool(is_super_like)
     action = _stored_action(is_like, is_super_like)

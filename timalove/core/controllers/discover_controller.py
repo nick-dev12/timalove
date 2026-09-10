@@ -10,7 +10,9 @@ from core.models.choices import Gender, RegistrationStatus, UserRole
 
 
 def opposite_gender(gender: str) -> str:
-    return Gender.FEMALE if gender == Gender.MALE else Gender.MALE
+    from core.controllers.profile_controller import opposite_gender as _opposite
+
+    return _opposite(gender) or Gender.FEMALE
 
 
 def feed_for(viewer: Profile, limit: int = 20) -> list[Profile]:
@@ -41,7 +43,11 @@ def get_discover_profile(viewer: Profile, profile_id) -> Profile | None:
         p = Profile.objects.get(pk=profile_id)
     except Profile.DoesNotExist:
         return None
-    if p.gender == viewer.gender or p.pk == viewer.pk:
+    from core.controllers.profile_controller import can_view_profile_by_gender
+
+    if p.pk == viewer.pk:
+        return None
+    if not can_view_profile_by_gender(viewer, p):
         return None
     if p.registration_status != RegistrationStatus.APPROVED:
         return None

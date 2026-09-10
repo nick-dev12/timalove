@@ -1107,7 +1107,7 @@ class FreemiumQuotaTests(TestCase):
         self.free.subscription_tier = SubscriptionTier.VIP_1M
         self.free.save(update_fields=["subscription_tier", "updated_at"])
         self.assertEqual(subscription_controller.visibility_multiplier(self.free), 10)
-        self.assertTrue(subscription_controller.can_bypass_gender_filter(self.free))
+        self.assertFalse(subscription_controller.can_bypass_gender_filter(self.free))
         femme = make_profile("plans-femme@test.com", Gender.FEMALE, "Awa")
         ids = subscription_controller.plans_catalog_for(femme)
         self.assertEqual(ids, ["pass_femme"])
@@ -1399,6 +1399,62 @@ class MonitoringSystemEventTests(TestCase):
         self.assertIn("HTTP 500", titles)
         self.assertNotIn("HTTP 404", titles)
         self.assertNotIn("Requête lente", titles)
+
+
+class StrictGenderDiscoveryTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        self.man = make_profile("man-gender@test.com", Gender.MALE, "Man")
+        self.man.photo_url = "https://example.com/man.jpg"
+        self.man.save(update_fields=["photo_url", "updated_at"])
+        self.woman = make_profile("woman-gender@test.com", Gender.FEMALE, "Woman")
+        self.woman.photo_url = "https://example.com/woman.jpg"
+        self.woman.save(update_fields=["photo_url", "updated_at"])
+        self.man2 = make_profile("man2-gender@test.com", Gender.MALE, "Man2")
+        self.man2.photo_url = "https://example.com/man2.jpg"
+        self.man2.save(update_fields=["photo_url", "updated_at"])
+
+    def test_male_feed_only_shows_females(self):
+        from core.controllers.profile_controller import apply_opposite_gender_filter
+
+        qs = Profile.objects.filter(role=UserRole.MEMBER)
+        filtered = apply_opposite_gender_filter(qs, self.man)
+        self.assertEqual(set(filtered.values_list("gender", flat=True)), {Gender.FEMALE})
+        self.assertIn(self.woman.pk, filtered.values_list("pk", flat=True))
+        self.assertNotIn(self.man2.pk, filtered.values_list("pk", flat=True))
+
+    def test_female_feed_only_shows_males(self):
+        from core.controllers.profile_controller import apply_opposite_gender_filter
+
+        qs = Profile.objects.filter(role=UserRole.MEMBER)
+        filtered = apply_opposite_gender_filter(qs, self.woman)
+        self.assertEqual(set(filtered.values_list("gender", flat=True)), {Gender.MALE})
+
+    def test_vip_cannot_bypass_gender_filter(self):
+        from core.controllers import subscription_controller
+        from core.models.choices import SubscriptionStatus, SubscriptionTier
+
+        self.man.subscription_tier = SubscriptionTier.VIP_1M
+        self.man.subscription_status = SubscriptionStatus.ACTIVE
+        self.man.save(update_fields=["subscription_tier", "subscription_status", "updated_at"])
+        self.assertFalse(subscription_controller.can_bypass_gender_filter(self.man))
+
+    def test_swipe_same_gender_rejected(self):
+        result = swipe_controller.record_swipe(self.man, self.man2.id, "like")
+        self.assertFalse(result["ok"])
+
+    def test_explore_profile_blocks_same_gender(self):
+        from core.controllers import explore_controller
+
+        data = explore_controller.get_public_profile(self.man2.id, viewer=self.man)
+        self.assertIsNone(data)
+
+    def test_explore_feed_excludes_same_gender(self):
+        from core.controllers import explore_controller
+
+        ids = explore_controller._eligible_ids(self.man)
+        self.assertIn(self.woman.pk, ids)
+        self.assertNotIn(self.man2.pk, ids)
 
 
 class AccountDeletionReregistrationTests(TestCase):

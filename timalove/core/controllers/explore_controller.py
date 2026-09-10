@@ -290,6 +290,12 @@ def get_public_profile(profile_id, viewer=None) -> dict | None:
     if not profile:
         return None
 
+    if viewer is not None:
+        from core.controllers.profile_controller import can_view_profile_by_gender
+
+        if not can_view_profile_by_gender(viewer, profile):
+            return None
+
     photos = collect_photos(profile, limit=12)
 
     religion_label = profile.get_religion_display() if profile.religion else ""

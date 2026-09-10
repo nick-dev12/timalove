@@ -95,7 +95,8 @@ def visibility_multiplier(profile: Profile | None) -> int:
 
 
 def can_bypass_gender_filter(profile: Profile | None) -> bool:
-    return is_vip(profile)
+    """Désactivé — le filtre genre opposé est strict pour tous les membres."""
+    return False
 
 
 def conversation_requires_acceptance(recipient: Profile | None) -> bool:
