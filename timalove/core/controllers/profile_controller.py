@@ -12,7 +12,8 @@ from django.db.models import Max
 from django.utils import timezone
 
 from core.data.onboarding import INTERESTS, TRAITS, encode_looking_for, looking_for_free_text, looking_for_ids, looking_for_labels, life_value_labels
-from core.models import Profile, ProfileGalleryPhoto
+from core.controllers.auth_controller import cleanup_orphan_users_for_email, normalize_email, normalize_phone
+from core.models import BannedIdentity, Profile, ProfileGalleryPhoto
 from core.models.choices import Gender, LastSeenVisibility, RegistrationStatus, RelationshipIntent, Religion, SubscriptionStatus, SubscriptionTier
 from core.controllers.onboarding_controller import _clean_values, _read_image_bytes, dob_from_age
 
@@ -551,7 +552,33 @@ def landing_members(limit: int = 6) -> list[Profile]:
     return list(qs)
 
 
+@transaction.atomic
+def purge_member_account(profile: Profile, *, keep_ban_block: bool = False) -> None:
+    """
+    Supprime définitivement un membre et libère ses identifiants (email, téléphone, OAuth)
+    pour une réinscription ultérieure, sauf si keep_ban_block=True (membre banni).
+    """
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    email = normalize_email(profile.email)
+    phone = normalize_phone(profile.phone)
+
+    if not keep_ban_block:
+        if email:
+            BannedIdentity.objects.filter(email_normalized=email).delete()
+        if phone:
+            BannedIdentity.objects.filter(phone_normalized=phone).delete()
+
+    user_id = profile.user_id
+    if user_id:
+        User.objects.filter(pk=user_id).delete()
+    else:
+        profile.delete()
+
+    cleanup_orphan_users_for_email(email)
+
+
 def delete_account(profile: Profile) -> None:
-    user = profile.user
-    profile.delete()
-    user.delete()
+    """Suppression volontaire depuis les paramètres profil."""
+    purge_member_account(profile, keep_ban_block=False)

@@ -1,10 +1,18 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.test import Client, TestCase, override_settings
+from django.utils import timezone
 from datetime import date
 from unittest.mock import patch
 
-from core.controllers import swipe_controller, message_controller, payment_controller, profile_controller
+from core.controllers import (
+    auth_controller,
+    message_controller,
+    payment_controller,
+    profile_controller,
+    signup_controller,
+    swipe_controller,
+)
 from core.models import Profile
 from core.models.choices import Gender, RegistrationStatus, UserRole
 from core.controllers import site_settings_controller
@@ -1391,4 +1399,94 @@ class MonitoringSystemEventTests(TestCase):
         self.assertIn("HTTP 500", titles)
         self.assertNotIn("HTTP 404", titles)
         self.assertNotIn("Requête lente", titles)
+
+
+class AccountDeletionReregistrationTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+
+    def test_delete_account_allows_email_reregistration(self):
+        profile = make_profile("rejoin@test.com", Gender.FEMALE, "Rejoin")
+        profile.phone = "+221771234567"
+        profile.google_uid = "google-uid-123"
+        profile.save(update_fields=["phone", "google_uid", "updated_at"])
+
+        profile_controller.delete_account(profile)
+
+        self.assertFalse(User.objects.filter(email="rejoin@test.com").exists())
+        self.assertFalse(Profile.objects.filter(email__iexact="rejoin@test.com").exists())
+
+        ok, msg, new_profile = auth_controller.register_member(
+            {
+                "email": "rejoin@test.com",
+                "phone": "+221771234567",
+                "password": "secret123",
+                "date_of_birth": "1995-01-01",
+                "gender": Gender.FEMALE,
+                "first_name": "Rejoin",
+                "last_name": "Again",
+            }
+        )
+        self.assertTrue(ok, msg)
+        self.assertIsNotNone(new_profile)
+        self.assertEqual(new_profile.email, "rejoin@test.com")
+
+    def test_delete_account_clears_banned_identity_for_voluntary_delete(self):
+        from core.models import BannedIdentity
+
+        profile = make_profile("voluntary@test.com", Gender.MALE, "Vol")
+        BannedIdentity.objects.create(
+            profile=profile,
+            email_normalized="voluntary@test.com",
+            reason="legacy",
+        )
+
+        profile_controller.delete_account(profile)
+
+        self.assertFalse(BannedIdentity.objects.filter(email_normalized="voluntary@test.com").exists())
+        errors = signup_controller.check_identifier({"email": "voluntary@test.com"})
+        self.assertNotIn("email", errors)
+
+    def test_admin_delete_banned_member_keeps_ban_block(self):
+        from core.models import BannedIdentity
+        from core.controllers import admin_controller
+
+        profile = make_profile("banned@test.com", Gender.MALE, "Banned")
+        profile.banned_at = timezone.now()
+        profile.save(update_fields=["banned_at", "updated_at"])
+        BannedIdentity.objects.create(
+            profile=profile,
+            email_normalized="banned@test.com",
+            reason="modération",
+        )
+
+        admin_controller.delete_member_account(profile.id)
+
+        self.assertTrue(BannedIdentity.objects.filter(email_normalized="banned@test.com").exists())
+        errors = signup_controller.check_identifier({"email": "banned@test.com"})
+        self.assertIn("email", errors)
+
+    def test_orphan_user_does_not_block_signup(self):
+        User.objects.create_user(
+            username="orphan@test.com",
+            email="orphan@test.com",
+            password="unused123",
+        )
+        self.assertFalse(Profile.objects.filter(email__iexact="orphan@test.com").exists())
+
+        errors = signup_controller.check_identifier({"email": "orphan@test.com"})
+        self.assertNotIn("email", errors)
+
+        ok, msg, profile = auth_controller.register_member(
+            {
+                "email": "orphan@test.com",
+                "password": "secret123",
+                "date_of_birth": "1994-06-15",
+                "gender": Gender.MALE,
+                "first_name": "Orphan",
+                "last_name": "Fix",
+            }
+        )
+        self.assertTrue(ok, msg)
+        self.assertIsNotNone(profile)
 

@@ -816,16 +816,12 @@ def revoke_verification(profile_id) -> Profile:
 
 
 def delete_member_account(profile_id) -> None:
-    from django.contrib.auth import get_user_model
+    from core.controllers import profile_controller
 
-    User = get_user_model()
     profile = Profile.objects.select_related("user").filter(pk=profile_id, role="member").first()
     if profile is None:
         raise ValueError("Membre introuvable.")
-    if profile.user_id:
-        User.objects.filter(pk=profile.user_id).delete()
-    else:
-        profile.delete()
+    profile_controller.purge_member_account(profile, keep_ban_block=bool(profile.banned_at))
 
 
 def resolve_moderation_reason(reason_key: str, custom: str = "") -> str:

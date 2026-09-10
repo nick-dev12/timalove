@@ -81,6 +81,16 @@ def unique_username(base: str) -> str:
     return f"membre_{uuid.uuid4().hex[:12]}"
 
 
+def cleanup_orphan_users_for_email(email: str | None) -> None:
+    """Supprime les User Django sans Profile (bloquent email / OAuth après échec partiel)."""
+    email_n = normalize_email(email)
+    if not email_n:
+        return
+    for user in User.objects.filter(email__iexact=email_n).iterator():
+        if not Profile.objects.filter(user_id=user.pk).exists():
+            user.delete()
+
+
 def is_banned(email: str | None = None, phone: str | None = None) -> bool:
     q = BannedIdentity.objects.all()
     email_n = normalize_email(email)
@@ -312,6 +322,7 @@ def login_or_register_oauth(
     if profile is None:
         if not site_settings_controller.get("registrations_enabled", True):
             return False, "Les inscriptions sont temporairement fermées.", False
+        cleanup_orphan_users_for_email(email)
         if User.objects.filter(email__iexact=email).exists():
             user = User.objects.get(email__iexact=email)
         else:
@@ -438,6 +449,8 @@ def register_member(data: dict) -> tuple[bool, str, Profile | None]:
         email = None
     if is_banned(email=email, phone=phone):
         return False, "Inscription impossible.", None
+    if email:
+        cleanup_orphan_users_for_email(email)
     if email and User.objects.filter(email__iexact=email).exists():
         return False, "Un compte existe déjà avec cet email.", None
     if email and Profile.objects.filter(email__iexact=email).exists():

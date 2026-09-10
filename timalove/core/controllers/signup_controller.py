@@ -510,12 +510,15 @@ def _store_photo(profile: Profile, value: str, kind: str) -> None:
 
 
 def _email_taken(email: str, exclude: Profile | None = None) -> bool:
+    auth_controller.cleanup_orphan_users_for_email(email)
     profiles = Profile.objects.filter(email__iexact=email)
     users = User.objects.filter(email__iexact=email)
     if exclude is not None:
         profiles = profiles.exclude(pk=exclude.pk)
         users = users.exclude(pk=exclude.user_id)
-    return profiles.exists() or users.exists()
+    if profiles.exists():
+        return True
+    return users.filter(profile__isnull=False).exists()
 
 
 def _phone_taken(phone: str, exclude: Profile | None = None) -> bool:

@@ -865,7 +865,9 @@
     }
 
     root.querySelector("[data-delete-account]")?.addEventListener("click", (e) => {
-      if (!window.confirm("Supprimer définitivement votre compte ? Cette action est irréversible.")) return;
+      if (!window.confirm(
+        "Supprimer définitivement votre compte ? Vos données seront effacées, mais vous pourrez recréer un compte ou vous reconnecter (email, téléphone, Google, Apple) avec les mêmes identifiants."
+      )) return;
       void withButton(e.currentTarget, "danger", async () => {
         const data = await postJSON("/api/profile/delete/", {});
         window.location.href = data.redirect || "/";
