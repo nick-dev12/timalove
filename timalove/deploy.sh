@@ -262,8 +262,18 @@ if ! $SKIP_GIT; then
     fi
 
     clean_untracked_pull_blockers
+    PRE_PULL_HEAD=$(run_as_app "cd '$REPO_DIR' && git rev-parse HEAD")
     run_as_app "cd '$REPO_DIR' && git fetch origin && git pull origin '$GIT_BRANCH'"
+    POST_PULL_HEAD=$(run_as_app "cd '$REPO_DIR' && git rev-parse HEAD")
     ok "Code à jour ($(run_as_app "cd '$REPO_DIR' && git rev-parse --short HEAD"))"
+
+    if [[ "$PRE_PULL_HEAD" != "$POST_PULL_HEAD" && -z "${DEPLOY_REEXEC:-}" ]]; then
+        DEPLOY_SCRIPT="$REPO_DIR/timalove/deploy.sh"
+        if [[ -f "$DEPLOY_SCRIPT" ]] && run_as_app "cd '$REPO_DIR' && git diff --name-only '$PRE_PULL_HEAD' '$POST_PULL_HEAD'" | grep -qE '(^|/)deploy\.sh$|(^|/)deploy/verify_runtime\.py$'; then
+            warn "Script de déploiement mis à jour — relance automatique"
+            DEPLOY_REEXEC=1 exec bash "$DEPLOY_SCRIPT" "$@"
+        fi
+    fi
 else
     log "Étape 1/5 — Git pull (ignoré)"
 fi
