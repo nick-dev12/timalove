@@ -482,20 +482,24 @@ def opposite_gender(gender: str | None) -> str | None:
 
 
 def can_view_profile_by_gender(viewer: Profile | None, target: Profile) -> bool:
-    """Règle stricte : homme ↔ femme uniquement (non contournable)."""
+    """Homme ↔ femme si genre renseigné ; sans genre → accès à tous les profils."""
     if viewer is None or target is None:
         return False
     if viewer.pk == target.pk:
         return True
-    if not viewer.gender or not target.gender:
+    if not viewer.gender:
+        return True
+    if not target.gender:
         return False
     return viewer.gender != target.gender
 
 
 def apply_opposite_gender_filter(qs, viewer: Profile | None):
-    """Homme → femmes uniquement, femme → hommes uniquement (genre strict, sans exception)."""
-    if viewer is None or not viewer.gender:
+    """Homme → femmes, femme → hommes ; sans genre → tous les profils."""
+    if viewer is None:
         return qs.none()
+    if not viewer.gender:
+        return qs
     opposite = opposite_gender(viewer.gender)
     if not opposite:
         return qs.none()

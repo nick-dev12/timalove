@@ -1456,6 +1456,24 @@ class StrictGenderDiscoveryTests(TestCase):
         self.assertIn(self.woman.pk, ids)
         self.assertNotIn(self.man2.pk, ids)
 
+    def test_no_gender_viewer_sees_all_profiles(self):
+        from core.controllers import explore_controller
+        from core.controllers.profile_controller import apply_opposite_gender_filter
+
+        neutral = make_profile("neutral-gender@test.com", Gender.MALE, "Neutral")
+        neutral.gender = ""
+        neutral.photo_url = "https://example.com/neutral.jpg"
+        neutral.save(update_fields=["gender", "photo_url", "updated_at"])
+
+        qs = Profile.objects.filter(role=UserRole.MEMBER)
+        filtered = apply_opposite_gender_filter(qs, neutral)
+        self.assertIn(self.man.pk, filtered.values_list("pk", flat=True))
+        self.assertIn(self.woman.pk, filtered.values_list("pk", flat=True))
+
+        ids = explore_controller._eligible_ids(neutral)
+        self.assertIn(self.man.pk, ids)
+        self.assertIn(self.woman.pk, ids)
+
 
 class AccountDeletionReregistrationTests(TestCase):
     def setUp(self):
