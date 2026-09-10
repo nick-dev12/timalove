@@ -34,7 +34,6 @@
 </div>
 
 <main class="auth-gate">
-  {% include "partials/btn_back.html" with href="/" extra_class="auth-gate__home" %}
 
   {% if user.is_authenticated and oauth_incomplete %}
   <div class="auth-gate__session-banner" role="status">
