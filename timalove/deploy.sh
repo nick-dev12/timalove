@@ -326,9 +326,16 @@ else
     log "Étape 4/5 — collectstatic (ignoré)"
 fi
 
+service_unit_exists() {
+    local svc="$1"
+    systemctl cat "${svc}.service" &>/dev/null \
+        || systemctl is-enabled "${svc}" &>/dev/null \
+        || [[ -f "/etc/systemd/system/${svc}.service" ]]
+}
+
 restart_service() {
     local svc="$1" required="$2"
-    if systemctl list-unit-files --type=service --no-legend 2>/dev/null | grep -q "^${svc}.service"; then
+    if service_unit_exists "$svc"; then
         systemctl restart "$svc"
         ok "Redémarré : $svc"
         return 0
@@ -384,7 +391,7 @@ check_service_active() {
         ok "$svc → active (running)"
         return 0
     fi
-    if systemctl list-unit-files --type=service --no-legend 2>/dev/null | grep -q "^${svc}.service"; then
+    if service_unit_exists "$svc"; then
         err "$svc → inactif ou en erreur"
         systemctl status "$svc" --no-pager -l || true
         return 1
