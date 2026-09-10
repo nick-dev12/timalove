@@ -1,29 +1,31 @@
 /**
  * TimaLove — calcul du % Match à la demande (clic sur le badge explorer).
+ * Chaque profil exige un clic ; le score est recalculé côté serveur à l'instant T.
  */
 (function () {
-  const cache = new Map();
   const inflight = new Set();
   const MIN_CALC_MS = 900;
 
   function fetchScore(profileId) {
-    if (cache.has(profileId)) {
-      return Promise.resolve(cache.get(profileId));
-    }
-    return fetch("/api/compatibility/" + profileId + "/", {
+    const url =
+      "/api/compatibility/" +
+      encodeURIComponent(profileId) +
+      "/?t=" +
+      Date.now();
+    return fetch(url, {
       credentials: "same-origin",
+      cache: "no-store",
       headers: { "X-Requested-With": "XMLHttpRequest" },
     })
       .then(function (res) {
         return res.json().then(function (data) {
-          return { ok: res.ok, data: data };
+          return { ok: res.ok, status: res.status, data: data };
         });
       })
       .then(function (result) {
         if (!result.ok || !result.data.ok) {
           throw new Error((result.data && result.data.message) || "Score indisponible.");
         }
-        cache.set(profileId, result.data.compatibility);
         return result.data.compatibility;
       });
   }
@@ -44,6 +46,7 @@
     badge.classList.remove("is-pending", "is-calculating", "is-ready");
     badge.classList.add("is-idle");
     badge.removeAttribute("data-match-ready");
+    badge.removeAttribute("aria-busy");
     badge.setAttribute("aria-label", "Calculer la compatibilité");
     if (label) label.textContent = "Match ?";
   }
@@ -94,29 +97,38 @@
     window.requestAnimationFrame(frame);
   }
 
-  function setError(badge) {
+  function setError(badge, message) {
     if (!badge) return;
     const label = badge.querySelector("[data-match-label]");
     badge.classList.remove("is-calculating", "is-ready");
     badge.classList.add("is-idle", "is-pending");
     badge.removeAttribute("data-match-ready");
     badge.removeAttribute("aria-busy");
-    badge.setAttribute("aria-label", "Compatibilité indisponible, réessayez");
+    badge.setAttribute(
+      "aria-label",
+      message || "Compatibilité indisponible, réessayez"
+    );
     if (label) label.textContent = "Réessayer";
   }
 
-  function calculate(badge) {
-    if (!badge || badge.dataset.matchReady === "1" || badge.classList.contains("is-calculating")) {
-      return;
-    }
+  function reset(badge) {
+    if (!badge) return;
+    const profileId = profileIdFrom(badge);
+    if (profileId) inflight.delete(profileId);
+    setIdle(badge);
+  }
+
+  function resetSlide(slide) {
+    if (!slide) return;
+    reset(slide.querySelector("[data-match-score]"));
+  }
+
+  function calculate(badge, force) {
+    if (!badge || badge.classList.contains("is-calculating")) return;
+    if (!force && badge.dataset.matchReady === "1") return;
 
     const profileId = profileIdFrom(badge);
     if (!profileId) return;
-
-    if (cache.has(profileId)) {
-      animateScore(badge, cache.get(profileId));
-      return;
-    }
 
     if (inflight.has(profileId)) return;
     inflight.add(profileId);
@@ -136,8 +148,8 @@
       .then(function (score) {
         animateScore(badge, score);
       })
-      .catch(function () {
-        setError(badge);
+      .catch(function (err) {
+        setError(badge, err && err.message ? err.message : "");
       })
       .finally(function () {
         inflight.delete(profileId);
@@ -147,9 +159,9 @@
   function onActivate(event) {
     const badge = event.target.closest("[data-match-score]");
     if (!badge || !badge.closest("#explorer-feed")) return;
-    if (badge.dataset.matchReady === "1") return;
     event.preventDefault();
     event.stopPropagation();
+    if (badge.dataset.matchReady === "1") return;
     calculate(badge);
   }
 
@@ -164,5 +176,7 @@
 
   window.timaloveMatchScore = {
     calculate: calculate,
+    reset: reset,
+    resetSlide: resetSlide,
   };
 })();

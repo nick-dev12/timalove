@@ -24,7 +24,6 @@
       </button>
       <nav id="explorer-menu" class="explorer__menu" hidden>
       <a href="{% url 'public:accueil' %}">En savoir plus</a>
-      <a href="{% url 'public:coaching' %}">Coaching individuel</a>
       <a href="{% url 'public:contact' %}">Contact</a>
       <a href="{% url 'auth:deconnexion' %}">Déconnexion</a>
       </nav>
@@ -34,12 +33,6 @@
         <img src="{% static 'images/logo.webp' %}" alt="" width="36" height="36">
       </a>
       <div class="explorer__top-actions">
-        <a class="explorer__coach" href="{% url 'public:coaching' %}" aria-label="Coaching individuel">
-          <span class="explorer__coach-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 2.2 13.4 7 18.2 8.2 13.4 9.4 12 14.2 10.6 9.4 5.8 8.2 10.6 7 12 2.2zM19.2 13.2 20 15.8 22.6 16.6 20 17.4 19.2 20 18.4 17.4 15.8 16.6 18.4 15.8 19.2 13.2zM5.4 13.8 6 16 8.2 16.6 6 17.2 5.4 19.4 4.8 17.2 2.6 16.6 4.8 16 5.4 13.8z"/></svg>
-          </span>
-          <span class="explorer__coach-label">Coaching</span>
-        </a>
         {% include "partials/explorer_bell.html" %}
       </div>
     </header>

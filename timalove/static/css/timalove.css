@@ -3346,6 +3346,18 @@ body.is-explorer-filters {
   display: none !important;
 }
 
+.explorer__menu-anchor > .explorer__icon-btn {
+  width: 3.125rem;
+  height: 3.125rem;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.explorer__menu-anchor > .explorer__icon-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
 .explorer__icon-btn {
   width: 2.75rem;
   height: 2.75rem;

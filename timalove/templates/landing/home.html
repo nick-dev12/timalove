@@ -36,7 +36,6 @@
         <div class="section-label">La visionnaire</div>
         <h2>Qui suis-je ?</h2>
         <p>Je m'appelle Tima. J'accompagne celles et ceux qui recherchent une relation sérieuse, orientée vers le mariage, dans un cadre bienveillant et exigeant.</p>
-        <a class="btn btn-outline" href="{% url 'public:qui_suis_je' %}">Découvrir mon histoire</a>
       </div>
       <img src="{% static 'images/Tima-profil.webp' %}" alt="Portrait de Tima" style="border-radius:2rem;background:var(--rose-pale);aspect-ratio:4/5;object-fit:cover;">
     </div>
@@ -94,25 +93,6 @@
         {% endfor %}
       </div>
       <div style="margin-top:2rem;"><a class="btn btn-primary" href="{% url 'public:coaching' %}">Réserver ma séance</a></div>
-    </div>
-  </section>
-
-  <section class="section" id="avis">
-    <div class="container">
-      <div class="section-label" style="justify-content:center;">Témoignages</div>
-      <h2 style="text-align:center;">Ils nous font confiance</h2>
-      <div class="grid-3" style="margin-top:2rem;">
-        {% for t in temoignages %}
-        <article class="card card-lg">
-          <div style="font-family:var(--font-serif);font-size:2.5rem;color:rgba(232,99,122,.25);">“</div>
-          <p style="font-style:italic;">{{ t.quote }}</p>
-          <div style="display:flex;align-items:center;gap:.75rem;margin-top:1rem;">
-            <div class="avatar" style="display:grid;place-items:center;color:var(--rose-primary);font-family:var(--font-serif);">{{ t.initial }}</div>
-            <div><strong>{{ t.name }}</strong>{% if t.age %}<span style="color:var(--text-muted);"> · {{ t.age }} ans</span>{% endif %}</div>
-          </div>
-        </article>
-        {% endfor %}
-      </div>
     </div>
   </section>
 

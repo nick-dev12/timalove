@@ -307,10 +307,16 @@ def message_mark_read(request):
 
 @require_GET
 def compatibility_score_api(request, profile_id):
-    viewer = getattr(request.user, "profile", None) if request.user.is_authenticated else None
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"ok": False, "message": "Connectez-vous pour calculer la compatibilité."},
+            status=401,
+        )
+    viewer = getattr(request.user, "profile", None)
     ok, msg, score = matching_controller.compatibility_for_profile_id(viewer, profile_id)
     if not ok:
-        return JsonResponse({"ok": False, "message": msg}, status=404)
+        status = 401 if msg.startswith("Connectez") or msg.startswith("Session") else 404
+        return JsonResponse({"ok": False, "message": msg}, status=status)
     return JsonResponse(
         {
             "ok": True,

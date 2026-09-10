@@ -851,6 +851,27 @@ class CompatibilityScoreTests(TestCase):
         self.assertGreaterEqual(data["compatibility"], 52)
         self.assertLessEqual(data["compatibility"], 99)
 
+    def test_api_compatibility_requires_login(self):
+        from django.test import Client
+
+        client = Client(enforce_csrf_checks=False)
+        r = client.get("/api/compatibility/%s/" % self.candidate.id)
+        self.assertEqual(r.status_code, 401)
+        self.assertFalse(r.json()["ok"])
+
+    def test_origin_country_boosts_score(self):
+        from core.controllers.matching_controller import compatibility_percent
+
+        self.viewer.country = "Sénégal"
+        self.viewer.save()
+        self.candidate.country = "Sénégal"
+        self.candidate.save()
+        with_origin = compatibility_percent(self.viewer, self.candidate)
+        self.candidate.country = "France"
+        self.candidate.save()
+        without_origin = compatibility_percent(self.viewer, self.candidate)
+        self.assertGreater(with_origin, without_origin)
+
     def test_guest_uses_solo_score(self):
         from core.controllers.matching_controller import compatibility_percent
 

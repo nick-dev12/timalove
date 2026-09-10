@@ -45,6 +45,15 @@ def _religion_ratio(viewer: Profile, candidate: Profile) -> float | None:
     return 1.0 if a == b else 0.0
 
 
+def _origin_ratio(viewer: Profile, candidate: Profile) -> float | None:
+    """Pays d'origine renseigné à l'inscription."""
+    a = (viewer.country or "").strip().lower()
+    b = (candidate.country or "").strip().lower()
+    if not a or not b:
+        return None
+    return 1.0 if a == b else 0.18
+
+
 def _location_ratio(viewer: Profile, candidate: Profile) -> float | None:
     viewer_city = (viewer.city or "").strip().lower()
     cand_city = (candidate.city or "").strip().lower()
@@ -172,13 +181,24 @@ def _candidate_signal_ratio(viewer: Profile, candidate: Profile) -> float:
 
 
 def compatibility_for_profile_id(viewer: Profile | None, profile_id) -> tuple[bool, str, int | None]:
-    """Score pour un profil public éligible."""
+    """Score pour un profil public éligible (viewer connecté, données à l'instant T)."""
     from core.models.choices import RegistrationStatus, UserRole
+
+    if viewer is None:
+        return False, "Connectez-vous pour calculer la compatibilité.", None
+
+    try:
+        viewer = Profile.objects.get(pk=viewer.pk)
+    except Profile.DoesNotExist:
+        return False, "Session expirée.", None
 
     try:
         candidate = Profile.objects.get(pk=profile_id)
     except Profile.DoesNotExist:
         return False, "Profil introuvable.", None
+
+    if viewer.pk == candidate.pk:
+        return False, "Profil invalide.", None
 
     if (
         candidate.registration_status != RegistrationStatus.APPROVED
@@ -200,6 +220,7 @@ def compatibility_percent(viewer: Profile | None, candidate: Profile) -> int:
     weighted: list[tuple[float, float]] = [
         (22.0, _intent_ratio(viewer, candidate)),
         (14.0, _religion_ratio(viewer, candidate)),
+        (10.0, _origin_ratio(viewer, candidate)),
         (16.0, _jaccard(_norm_set(viewer.life_values), _norm_set(candidate.life_values))),
         (14.0, _jaccard(_norm_set(viewer.interests), _norm_set(candidate.interests))),
         (10.0, _jaccard(_norm_set(viewer.personality_traits), _norm_set(candidate.personality_traits))),

@@ -40,33 +40,5 @@
     </a>
   </section>
 
-  <section class="ctc__form-card" aria-labelledby="ctc-form-title">
-    <h2 id="ctc-form-title">Envoyez-nous un message discret</h2>
-    {% if messages %}
-    <ul class="ctc__alerts">
-      {% for message in messages %}
-      <li class="{% if message.tags %}is-{{ message.tags }}{% endif %}">{{ message }}</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-    <form method="post" action="">
-      {% csrf_token %}
-      <div class="ctc-form">
-        <label>Nom complet
-          <input class="form-input" name="name" required autocomplete="name">
-        </label>
-        <label>Email
-          <input class="form-input" type="email" name="email" required autocomplete="email">
-        </label>
-        <label class="ctc-form__full">Votre message
-          <textarea class="form-textarea" name="message" rows="5" required placeholder="Comment pouvons-nous vous aider ?"></textarea>
-        </label>
-      </div>
-      <button class="ctc__submit" type="submit">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3.4 20.6 21 12 3.4 3.4 3 10.2 15 12 3 13.8z"/></svg>
-        Envoyer le message
-      </button>
-    </form>
-  </section>
 </main>
 {% endblock %}
