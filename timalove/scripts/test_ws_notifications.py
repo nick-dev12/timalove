@@ -25,8 +25,46 @@ from django.contrib.auth import get_user_model  # noqa: E402
 from django.test import Client  # noqa: E402
 
 
+def resolve_verify_email() -> str | None:
+    """Email utilisé pour tester /ws/notifications/ (prod ou local)."""
+    explicit = (os.environ.get("DEPLOY_VERIFY_EMAIL") or "").strip()
+    if explicit:
+        return explicit
+
+    from django.conf import settings
+
+    for email in getattr(settings, "QUOTA_EXEMPT_EMAILS", []) or []:
+        candidate = str(email).strip().lower()
+        if candidate and get_user_model().objects.filter(
+            email__iexact=candidate, is_active=True
+        ).exists():
+            return candidate
+
+    for fallback in ("admin@timalove.local", "teste1@gmail.com", "gooteste@gmail.com"):
+        if get_user_model().objects.filter(email__iexact=fallback, is_active=True).exists():
+            return fallback
+
+    superuser = (
+        get_user_model()
+        .objects.filter(is_active=True, is_superuser=True)
+        .order_by("id")
+        .values_list("email", flat=True)
+        .first()
+    )
+    if superuser:
+        return superuser
+
+    return (
+        get_user_model()
+        .objects.filter(is_active=True)
+        .order_by("id")
+        .values_list("email", flat=True)
+        .first()
+    )
+
+
 def session_cookie_for(email: str) -> tuple[str, str] | None:
-    user = get_user_model().objects.filter(email__iexact=email).first()
+    user = get_user_model().objects.filter(email__iexact=email, is_active=True).first()
     if not user:
         return None
     client = Client()
@@ -91,9 +129,14 @@ def test_live_daphne(cookie: str, site_url: str = "http://127.0.0.1:8000") -> bo
 
 def main(site_url: str | None = None) -> int:
     site = (site_url or os.environ.get("TIMALOVE_SITE_URL") or "http://127.0.0.1:8000").rstrip("/")
-    auth = session_cookie_for("teste1@gmail.com")
+    verify_email = resolve_verify_email()
+    if not verify_email:
+        print("FAIL: aucun utilisateur actif pour tester le WebSocket")
+        return 1
+
+    auth = session_cookie_for(verify_email)
     if not auth:
-        print("FAIL: utilisateur teste1@gmail.com introuvable ou session impossible")
+        print(f"FAIL: utilisateur {verify_email} introuvable ou session impossible")
         return 1
 
     email, cookie = auth

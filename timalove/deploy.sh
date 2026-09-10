@@ -7,7 +7,9 @@
 #
 # Fait par défaut (sans option) :
 #   git pull → pip → migrate → collectstatic → restart services
-#   puis vérifie : systemd, Redis, Nginx, HTTP, Celery, WebSocket, push/FCM,
+#   puis vérifie TOUJOURS (--no-checks pour désactiver) :
+#   systemd, Redis, Nginx, Daphne :8001, HTTP, static, API push/notifs/messages,
+#   verify_runtime (Redis Channels, Celery, WebSocket, FCM),
 #   django check --deploy, NabooPay (si clés présentes)
 #
 # Options :
@@ -47,9 +49,11 @@ SITE_URL="${SITE_URL:-https://mytimalove.com}"
 SETTINGS_FILE="timalove/config/settings.py"
 CHECK_URL="$SITE_URL"
 
-SERVICES=(
+REQUIRED_SERVICES=(
     "daphne-timalove"
     "celery-timalove"
+)
+OPTIONAL_SERVICES=(
     "celerybeat-timalove"
 )
 
@@ -312,18 +316,30 @@ else
     log "Étape 4/5 — collectstatic (ignoré)"
 fi
 
+restart_service() {
+    local svc="$1" required="$2"
+    if systemctl list-unit-files --type=service --no-legend 2>/dev/null | grep -q "^${svc}.service"; then
+        systemctl restart "$svc"
+        ok "Redémarré : $svc"
+        return 0
+    fi
+    if [[ "$required" == "required" ]]; then
+        err "Service requis non installé : $svc"
+        err "Lancez : sudo bash $REPO_DIR/deploy/install-vps.sh"
+        exit 1
+    fi
+    warn "Service optionnel absent : $svc (tâches planifiées Celery Beat)"
+    return 1
+}
+
 # ── 5. Redémarrage services ────────────────────────────────────────────────────
 if ! $SKIP_RESTART; then
     log "Étape 5/5 — Redémarrage services systemd"
-    for svc in "${SERVICES[@]}"; do
-        if systemctl list-unit-files --type=service --no-legend 2>/dev/null | grep -q "^${svc}.service"; then
-            systemctl restart "$svc"
-            ok "Redémarré : $svc"
-        else
-            err "Service non installé : $svc"
-            err "Lancez : sudo bash $REPO_DIR/deploy/install-vps.sh"
-            exit 1
-        fi
+    for svc in "${REQUIRED_SERVICES[@]}"; do
+        restart_service "$svc" required
+    done
+    for svc in "${OPTIONAL_SERVICES[@]}"; do
+        restart_service "$svc" optional || true
     done
     sleep 2
 else
@@ -352,23 +368,44 @@ if [[ -f /etc/nginx/sites-enabled/timalove.conf ]] || [[ -f /etc/nginx/sites-ava
     fi
 fi
 
+check_service_active() {
+    local svc="$1" required="$2"
+    if systemctl is-active --quiet "$svc" 2>/dev/null; then
+        ok "$svc → active (running)"
+        return 0
+    fi
+    if systemctl list-unit-files --type=service --no-legend 2>/dev/null | grep -q "^${svc}.service"; then
+        err "$svc → inactif ou en erreur"
+        systemctl status "$svc" --no-pager -l || true
+        return 1
+    fi
+    if [[ "$required" == "required" ]]; then
+        err "$svc → unit systemd absente"
+        return 1
+    fi
+    warn "$svc → non installé (optionnel)"
+    return 0
+}
+
 # ── Vérifications finales ──────────────────────────────────────────────────────
 echo ""
-log "Vérifications finales"
+log "Vérifications finales (services, temps réel, notifications)"
 echo ""
 
-if ! $SKIP_RESTART; then
-    for svc in "${SERVICES[@]}"; do
-        if systemctl is-active --quiet "$svc" 2>/dev/null; then
-            ok "$svc → active (running)"
-        elif systemctl list-unit-files --type=service --no-legend 2>/dev/null | grep -q "^${svc}.service"; then
-            err "$svc → inactif ou en erreur"
-            systemctl status "$svc" --no-pager -l || true
-        fi
-    done
-fi
-
 if $RUN_CHECKS; then
+    for svc in "${REQUIRED_SERVICES[@]}"; do
+        check_service_active "$svc" required || true
+    done
+    for svc in "${OPTIONAL_SERVICES[@]}"; do
+        check_service_active "$svc" optional || true
+    done
+
+    if systemctl is-active --quiet nginx 2>/dev/null; then
+        ok "Nginx → active"
+    else
+        warn "Nginx non actif"
+    fi
+
     if command -v redis-cli &>/dev/null && redis-cli ping 2>/dev/null | grep -qi PONG; then
         ok "Redis → PONG (Channels + Celery)"
     else
@@ -381,10 +418,11 @@ if $RUN_CHECKS; then
         warn "PostgreSQL service non détecté (vérifiez manuellement)"
     fi
 
-    if command -v ss &>/dev/null && ss -ltn 2>/dev/null | grep -q ':8001'; then
-        ok "Daphne écoute sur :8001"
+    DAPHNE_PORT="${DAPHNE_PORT:-8001}"
+    if command -v ss &>/dev/null && ss -ltn 2>/dev/null | grep -q ":${DAPHNE_PORT}"; then
+        ok "Daphne écoute sur :${DAPHNE_PORT}"
     else
-        warn "Port 8001 non visible"
+        err "Port ${DAPHNE_PORT} non visible — WebSocket indisponible"
     fi
 
     if command -v curl &>/dev/null; then
@@ -392,7 +430,7 @@ if $RUN_CHECKS; then
         if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "301" || "$HTTP_CODE" == "302" || "$HTTP_CODE" == "405" ]]; then
             ok "Site HTTP → $HTTP_CODE ($CHECK_URL)"
         else
-            warn "Site HTTP → $HTTP_CODE (attendu 200/301/302/405) — URL: $CHECK_URL"
+            err "Site HTTP → $HTTP_CODE (attendu 200/301/302/405) — URL: $CHECK_URL"
         fi
 
         STATIC_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$CHECK_URL/static/css/timalove.css" || echo "000")
@@ -401,53 +439,64 @@ if $RUN_CHECKS; then
         else
             warn "Static CSS → $STATIC_CODE (collectstatic / Nginx alias ?)"
         fi
+
+        PUSH_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$CHECK_URL/api/push/config/" || echo "000")
+        if [[ "$PUSH_CODE" == "200" ]]; then
+            ok "API push/config → 200"
+        else
+            err "API push/config → $PUSH_CODE"
+        fi
+
+        for api_path in "/api/notifications/unread-count/" "/api/messages/unread-count/"; do
+            API_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$CHECK_URL${api_path}" || echo "000")
+            if [[ "$API_CODE" == "200" || "$API_CODE" == "302" || "$API_CODE" == "401" || "$API_CODE" == "403" ]]; then
+                ok "API ${api_path} → $API_CODE"
+            else
+                err "API ${api_path} → $API_CODE"
+            fi
+        done
     fi
 
-    if ! $SKIP_RESTART && ! $FAST_MODE; then
-        if django_cmd "python manage.py check --deploy" >/dev/null 2>&1; then
-            ok "django check --deploy → OK"
-        else
-            warn "django check --deploy a signalé des avertissements"
-            django_cmd "python manage.py check --deploy" || true
-        fi
+    if django_cmd "python manage.py check --deploy" >/dev/null 2>&1; then
+        ok "django check --deploy → OK"
+    else
+        warn "django check --deploy a signalé des avertissements"
+        django_cmd "python manage.py check --deploy" || true
+    fi
 
-        if django_cmd "celery -A config inspect ping --timeout 5" >/dev/null 2>&1; then
-            ok "Celery worker → répond au ping"
+    if [[ -f "$REPO_DIR/deploy/verify_runtime.py" ]]; then
+        log "Vérification approfondie (Redis Channels, Celery, WebSocket, push)"
+        VERIFY_OUTPUT=$(django_cmd "python '$REPO_DIR/deploy/verify_runtime.py' --site-url '$CHECK_URL'" 2>&1) || VERIFY_RC=$?
+        VERIFY_RC=${VERIFY_RC:-0}
+        echo "$VERIFY_OUTPUT"
+        if [[ "$VERIFY_RC" -eq 0 ]]; then
+            ok "Temps réel + notifications → OK"
         else
-            warn "Celery ping a échoué (voir : journalctl -u celery-timalove -n 50)"
+            err "Temps réel / notifications — échec (voir verify_runtime ci-dessus)"
+            err "Vérifiez : Redis, Daphne, proxy Nginx /ws/, Firebase, utilisateur DEPLOY_VERIFY_EMAIL"
         fi
+    else
+        err "verify_runtime.py introuvable dans $REPO_DIR/deploy/"
+    fi
 
-        if [[ -f "$REPO_DIR/deploy/verify_runtime.py" ]]; then
-            VERIFY_OUTPUT=$(django_cmd "python '$REPO_DIR/deploy/verify_runtime.py' --site-url '$CHECK_URL'" 2>&1) || VERIFY_RC=$?
-            VERIFY_RC=${VERIFY_RC:-0}
-            echo "$VERIFY_OUTPUT"
-            if [[ "$VERIFY_RC" -eq 0 ]]; then
-                ok "Notifications (push) + WebSocket → OK"
+    if ! $SKIP_NABOOPAY; then
+        NABOO_KEY=$(grep -E '^NABOOPAY_API_KEY=' "$DJANGO_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '\r' || true)
+        if [[ -z "${NABOO_KEY// }" ]]; then
+            warn "NabooPay : clé absente — skip (renseignez NABOOPAY_* ou utilisez --skip-naboopay)"
+        else
+            NABOO_OUTPUT=$(django_cmd "python scripts/check_naboopay_setup.py --deploy --site-url '$CHECK_URL'" 2>&1) || NABOO_RC=$?
+            NABOO_RC=${NABOO_RC:-0}
+            echo "$NABOO_OUTPUT"
+            if [[ "$NABOO_RC" -eq 0 ]]; then
+                ok "NabooPay → configuration et webhook OK"
             else
-                warn "Vérifications notifications/WebSocket incomplètes (voir ci-dessus)"
-                warn "Firebase JSON présent ? Proxy /ws/ Nginx OK ?"
-            fi
-        else
-            warn "verify_runtime.py introuvable"
-        fi
-
-        if ! $SKIP_NABOOPAY; then
-            NABOO_KEY=$(grep -E '^NABOOPAY_API_KEY=' "$DJANGO_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '\r' || true)
-            if [[ -z "${NABOO_KEY// }" ]]; then
-                warn "NabooPay : clé absente — skip (renseignez NABOOPAY_* ou utilisez --skip-naboopay)"
-            else
-                NABOO_OUTPUT=$(django_cmd "python scripts/check_naboopay_setup.py --deploy --site-url '$CHECK_URL'" 2>&1) || NABOO_RC=$?
-                NABOO_RC=${NABOO_RC:-0}
-                echo "$NABOO_OUTPUT"
-                if [[ "$NABOO_RC" -eq 0 ]]; then
-                    ok "NabooPay → configuration et webhook OK"
-                else
-                    err "NabooPay — vérification échouée"
-                    err "Corrigez .env / dashboard NabooPay ou relancez avec --skip-naboopay"
-                fi
+                err "NabooPay — vérification échouée"
+                err "Corrigez .env / dashboard NabooPay ou relancez avec --skip-naboopay"
             fi
         fi
     fi
+else
+    warn "Vérifications désactivées (--no-checks)"
 fi
 
 # ── Fin ────────────────────────────────────────────────────────────────────────
@@ -459,9 +508,7 @@ if $DEPLOY_FAILED; then
     echo ""
     log "Site   : $SITE_URL  (checks : $CHECK_URL)"
     log "Logs   : journalctl -u daphne-timalove -f"
-    if $STRICT_MODE; then
-        exit 1
-    fi
+    exit 1
 else
     echo -e "${GREEN}${BOLD}═══════════════════════════════════════════════════════════${NC}"
     echo -e "${GREEN}${BOLD}  Déploiement terminé avec succès${NC}"
