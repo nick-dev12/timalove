@@ -1456,6 +1456,19 @@ class StrictGenderDiscoveryTests(TestCase):
         self.assertIn(self.woman.pk, ids)
         self.assertNotIn(self.man2.pk, ids)
 
+    def test_sync_feed_session_resets_on_gender_change(self):
+        from django.contrib.sessions.backends.db import SessionStore
+        from core.controllers.explore_controller import SESSION_ELIGIBILITY_KEY, SESSION_QUEUE_KEY, sync_feed_session
+
+        session = SessionStore()
+        session[SESSION_QUEUE_KEY] = ["fake-id"]
+        session[SESSION_ELIGIBILITY_KEY] = Gender.MALE
+        session.save()
+
+        sync_feed_session(session, self.woman)
+        self.assertEqual(session.get(SESSION_ELIGIBILITY_KEY), Gender.FEMALE)
+        self.assertNotIn(SESSION_QUEUE_KEY, session)
+
     def test_no_gender_viewer_sees_all_profiles(self):
         from core.controllers import explore_controller
         from core.controllers.profile_controller import apply_opposite_gender_filter

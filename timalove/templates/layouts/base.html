@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="timalove-deploy-revision" content="{{ deploy_revision }}">
   <title>{% block title %}{{ title|default:brand_name }}{% endblock %} · TimaLove</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,6 +17,7 @@
   <script src="{% static 'js/realtime.js' %}?v=20260826r2" defer></script>
   <script src="{% static 'js/crm-popups.js' %}?v=20260826crm2" defer></script>
   <script src="{% static 'js/app-config.js' %}?v=20260826c2" defer></script>
+  <script src="{% static 'js/explorer-feed-sync.js' %}?v=20260910fs1" defer></script>
   {% endif %}
   {% block head %}{% endblock %}
 </head>

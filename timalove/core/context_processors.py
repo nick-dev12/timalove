@@ -8,6 +8,15 @@ def site_branding(request):
     }
 
 
+def deploy_revision(request):
+    try:
+        from core.deploy_revision import get_deploy_revision
+
+        return {"deploy_revision": get_deploy_revision()}
+    except Exception:
+        return {"deploy_revision": "dev"}
+
+
 def app_nav_badges(request):
     badges = {"likes_count": 0, "unread_messages": 0, "unread_notifications": 0}
     membership = {"is_freemium": False, "has_premium": False}

@@ -19,6 +19,8 @@ PHOTOS_PER_CARD = 8
 SESSION_QUEUE_KEY = "explorer_queue"
 SESSION_SERVED_KEY = "explorer_served"
 SESSION_SEED_KEY = "explorer_feed_seed"
+SESSION_ELIGIBILITY_KEY = "explorer_eligibility"
+SESSION_DEPLOY_REV_KEY = "explorer_deploy_rev"
 
 
 def _chip_catalog(catalog: list[dict], selected_raw) -> list[dict]:
@@ -176,6 +178,29 @@ def reset_feed_session(session) -> None:
     session.modified = True
 
 
+def sync_feed_session(session, viewer=None, *, deploy_revision: str = "") -> None:
+    """
+    Réinitialise la file explorer si le genre du membre ou la révision deploy a changé.
+    Permet un effet immédiat après mise à jour profil ou déploiement VPS.
+    """
+    if session is None:
+        return
+    from core.controllers.profile_controller import feed_eligibility_key
+
+    expected = feed_eligibility_key(viewer)
+    stored = session.get(SESSION_ELIGIBILITY_KEY)
+    stored_rev = str(session.get(SESSION_DEPLOY_REV_KEY) or "")
+    rev = (deploy_revision or "").strip()
+    needs_reset = stored != expected or (rev and stored_rev != rev)
+    if not needs_reset:
+        return
+    reset_feed_session(session)
+    session[SESSION_ELIGIBILITY_KEY] = expected
+    if rev:
+        session[SESSION_DEPLOY_REV_KEY] = rev
+    session.modified = True
+
+
 ORDER_WINDOW = 80
 
 
@@ -223,9 +248,13 @@ def public_feed(
     seed = seed or "timalove"
 
     if session is not None:
+        from core.deploy_revision import get_deploy_revision
+
+        sync_feed_session(session, viewer, deploy_revision=get_deploy_revision())
         if reset or session.get(SESSION_SEED_KEY) != seed:
             reset_feed_session(session)
             session[SESSION_SEED_KEY] = seed
+            sync_feed_session(session, viewer, deploy_revision=get_deploy_revision())
 
         eligible = _eligible_ids(viewer)
         eligible_set = set(eligible)

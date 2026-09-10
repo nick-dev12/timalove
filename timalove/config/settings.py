@@ -67,6 +67,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.site_branding",
+                "core.context_processors.deploy_revision",
                 "core.context_processors.app_nav_badges",
                 "core.context_processors.app_features",
                 "core.context_processors.admin_panel_nav",

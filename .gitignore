@@ -21,6 +21,7 @@ timalove/timalove-ddaa5-*.json
 
 # Django
 timalove/staticfiles/
+timalove/deploy-revision.txt
 *.log
 
 # Médias utilisateurs (photos de profil, vocaux) — le static du site reste versionné

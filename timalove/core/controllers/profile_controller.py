@@ -473,6 +473,16 @@ def dob_bounds(age_min: int, age_max: int) -> tuple[date, date]:
     return oldest, youngest
 
 
+def feed_eligibility_key(profile: Profile | None) -> str:
+    """Clé de session feed : genre du viewer (homme/femme/all)."""
+    if profile is None:
+        return "anon"
+    gender = (profile.gender or "").strip().lower()
+    if gender in {Gender.MALE, Gender.FEMALE}:
+        return gender
+    return "all"
+
+
 def opposite_gender(gender: str | None) -> str | None:
     if gender == Gender.MALE:
         return Gender.FEMALE

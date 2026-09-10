@@ -56,6 +56,10 @@ REQUIRED_SERVICES=(
 OPTIONAL_SERVICES=(
     "celerybeat-timalove"
 )
+INFRA_SERVICES=(
+    "redis-server"
+    "nginx"
+)
 
 # ── Options ────────────────────────────────────────────────────────────────────
 SKIP_PIP=false
@@ -278,6 +282,10 @@ else
     log "Étape 1/5 — Git pull (ignoré)"
 fi
 
+DEPLOY_HEAD=$(run_as_app "cd '$REPO_DIR' && git rev-parse --short HEAD" 2>/dev/null || echo "local")
+echo "$DEPLOY_HEAD" > "$DJANGO_DIR/deploy-revision.txt"
+ok "Révision deploy : $DEPLOY_HEAD"
+
 # ── 2. pip install ─────────────────────────────────────────────────────────────
 if ! $SKIP_PIP; then
     log "Étape 2/5 — pip install"
@@ -358,6 +366,18 @@ if ! $SKIP_RESTART; then
     for svc in "${OPTIONAL_SERVICES[@]}"; do
         restart_service "$svc" optional || true
     done
+    log "Redémarrage infrastructure (Redis, Nginx)"
+    for svc in "${INFRA_SERVICES[@]}"; do
+        if service_unit_exists "$svc"; then
+            if [[ "$svc" == "nginx" ]] && ! nginx -t 2>/dev/null; then
+                warn "nginx -t a échoué — restart Nginx ignoré"
+                continue
+            fi
+            restart_service "$svc" optional || true
+        else
+            warn "Service infra absent : $svc"
+        fi
+    done
     sleep 2
 else
     log "Étape 5/5 — Redémarrage services (ignoré)"
@@ -372,16 +392,6 @@ if [[ -f "$NGINX_PATCH" ]] && [[ -f "$NGINX_CONF" ]]; then
         ok "Nginx WebSocket proxy → appliqué (v4)"
     else
         warn "Patch Nginx WebSocket — échec (lancer : sudo python3 $NGINX_PATCH)"
-    fi
-fi
-
-# Nginx standard (VPS Ubuntu)
-if [[ -f /etc/nginx/sites-enabled/timalove.conf ]] || [[ -f /etc/nginx/sites-available/timalove.conf ]]; then
-    if nginx -t 2>/dev/null; then
-        systemctl reload nginx 2>/dev/null || true
-        ok "Nginx rechargé"
-    else
-        warn "nginx -t a échoué — vérifiez /etc/nginx/sites-available/timalove.conf"
     fi
 fi
 

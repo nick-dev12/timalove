@@ -874,9 +874,25 @@ def profile_update(request):
         payload["life_values"] = [str(x) for x in values]
     if not payload:
         return JsonResponse({"ok": False, "message": "Rien à enregistrer."}, status=400)
+    old_gender = profile.gender
     profile_controller.update_profile(profile, payload)
+    reset_explorer = False
+    if "gender" in payload and (profile.gender or "") != (old_gender or ""):
+        from core.controllers.explore_controller import reset_feed_session, sync_feed_session
+        from core.deploy_revision import get_deploy_revision
+
+        reset_feed_session(request.session)
+        sync_feed_session(request.session, profile, deploy_revision=get_deploy_revision())
+        reset_explorer = True
     fresh = profile_controller.get_own(profile)
-    return JsonResponse({"ok": True, "message": "Enregistré.", "member": profile_controller.serialize_visit(fresh)})
+    return JsonResponse(
+        {
+            "ok": True,
+            "message": "Enregistré.",
+            "member": profile_controller.serialize_visit(fresh),
+            "reset_explorer": reset_explorer,
+        }
+    )
 
 
 @login_required
@@ -991,7 +1007,12 @@ def profile_filters(request):
             "online_only": _truthy(data.get("online_only")),
         },
     )
-    return JsonResponse({"ok": True, "message": "Filtres enregistrés.", "filters": filters})
+    from core.controllers.explore_controller import reset_feed_session, sync_feed_session
+    from core.deploy_revision import get_deploy_revision
+
+    reset_feed_session(request.session)
+    sync_feed_session(request.session, profile, deploy_revision=get_deploy_revision())
+    return JsonResponse({"ok": True, "message": "Filtres enregistrés.", "filters": filters, "reset_explorer": True})
 
 
 @login_required
