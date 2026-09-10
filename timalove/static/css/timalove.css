@@ -4720,7 +4720,7 @@ body:not(.explorer-page) .explorer__bottom {
 
   .explorer__top {
     display: grid;
-    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    grid-template-columns: calc(2.25rem + 1px) minmax(0, 1fr) auto;
     padding: 0.28rem 0.55rem 0.12rem;
     padding-top: calc(0.28rem + env(safe-area-inset-top, 0px));
     gap: 0.28rem;
@@ -4753,6 +4753,25 @@ body:not(.explorer-page) .explorer__bottom {
   .explorer__icon-btn svg {
     width: 18px;
     height: 18px;
+  }
+
+  .explorer__menu-anchor {
+    width: calc(2.25rem + 1px);
+    height: calc(2.25rem + 1px);
+    min-width: calc(2.25rem + 1px);
+    min-height: calc(2.25rem + 1px);
+  }
+
+  .explorer__menu-anchor > .explorer__icon-btn {
+    width: calc(2.25rem + 1px);
+    height: calc(2.25rem + 1px);
+    min-width: calc(2.25rem + 1px);
+    min-height: calc(2.25rem + 1px);
+  }
+
+  .explorer__menu-anchor > .explorer__icon-btn svg {
+    width: 20px;
+    height: 20px;
   }
 
   .explorer__menu {
@@ -4893,6 +4912,25 @@ body:not(.explorer-page) .explorer__bottom {
     height: 2.05rem;
     min-width: 2.05rem;
     min-height: 2.05rem;
+  }
+
+  .explorer__menu-anchor {
+    width: calc(2.05rem + 1px);
+    height: calc(2.05rem + 1px);
+    min-width: calc(2.05rem + 1px);
+    min-height: calc(2.05rem + 1px);
+  }
+
+  .explorer__menu-anchor > .explorer__icon-btn {
+    width: calc(2.05rem + 1px);
+    height: calc(2.05rem + 1px);
+    min-width: calc(2.05rem + 1px);
+    min-height: calc(2.05rem + 1px);
+  }
+
+  .explorer__menu-anchor > .explorer__icon-btn svg {
+    width: 18px;
+    height: 18px;
   }
 
   .explorer__logo,
