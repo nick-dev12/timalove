@@ -60,6 +60,19 @@ def app_features(request):
         }
 
 
+def gender_prompt(request):
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        return {"needs_gender_prompt": False}
+    profile = getattr(user, "profile", None)
+    try:
+        from core.controllers.profile_controller import needs_gender_prompt
+
+        return {"needs_gender_prompt": needs_gender_prompt(profile)}
+    except Exception:
+        return {"needs_gender_prompt": False}
+
+
 def admin_panel_nav(request):
     badges = {"signalements": 0}
     nav_sections: list[dict] = []

@@ -35,7 +35,10 @@ TERMS_ERROR = (
 
 
 def terms_accepted(data: dict) -> bool:
+    """Acceptation implicite en poursuivant l'inscription (message légal affiché)."""
     val = data.get("terms_accepted")
+    if val is None:
+        return True
     if val is True:
         return True
     if isinstance(val, str):
@@ -191,6 +194,7 @@ def register_from_draft(data: dict) -> tuple[bool, str, Profile | None, dict[str
         field = "email" if "email" in (msg or "").lower() else "phone" if "numéro" in (msg or "").lower() else "_form"
         return False, msg, None, {field: msg}, field if field != "_form" else "email"
 
+    _apply_socio_fields(profile, data)
     _apply_profile_extras(profile, data)
     try:
         _save_draft_photos(profile, data)
@@ -232,6 +236,7 @@ def complete_oauth_profile(profile: Profile, data: dict) -> tuple[bool, str, dic
             profile.user.email = email
             profile.user.save(update_fields=["email"])
 
+    _apply_socio_fields(profile, data)
     _apply_profile_extras(profile, data)
     try:
         _save_draft_photos(profile, data)
@@ -461,6 +466,19 @@ def _member_payload(data: dict) -> dict:
         "looking_for": encode_looking_for(data.get("looking_for")) or None,
         "photo_url": None,
     }
+
+
+def _apply_socio_fields(profile: Profile, data: dict) -> None:
+    """Genre, religion et origine saisis à l'étape socio."""
+    gender = (data.get("gender") or "").strip()
+    if gender in {Gender.MALE, Gender.FEMALE}:
+        profile.gender = gender
+    religion = (data.get("religion") or "").strip()
+    if religion in _RELIGION_VALUES:
+        profile.religion = religion
+    country = (data.get("country") or "").strip()
+    if country in COUNTRIES_FR:
+        profile.country = country
 
 
 def _apply_profile_extras(profile: Profile, data: dict) -> None:

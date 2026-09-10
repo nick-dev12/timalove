@@ -70,6 +70,7 @@ TEMPLATES = [
                 "core.context_processors.deploy_revision",
                 "core.context_processors.app_nav_badges",
                 "core.context_processors.app_features",
+                "core.context_processors.gender_prompt",
                 "core.context_processors.admin_panel_nav",
             ],
         },

@@ -1,0 +1,38 @@
+{% if needs_gender_prompt %}
+<div id="gender-prompt-modal" class="gender-prompt-modal" hidden>
+  <div class="gender-prompt-modal__stage">
+    <div class="gender-prompt-modal__backdrop" aria-hidden="true"></div>
+    <div
+      class="gender-prompt-modal__dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="gender-prompt-title"
+    >
+      <header class="gender-prompt-modal__head">
+        <h2 id="gender-prompt-title">Précisez votre genre</h2>
+        <button type="button" class="gender-prompt-modal__close" data-gender-prompt-snooze aria-label="Fermer">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+        </button>
+      </header>
+      <p class="gender-prompt-modal__lead">
+        Pour personnaliser votre découverte et le calcul de compatibilité, indiquez si vous êtes un homme ou une femme.
+      </p>
+      <form class="gender-prompt-modal__form" data-gender-prompt-form novalidate>
+        <label class="visit-form__field">
+          <span>Je suis</span>
+          <select name="gender" required>
+            <option value="" disabled selected>Sélectionnez votre genre</option>
+            <option value="male">Homme</option>
+            <option value="female">Femme</option>
+          </select>
+        </label>
+        <p class="form-error gender-prompt-modal__error" data-gender-prompt-error hidden></p>
+        <footer class="gender-prompt-modal__foot">
+          <button type="button" class="btn btn-outline" data-gender-prompt-snooze>Plus tard</button>
+          <button type="submit" class="btn btn-primary" data-gender-prompt-save>Enregistrer</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}

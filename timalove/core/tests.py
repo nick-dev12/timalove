@@ -14,7 +14,7 @@ from core.controllers import (
     swipe_controller,
 )
 from core.models import Profile
-from core.models.choices import Gender, RegistrationStatus, UserRole
+from core.models.choices import Gender, RegistrationStatus, Religion, UserRole
 from core.controllers import site_settings_controller
 
 
@@ -1542,6 +1542,112 @@ class StrictGenderDiscoveryTests(TestCase):
         ids = explore_controller._eligible_ids(neutral)
         self.assertIn(self.man.pk, ids)
         self.assertIn(self.woman.pk, ids)
+
+
+class GenderPromptTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+
+    def test_needs_gender_prompt_when_empty(self):
+        from core.controllers.profile_controller import needs_gender_prompt
+
+        profile = make_profile("nogender@test.com", Gender.MALE, "No")
+        profile.gender = ""
+        profile.save(update_fields=["gender", "updated_at"])
+        self.assertTrue(needs_gender_prompt(profile))
+
+    def test_no_prompt_when_gender_set(self):
+        from core.controllers.profile_controller import needs_gender_prompt
+
+        profile = make_profile("hasgender@test.com", Gender.FEMALE, "Yes")
+        self.assertFalse(needs_gender_prompt(profile))
+
+    def test_profile_update_gender_via_api(self):
+        from django.test import Client
+
+        profile = make_profile("setgender@test.com", Gender.MALE, "Set")
+        profile.gender = ""
+        profile.save(update_fields=["gender", "updated_at"])
+        user = profile.user
+        user.set_password("Ludvanne12")
+        user.save()
+        client = Client(enforce_csrf_checks=False)
+        client.login(username=user.username, password="Ludvanne12")
+        r = client.post(
+            "/api/profile/update/",
+            data='{"gender":"female"}',
+            content_type="application/json",
+        )
+        self.assertEqual(r.status_code, 200)
+        profile.refresh_from_db()
+        self.assertEqual(profile.gender, Gender.FEMALE)
+
+
+class SignupSocioPersistTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+
+    def _signup_draft(self, **overrides):
+        from core.data.countries import COUNTRIES_FR
+
+        base = {
+            "channel": "email",
+            "email": "socio-save@test.com",
+            "password": "Secret123!",
+            "first_name": "Socio",
+            "last_name": "Save",
+            "age": 26,
+            "phone": "+221771112233",
+            "gender": Gender.MALE,
+            "religion": Religion.MUSULMANE,
+            "country": COUNTRIES_FR[0],
+            "photo_url": "https://example.com/photo.jpg",
+            "terms_accepted": True,
+        }
+        base.update(overrides)
+        return base
+
+    def test_register_from_draft_persists_gender(self):
+        ok, msg, profile, errors, step = signup_controller.register_from_draft(self._signup_draft())
+        self.assertTrue(ok, msg)
+        self.assertIsNone(step)
+        self.assertEqual(profile.gender, Gender.MALE)
+        profile.refresh_from_db()
+        self.assertEqual(profile.gender, Gender.MALE)
+        self.assertEqual(profile.religion, Religion.MUSULMANE)
+
+    def test_complete_oauth_profile_persists_gender(self):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="oauth-socio@test.com",
+            email="oauth-socio@test.com",
+            password="unused123",
+        )
+        profile = Profile.objects.create(
+            user=user,
+            first_name="OAuth",
+            last_name="Test",
+            email="oauth-socio@test.com",
+            google_uid="google-socio-uid",
+            gender="",
+            photo_url="https://example.com/existing.jpg",
+        )
+        ok, msg, errors, step = signup_controller.complete_oauth_profile(
+            profile,
+            self._signup_draft(
+                channel="oauth",
+                email="oauth-socio@test.com",
+                gender=Gender.FEMALE,
+                religion=Religion.CHRETIENNE,
+            ),
+        )
+        self.assertTrue(ok, msg)
+        self.assertIsNone(step)
+        profile.refresh_from_db()
+        self.assertEqual(profile.gender, Gender.FEMALE)
+        self.assertEqual(profile.religion, Religion.CHRETIENNE)
 
 
 class AccountDeletionReregistrationTests(TestCase):

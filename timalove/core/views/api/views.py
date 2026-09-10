@@ -880,6 +880,15 @@ def profile_update(request):
         payload["life_values"] = [str(x) for x in values]
     if not payload:
         return JsonResponse({"ok": False, "message": "Rien à enregistrer."}, status=400)
+    if "gender" in data and "gender" not in payload:
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": "Choisissez Homme ou Femme.",
+                "errors": {"gender": "Le genre est obligatoire. Choisissez Homme ou Femme."},
+            },
+            status=400,
+        )
     old_gender = profile.gender
     profile_controller.update_profile(profile, payload)
     reset_explorer = False

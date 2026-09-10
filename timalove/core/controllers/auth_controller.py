@@ -488,7 +488,7 @@ def register_member(data: dict) -> tuple[bool, str, Profile | None]:
         email=email,
         phone=phone,
         date_of_birth=dob,
-        gender=data.get("gender", Gender.FEMALE),
+        gender=(data.get("gender") or "").strip(),
         city=data.get("city", ""),
         country=data.get("country") or data.get("origin") or "Sénégal",
         residence_country=data.get("residence_country"),

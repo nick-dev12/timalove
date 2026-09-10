@@ -243,16 +243,6 @@
       }
       sessionStorage.removeItem("tl_next");
       if (data.needs_completion) {
-        if (typeof window.TimaLoveSignup?.hasTermsAccepted === "function" && !window.TimaLoveSignup.hasTermsAccepted()) {
-          window.TimaLoveSignup.showChoice?.();
-          setStatus(
-            statusEl,
-            "Pour créer votre compte, acceptez les conditions d'utilisation puis choisissez à nouveau Google, Apple, email ou téléphone.",
-            true,
-          );
-          setSocialBusy(false);
-          return;
-        }
         if (typeof window.TimaLoveSignup?.startOauth === "function") {
           window.TimaLoveSignup.startOauth(data.profile || {});
           setStatus(statusEl, "", false);
@@ -444,17 +434,6 @@
 
     async function signInWithProvider(kind) {
       if (busy) return;
-      const choiceView = document.querySelector('[data-auth-view="choice"]');
-      if (
-        choiceView &&
-        !choiceView.hidden &&
-        typeof window.TimaLoveSignup?.hasTermsAccepted === "function" &&
-        !window.TimaLoveSignup.hasTermsAccepted()
-      ) {
-        window.TimaLoveSignup.showTermsError?.();
-        setSocialBusy(false);
-        return;
-      }
       const isApple = kind === "apple";
       const label = isApple ? "Apple" : "Google";
       setSocialBusy(true);

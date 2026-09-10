@@ -242,6 +242,15 @@
       return fromIti || draft.phone || "";
     }
 
+    function collectSocioIntoDraft() {
+      const socioSlide = wizard.querySelector('[data-signup-slide="socio"]');
+      if (!socioSlide) return;
+      draft.gender = socioSlide.querySelector("[data-field='gender']")?.value || draft.gender || "";
+      draft.religion = socioSlide.querySelector("[data-field='religion']")?.value || draft.religion || "";
+      draft.country =
+        (socioSlide.querySelector("[data-combo-value]")?.value || "").trim() || draft.country || "";
+    }
+
     function collectSlideIntoDraft() {
       const step = currentStep();
       const slide = wizard.querySelector(`[data-signup-slide="${step}"]`);
@@ -515,9 +524,12 @@
       busy = true;
       nextBtn.disabled = true;
       setStatus("Création du compte…", false);
+      collectSlideIntoDraft();
+      collectSocioIntoDraft();
+      saveDraft(draft);
       const payload = Object.assign({}, draft, {
         next: nextUrl,
-        terms_accepted: hasTermsAccepted() || draft.terms_accepted,
+        terms_accepted: true,
       });
       try {
         const res = await fetch("/api/auth/signup/complete/", {
@@ -550,7 +562,6 @@
     }
 
     function startChannel(channel) {
-      if (!requireTermsAccepted()) return;
       draft = Object.assign({}, loadDraft(), { channel, terms_accepted: true });
       if (channel === "email") steps = EMAIL_STEPS;
       else if (channel === "phone") steps = PHONE_STEPS;
@@ -561,10 +572,6 @@
     }
 
     function startOauth(profile) {
-      if (!requireTermsAccepted()) {
-        showView("choice");
-        return;
-      }
       draft = Object.assign({}, loadDraft(), profile || {}, { channel: "oauth", terms_accepted: true });
       steps = OAUTH_STEPS.filter((step) => {
         if (step === "email" && (draft.email || "").includes("@")) return false;
@@ -575,38 +582,15 @@
       showSlide(0, true);
     }
 
-    const termsErrorEl = panel.querySelector("[data-signup-terms-error]");
-    const termsInput = panel.querySelector("[data-signup-terms]");
-
     function hasTermsAccepted() {
-      return termsInput ? termsInput.checked : false;
+      return true;
     }
-
-    function showTermsError() {
-      if (termsErrorEl) termsErrorEl.hidden = false;
-      termsInput?.focus();
-    }
-
-    function clearTermsError() {
-      if (termsErrorEl) termsErrorEl.hidden = true;
-    }
-
-    function requireTermsAccepted() {
-      if (hasTermsAccepted()) {
-        clearTermsError();
-        return true;
-      }
-      showTermsError();
-      return false;
-    }
-
-    termsInput?.addEventListener("change", () => {
-      if (hasTermsAccepted()) clearTermsError();
-    });
 
     api.hasTermsAccepted = hasTermsAccepted;
-    api.showTermsError = showTermsError;
-    api.requireTermsAccepted = requireTermsAccepted;
+    api.showTermsError = function () {};
+    api.requireTermsAccepted = function () {
+      return true;
+    };
 
     api.showChoice = () => {
       showView("choice");

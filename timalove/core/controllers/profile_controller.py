@@ -19,6 +19,24 @@ from core.controllers.onboarding_controller import _clean_values, _read_image_by
 
 MAX_GALLERY_PHOTOS = 5
 
+VALID_GENDERS = frozenset({Gender.MALE, Gender.FEMALE})
+
+
+def has_defined_gender(profile: Profile | None) -> bool:
+    if profile is None:
+        return False
+    return (profile.gender or "").strip() in VALID_GENDERS
+
+
+def needs_gender_prompt(profile: Profile | None) -> bool:
+    """Membre connecté sans genre Homme/Femme — afficher le modal de rappel."""
+    if profile is None:
+        return False
+    if getattr(profile, "is_admin", False):
+        return False
+    return not has_defined_gender(profile)
+
+
 DEFAULT_FILTERS = {
     "age_min": 18,
     "age_max": 99,
@@ -341,6 +359,12 @@ def update_profile(profile: Profile, data: dict) -> Profile:
     if "looking_for" in payload:
         encoded = encode_looking_for(payload.get("looking_for"))
         payload["looking_for"] = encoded or None
+    if "gender" in payload:
+        gender = (payload.get("gender") or "").strip()
+        if gender not in VALID_GENDERS:
+            payload.pop("gender")
+        else:
+            payload["gender"] = gender
     for key, value in payload.items():
         if key in ALLOWED_PROFILE_FIELDS:
             setattr(profile, key, value)

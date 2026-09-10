@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Allura&family=DM+Sans:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/timalove.css' %}?v=20260910ui3">
+  <link rel="stylesheet" href="{% static 'css/timalove.css' %}?v=20260910ui4">
   <link rel="icon" href="{% static 'images/logo.webp' %}" type="image/webp">
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   {% if user.is_authenticated %}
@@ -18,10 +18,14 @@
   <script src="{% static 'js/crm-popups.js' %}?v=20260826crm2" defer></script>
   <script src="{% static 'js/app-config.js' %}?v=20260826c2" defer></script>
   <script src="{% static 'js/explorer-feed-sync.js' %}?v=20260910fs1" defer></script>
+  {% if needs_gender_prompt %}
+  <script src="{% static 'js/gender-prompt.js' %}?v=20260910gp1" defer></script>
+  {% endif %}
   {% endif %}
   {% block head %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}" data-text-messages="{% if app_features.text_messages_enabled %}1{% else %}0{% endif %}" data-voice-call="{% if app_features.voice_messages_enabled %}1{% else %}0{% endif %}" data-image-messages="{% if app_features.image_messages_enabled %}1{% else %}0{% endif %}" data-selfie-verify="{% if app_features.selfie_verification_enabled %}1{% else %}0{% endif %}">
+<body class="{% block body_class %}{% endblock %}"{% if needs_gender_prompt %} data-needs-gender="1"{% endif %} data-text-messages="{% if app_features.text_messages_enabled %}1{% else %}0{% endif %}" data-voice-call="{% if app_features.voice_messages_enabled %}1{% else %}0{% endif %}" data-image-messages="{% if app_features.image_messages_enabled %}1{% else %}0{% endif %}" data-selfie-verify="{% if app_features.selfie_verification_enabled %}1{% else %}0{% endif %}">
   {% block body %}{% endblock %}
+  {% include "partials/gender_prompt_modal.html" %}
 </body>
 </html>

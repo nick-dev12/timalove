@@ -43,6 +43,7 @@ INCOMPLETE_ALLOWED = (
     "/api/matches",
     "/api/payments",
     "/api/compatibility",
+    "/api/profile",
     "/espace-prive",
     "/admin",
 )

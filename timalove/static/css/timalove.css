@@ -17446,3 +17446,105 @@ body.history-page {
     animation: none !important;
   }
 }
+
+/* ── Modal rappel genre ─────────────────────────────────────────────────── */
+body.is-gender-prompt {
+  overflow: hidden;
+}
+
+.gender-prompt-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 12050;
+  display: grid;
+  place-items: center;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+}
+
+.gender-prompt-modal[hidden] {
+  display: none !important;
+}
+
+.gender-prompt-modal__stage {
+  position: relative;
+  width: min(100%, 24rem);
+}
+
+.gender-prompt-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(45, 31, 34, 0.52);
+}
+
+.gender-prompt-modal__dialog {
+  position: relative;
+  z-index: 1;
+  background: var(--white);
+  border: 1px solid var(--rose-light);
+  border-radius: 20px;
+  box-shadow: var(--shadow-md);
+  padding: 1.15rem 1.15rem 1rem;
+}
+
+.gender-prompt-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.gender-prompt-modal__head h2 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  color: var(--bordeaux-dark);
+  line-height: 1.2;
+}
+
+.gender-prompt-modal__close {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 1px solid var(--rose-light);
+  background: var(--white);
+  color: var(--text-secondary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.gender-prompt-modal__close:hover,
+.gender-prompt-modal__close:focus-visible {
+  color: var(--rose-primary);
+  border-color: rgba(232, 99, 122, 0.35);
+  outline: none;
+}
+
+.gender-prompt-modal__lead {
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.gender-prompt-modal__form .visit-form__field {
+  margin-bottom: 0.75rem;
+}
+
+.gender-prompt-modal__error {
+  margin: 0 0 0.75rem;
+}
+
+.gender-prompt-modal__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.gender-prompt-modal__foot .btn {
+  min-width: 7.5rem;
+}
