@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import unicodedata
 from typing import Iterable
 
 from core.data.onboarding import looking_for_ids
@@ -10,15 +11,22 @@ from core.models import Profile
 from core.models.choices import RelationshipIntent
 
 
+def _fold_text(value: str) -> str:
+    """Compare pays/villes sans casse ni accents (Sénégal == senegal)."""
+    text = (value or "").strip().lower()
+    if not text:
+        return ""
+    normalized = unicodedata.normalize("NFKD", text)
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+
 def _norm_set(items: Iterable[str] | None) -> set[str]:
     return {str(x).strip().lower() for x in (items or []) if str(x).strip()}
 
 
 def _jaccard(a: set[str], b: set[str]) -> float | None:
-    if not a and not b:
-        return None
     if not a or not b:
-        return 0.0
+        return None
     inter = len(a & b)
     union = len(a | b)
     return inter / union if union else 0.0
@@ -47,21 +55,25 @@ def _religion_ratio(viewer: Profile, candidate: Profile) -> float | None:
 
 def _origin_ratio(viewer: Profile, candidate: Profile) -> float | None:
     """Pays d'origine renseigné à l'inscription."""
-    a = (viewer.country or "").strip().lower()
-    b = (candidate.country or "").strip().lower()
+    a = _fold_text(viewer.country or "")
+    b = _fold_text(candidate.country or "")
     if not a or not b:
         return None
-    return 1.0 if a == b else 0.18
+    if a == b:
+        return 1.0
+    if a in {"autre", "other"} or b in {"autre", "other"}:
+        return 0.45
+    return 0.22
 
 
 def _location_ratio(viewer: Profile, candidate: Profile) -> float | None:
-    viewer_city = (viewer.city or "").strip().lower()
-    cand_city = (candidate.city or "").strip().lower()
+    viewer_city = _fold_text(viewer.city or "")
+    cand_city = _fold_text(candidate.city or "")
     if viewer_city and cand_city:
         return 1.0 if viewer_city == cand_city else 0.35
 
-    viewer_country = (viewer.residence_country or viewer.country or "").strip().lower()
-    cand_country = (candidate.residence_country or candidate.country or "").strip().lower()
+    viewer_country = _fold_text(viewer.residence_country or viewer.country or "")
+    cand_country = _fold_text(candidate.residence_country or candidate.country or "")
     if viewer_country and cand_country:
         return 1.0 if viewer_country == cand_country else 0.2
 
@@ -123,7 +135,7 @@ def _looking_for_ratio(viewer: Profile, candidate: Profile) -> float | None:
             return None
         signals = _norm_set(target.interests) | _norm_set(target.personality_traits) | _norm_set(target.life_values)
         if not signals:
-            return 0.0
+            return None
         return len(targets & signals) / len(targets)
 
     a = one_way(viewer, candidate)
@@ -251,5 +263,10 @@ def compatibility_percent(viewer: Profile | None, candidate: Profile) -> int:
     if location == 1.0:
         bonus += 0.04
 
-    score = (ratio + bonus) * 100
-    return max(52, min(99, round(score)))
+    signal = _candidate_signal_ratio(viewer, candidate)
+    core = (ratio + bonus) * 100
+    # Mélange avec un signal propre au candidat pour différencier les profils
+    # même lorsque le viewer n'a pas encore rempli tout son onboarding.
+    blended = 0.62 * core + 0.38 * (54 + signal * 40)
+    score = round(blended)
+    return max(52, min(99, score))

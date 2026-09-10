@@ -872,6 +872,41 @@ class CompatibilityScoreTests(TestCase):
         without_origin = compatibility_percent(self.viewer, self.candidate)
         self.assertGreater(with_origin, without_origin)
 
+    def test_origin_country_matches_without_accents(self):
+        from core.controllers.matching_controller import compatibility_percent
+
+        self.viewer.country = "Sénégal"
+        self.viewer.save()
+        self.candidate.country = "senegal"
+        self.candidate.save()
+        score = compatibility_percent(self.viewer, self.candidate)
+        self.assertGreaterEqual(score, 70)
+
+    def test_sparse_viewer_still_gets_varied_scores(self):
+        from core.controllers.matching_controller import compatibility_percent
+
+        self.viewer.interests = []
+        self.viewer.life_values = []
+        self.viewer.personality_traits = []
+        self.viewer.looking_for = ""
+        self.viewer.religion = "chretienne"
+        self.viewer.save()
+
+        self.candidate.relationship_intent = "mariage"
+        self.candidate.religion = "musulmane"
+        self.candidate.interests = []
+        self.candidate.save()
+        low = compatibility_percent(self.viewer, self.candidate)
+
+        self.candidate.religion = "chretienne"
+        self.candidate.interests = ["voyage", "foi", "lecture"]
+        self.candidate.save()
+        high = compatibility_percent(self.viewer, self.candidate)
+
+        self.assertGreater(high, low)
+        self.assertGreaterEqual(low, 52)
+        self.assertLessEqual(high, 99)
+
     def test_guest_uses_solo_score(self):
         from core.controllers.matching_controller import compatibility_percent
 
