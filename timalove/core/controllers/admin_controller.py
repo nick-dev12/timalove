@@ -321,26 +321,32 @@ def _engagement_funnel() -> dict:
 
 
 def _top_countries(limit: int = 8) -> dict:
-    """Répartition des membres par pays (résidence prioritaire, sinon pays d'origine)."""
-    rows = (
+    """Répartition des membres par pays normalisé (origine puis résidence)."""
+    from collections import Counter
+
+    from core.data.country_normalize import OTHER_LABEL, member_country_for_stats
+
+    counts: Counter[str] = Counter()
+    for country, residence in (
         Profile.objects.filter(role="member")
-        .annotate(
-            member_country=Case(
-                When(
-                    ~Q(residence_country__isnull=True) & ~Q(residence_country=""),
-                    then=F("residence_country"),
-                ),
-                default=F("country"),
-            )
-        )
-        .exclude(Q(member_country__isnull=True) | Q(member_country=""))
-        .values("member_country")
-        .annotate(count=Count("id"))
-        .order_by("-count")[:limit]
-    )
+        .values_list("country", "residence_country")
+        .iterator(chunk_size=500)
+    ):
+        label = member_country_for_stats(country, residence)
+        if label:
+            counts[label] += 1
+
+    ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    if OTHER_LABEL in counts:
+        ranked = [item for item in ranked if item[0] != OTHER_LABEL] + [
+            (OTHER_LABEL, counts[OTHER_LABEL])
+        ]
+
+    top = ranked[:limit]
     return {
-        "labels": [row["member_country"] for row in rows],
-        "values": [row["count"] for row in rows],
+        "labels": [label for label, _ in top],
+        "values": [value for _, value in top],
+        "total": sum(counts.values()),
     }
 
 

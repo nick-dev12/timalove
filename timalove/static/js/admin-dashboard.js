@@ -171,13 +171,14 @@
 
     const geoCtx = document.getElementById("chart-geography");
     if (geoCtx && data.geography && data.geography.labels.length) {
+      const geoTotal = data.geography.total || data.geography.values.reduce((a, b) => a + b, 0);
       const max = Math.max(...data.geography.values, 1);
       const shades = data.geography.values.map((value) => {
         const ratio = value / max;
         if (ratio > 0.75) return COLORS.rose;
         if (ratio > 0.5) return COLORS.secondary;
         if (ratio > 0.25) return COLORS.bordeauxMedium;
-        return COLORS.rosePale;
+        return COLORS.bordeauxMedium;
       });
       new Chart(geoCtx, {
         type: "bar",
@@ -189,14 +190,36 @@
             backgroundColor: shades,
             borderRadius: 6,
             borderSkipped: false,
+            maxBarThickness: 28,
           }],
         },
         options: baseOptions({
           indexAxis: "y",
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label(context) {
+                  const value = context.parsed.x || 0;
+                  const pct = geoTotal ? Math.round((value / geoTotal) * 1000) / 10 : 0;
+                  return `${value.toLocaleString("fr-FR")} membres (${pct} %)`;
+                },
+              },
+            },
+          },
           scales: {
-            x: { beginAtZero: true, grid: { color: gridColor } },
-            y: { grid: { display: false } },
+            x: {
+              beginAtZero: true,
+              grid: { color: gridColor },
+              ticks: { precision: 0 },
+            },
+            y: {
+              grid: { display: false },
+              ticks: {
+                autoSkip: false,
+                font: { size: 11 },
+              },
+            },
           },
         }),
       });

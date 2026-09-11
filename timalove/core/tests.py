@@ -1544,6 +1544,40 @@ class StrictGenderDiscoveryTests(TestCase):
         self.assertIn(self.woman.pk, ids)
 
 
+class CountryNormalizeTests(TestCase):
+    def test_merges_senegal_variants(self):
+        from core.data.country_normalize import normalize_country_label
+
+        self.assertEqual(normalize_country_label("Senegal"), "Sénégal")
+        self.assertEqual(normalize_country_label("senegal"), "Sénégal")
+        self.assertEqual(normalize_country_label("SENEGAL"), "Sénégal")
+        self.assertEqual(normalize_country_label("Sénégalais"), "Sénégal")
+
+    def test_maps_senegal_cities(self):
+        from core.data.country_normalize import normalize_country_label
+
+        self.assertEqual(normalize_country_label("Dakar"), "Sénégal")
+        self.assertEqual(normalize_country_label("Thiès"), "Sénégal")
+
+    def test_top_countries_aggregates_normalized(self):
+        from core.controllers.admin_controller import _top_countries
+
+        make_profile("geo-a@test.com", Gender.MALE, "A")
+        p1 = Profile.objects.get(email="geo-a@test.com")
+        p1.country = "Senegal"
+        p1.save(update_fields=["country", "updated_at"])
+
+        make_profile("geo-b@test.com", Gender.FEMALE, "B")
+        p2 = Profile.objects.get(email="geo-b@test.com")
+        p2.country = "Dakar"
+        p2.save(update_fields=["country", "updated_at"])
+
+        data = _top_countries(limit=5)
+        self.assertIn("Sénégal", data["labels"])
+        senegal_count = data["values"][data["labels"].index("Sénégal")]
+        self.assertGreaterEqual(senegal_count, 2)
+
+
 class GenderPromptTests(TestCase):
     def setUp(self):
         site_settings_controller.seed_defaults()

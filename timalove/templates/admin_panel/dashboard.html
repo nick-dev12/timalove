@@ -3,7 +3,7 @@
 {% block head %}
 {{ block.super }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/admin-dashboard.js' %}?v=20260826d1" defer></script>
+<script src="{% static 'js/admin-dashboard.js' %}?v=20260911geo1" defer></script>
 {% endblock %}
 {% block subtitle %}
 <p class="adm__subtitle">Lecture instantanée de la santé de TimaLove — {{ "now"|date:"d F Y" }}</p>
@@ -89,7 +89,7 @@
   <article class="adm-card adm-chart-card">
     <div class="adm-card__head">
       <h2 class="adm-card__title">Densité géographique</h2>
-      <p class="adm-card__lead">Pays avec le plus de membres inscrits (résidence ou pays d'origine).</p>
+      <p class="adm-card__lead">Pays avec le plus de membres (origine prioritaire, variantes et villes consolidées).</p>
     </div>
     <div class="adm-chart-wrap adm-chart-wrap--tall"><canvas id="chart-geography" aria-label="Répartition géographique"></canvas></div>
   </article>
