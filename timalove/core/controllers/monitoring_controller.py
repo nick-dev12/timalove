@@ -40,6 +40,8 @@ IGNORE_EXCEPTION_TYPES = frozenset(
         "PermissionDenied",
         "SuspiciousOperation",
         "ValidationError",
+        "EmptyPage",
+        "PageNotAnInteger",
     }
 )
 
@@ -90,9 +92,13 @@ def _is_ignorable_exception(exception: Exception | None) -> bool:
     if exception is None:
         return False
     from django.core.exceptions import PermissionDenied, SuspiciousOperation, ValidationError
+    from django.core.paginator import EmptyPage, PageNotAnInteger
     from django.http import Http404
 
-    if isinstance(exception, (Http404, PermissionDenied, SuspiciousOperation, ValidationError)):
+    if isinstance(
+        exception,
+        (Http404, PermissionDenied, SuspiciousOperation, ValidationError, EmptyPage, PageNotAnInteger),
+    ):
         return True
     return type(exception).__name__ in IGNORE_EXCEPTION_TYPES
 
@@ -359,6 +365,13 @@ def prune_benign_events() -> int:
     criteria |= Q(path="/temoignages/", source="http", status_code=500)
     criteria |= Q(path="/api/payments/confirm/", source="http", status_code=500)
     criteria |= Q(path="/api/profile/photo/primary/", source="http", status_code=500)
+    criteria |= Q(exception_type="EmptyPage")
+    criteria |= Q(exception_type="PageNotAnInteger")
+    criteria |= Q(title__icontains="EmptyPage")
+    criteria |= Q(path="/espace-prive/membres/", exception_type="EmptyPage")
+    criteria |= Q(path="/espace-prive/signalements/", exception_type="EmptyPage")
+    criteria |= Q(path="/coaching/", exception_type="DataError")
+    criteria |= Q(path="/coaching/", title__icontains="integer out of range")
 
     deleted, _details = SystemEvent.objects.filter(criteria).delete()
     return int(deleted)

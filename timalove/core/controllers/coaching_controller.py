@@ -8,9 +8,33 @@ from core.controllers import site_settings_controller
 from core.models import CoachingRequest, Profile, Transaction
 from core.models.choices import CoachingStatus, TransactionStatus, TransactionType
 
+FCFA_PER_EUR = 650
+MAX_COACHING_FCFA = 2_000_000
+
+
+def coaching_amount_fcfa(raw_price=None) -> int:
+    """Montant coaching en FCFA — accepte EUR (< 1000) ou FCFA déjà saisi par l'admin."""
+    if raw_price is None:
+        raw_price = site_settings_controller.get("coaching_price_eur", 40)
+    try:
+        value = float(raw_price)
+    except (TypeError, ValueError):
+        value = 40.0
+    if value >= 1000:
+        amount = int(value)
+    else:
+        amount = int(value * FCFA_PER_EUR)
+    return max(1000, min(amount, MAX_COACHING_FCFA))
+
 
 def create_request(data: dict, user: Profile | None = None) -> CoachingRequest:
-    amount = int(site_settings_controller.get("coaching_price_eur", 40) * 650)  # approx FCFA
+    amount = coaching_amount_fcfa()
+    raw_override = data.get("payment_amount")
+    if raw_override is not None:
+        try:
+            amount = coaching_amount_fcfa(raw_override)
+        except (TypeError, ValueError):
+            pass
     return CoachingRequest.objects.create(
         user=user,
         first_name=data["first_name"],
@@ -23,7 +47,7 @@ def create_request(data: dict, user: Profile | None = None) -> CoachingRequest:
         time_slot=data["time_slot"],
         theme=data["theme"],
         message=data.get("message"),
-        payment_amount=data.get("payment_amount", amount),
+        payment_amount=amount,
     )
 
 

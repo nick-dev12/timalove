@@ -7,6 +7,8 @@ import io
 from datetime import datetime, timedelta
 
 from django.core.paginator import Paginator
+
+from core.controllers.pagination_utils import safe_page
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.db.models.functions import Coalesce
@@ -282,7 +284,7 @@ def list_transactions(
         search=search,
     ).order_by("-event_at")
     paginator = Paginator(qs, per_page)
-    return paginator.get_page(page)
+    return safe_page(paginator, page)
 
 
 @transaction.atomic

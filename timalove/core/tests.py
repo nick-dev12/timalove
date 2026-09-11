@@ -1586,6 +1586,34 @@ class ApiPaymentsConfirmTests(TestCase):
         self.assertIn("/profil", resp["Location"])
 
 
+class CoachingAmountTests(TestCase):
+    def test_eur_price_converts_to_fcfa(self):
+        from core.controllers.coaching_controller import coaching_amount_fcfa
+
+        self.assertEqual(coaching_amount_fcfa(40), 26000)
+
+    def test_large_fcfa_value_not_multiplied(self):
+        from core.controllers.coaching_controller import coaching_amount_fcfa
+
+        self.assertEqual(coaching_amount_fcfa(26000), 26000)
+
+    def test_overflow_price_is_capped(self):
+        from core.controllers.coaching_controller import coaching_amount_fcfa
+
+        self.assertEqual(coaching_amount_fcfa(5000), 2_000_000)
+
+
+class PaginationUtilsTests(TestCase):
+    def test_safe_page_returns_last_page_when_out_of_range(self):
+        from django.core.paginator import Paginator
+
+        from core.controllers.pagination_utils import safe_page
+
+        paginator = Paginator([1, 2, 3], 2)
+        page = safe_page(paginator, 99)
+        self.assertEqual(page.number, 2)
+
+
 class ProfilePhotoPrimaryTests(TestCase):
     def setUp(self):
         site_settings_controller.seed_defaults()

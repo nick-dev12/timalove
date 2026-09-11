@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from django.core.paginator import Paginator
 
+from core.controllers.pagination_utils import safe_page
+
 from core.models import AuditLog, Profile
 
 ACTION_FILTERS: list[tuple[str, str]] = [
@@ -70,7 +72,7 @@ def list_audit_logs(*, search: str = "", action: str | None = None, page: int = 
     if search:
         qs = qs.filter(message__icontains=search)
     paginator = Paginator(qs, per_page)
-    return paginator.get_page(page)
+    return safe_page(paginator, page)
 
 
 def audit_summary() -> dict:

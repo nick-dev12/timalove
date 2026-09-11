@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from django.core.paginator import Paginator
+
+from core.controllers.pagination_utils import safe_page
 from django.db.models import Case, Count, F, Q, Sum, When
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
@@ -506,7 +508,7 @@ def list_inscriptions(
             | Q(commune__icontains=search)
         )
     paginator = Paginator(qs, per_page)
-    return paginator.get_page(page)
+    return safe_page(paginator, page)
 
 
 def members_summary() -> dict:
@@ -663,7 +665,7 @@ def list_members(
     elif blocked == "no":
         qs = qs.filter(suspended_at__isnull=True)
     paginator = Paginator(qs, per_page)
-    return paginator.get_page(page)
+    return safe_page(paginator, page)
 
 
 def get_member(profile_id) -> Profile | None:

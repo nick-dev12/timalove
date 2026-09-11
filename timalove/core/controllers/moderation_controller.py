@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from django.core.paginator import Paginator
+
+from core.controllers.pagination_utils import safe_page
 from django.db import models
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.utils import timezone
@@ -185,7 +187,7 @@ def list_reports(
         "-created_at",
     )
     paginator = Paginator(qs, per_page)
-    return paginator.get_page(page)
+    return safe_page(paginator, page)
 
 
 def get_report(report_id) -> Report | None:
