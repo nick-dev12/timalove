@@ -147,9 +147,17 @@
       return params;
     }
 
+    function countDataRows() {
+      return tbody.querySelectorAll("tr:not(.adm-empty-row)").length;
+    }
+
     async function fetchRows({ page, append }) {
       if (loading) return;
       loading = true;
+      if (moreBtn) {
+        moreBtn.disabled = true;
+        moreBtn.textContent = append ? "Chargement…" : moreBtn.textContent;
+      }
       const q = searchInput.value.trim();
       try {
         const res = await fetch(`${window.location.pathname}?${buildParams(page).toString()}`, {
@@ -163,9 +171,11 @@
         const nextPage = res.headers.get("X-Payments-Next-Page") || "";
 
         if (append) {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(`<table><tbody>${html}</tbody></table>`, "text/html");
-          doc.querySelectorAll("tr").forEach((row) => tbody.appendChild(row));
+          const wrap = document.createElement("tbody");
+          wrap.innerHTML = html;
+          wrap.querySelectorAll("tr").forEach((row) => {
+            if (!row.querySelector(".adm-empty")) tbody.appendChild(row);
+          });
         } else {
           tbody.innerHTML = html;
         }
@@ -174,14 +184,18 @@
           total,
           hasNext,
           nextPage,
-          shown: tbody.querySelectorAll("tr").length,
+          shown: countDataRows(),
         });
         if (clearBtn) clearBtn.hidden = !q;
         syncExportLinks();
       } catch (_err) {
-        if (statusEl) statusEl.textContent = "Filtrage indisponible. Réessayez.";
+        if (statusEl) statusEl.textContent = "Chargement indisponible. Réessayez.";
       } finally {
         loading = false;
+        if (moreBtn) {
+          moreBtn.disabled = false;
+          moreBtn.textContent = "Voir plus";
+        }
       }
     }
 
@@ -218,7 +232,7 @@
         total: Number(metaTpl.dataset.total || 0),
         hasNext: metaTpl.dataset.hasNext === "1",
         nextPage: metaTpl.dataset.nextPage || "",
-        shown: tbody.querySelectorAll("tr").length,
+        shown: countDataRows(),
       });
     }
     syncExportLinks();

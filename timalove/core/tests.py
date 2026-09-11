@@ -1545,6 +1545,12 @@ class StrictGenderDiscoveryTests(TestCase):
 
 
 class NabooPayFinanceTests(TestCase):
+    def test_naboo_product_bucket(self):
+        from core.controllers.finance_controller import _naboo_product_bucket
+
+        self.assertEqual(_naboo_product_bucket("TimaLove — Premium 1 mois"), "subscription")
+        self.assertEqual(_naboo_product_bucket("TimaLove — Boost 24h"), "one_shot")
+
     def test_naboopay_row_maps_pending_transaction(self):
         from core.controllers.finance_controller import naboopay_transaction_row
 

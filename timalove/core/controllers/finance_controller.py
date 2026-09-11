@@ -322,6 +322,8 @@ PRODUCT_TYPE_SEARCH: dict[str, str] = {
     "coaching": "Coaching",
 }
 
+ONE_SHOT_PRODUCT_KEYWORDS: tuple[str, ...] = ("boost", "coaching", "super-like", "super like")
+
 
 class NabooPayFinancePage:
     """Pagination compatible templates admin (données NabooPay live)."""
@@ -620,6 +622,66 @@ def naboopay_finance_summary(
         "source": "naboopay",
     }
     return summary, error
+
+
+def _naboo_product_bucket(product: str) -> str:
+    lower = (product or "").lower()
+    if any(keyword in lower for keyword in ONE_SHOT_PRODUCT_KEYWORDS):
+        return "one_shot"
+    return "subscription"
+
+
+def _naboopay_paid_rows_between(start: datetime, end: datetime) -> list[dict]:
+    start_iso = timezone.localtime(start).date().isoformat()
+    end_iso = timezone.localtime(end).date().isoformat()
+    rows, _error = _iter_all_naboopay_transactions(
+        period=None,
+        date_from=start_iso,
+        date_to=end_iso,
+        per_page=100,
+        max_pages=50,
+    )
+    paid_rows: list[dict] = []
+    for row in rows:
+        if row["status"] != TransactionStatus.PAID:
+            continue
+        event = row["paid_at"] or row["created_at"]
+        if start <= event <= end:
+            paid_rows.append(row)
+    return paid_rows
+
+
+def naboopay_revenue_sum(start: datetime, end: datetime) -> int:
+    if not uses_naboopay_live():
+        return 0
+    return sum(int(row["amount"] or 0) for row in _naboopay_paid_rows_between(start, end))
+
+
+def naboopay_daily_revenue_series(iso_labels: list[str]) -> dict[str, list[int]]:
+    if not uses_naboopay_live() or not iso_labels:
+        return {"subscription": [0] * len(iso_labels), "one_shot": [0] * len(iso_labels)}
+
+    start_day = timezone.localdate() - timedelta(days=len(iso_labels) - 1)
+    end_day = timezone.localdate()
+    start_dt = timezone.make_aware(datetime.combine(start_day, datetime.min.time()))
+    end_dt = timezone.make_aware(datetime.combine(end_day, datetime.max.time()))
+    subscription_by_day = dict.fromkeys(iso_labels, 0)
+    one_shot_by_day = dict.fromkeys(iso_labels, 0)
+
+    for row in _naboopay_paid_rows_between(start_dt, end_dt):
+        day_key = timezone.localtime(row["paid_at"] or row["created_at"]).date().isoformat()
+        if day_key not in subscription_by_day:
+            continue
+        amount = int(row["amount"] or 0)
+        if _naboo_product_bucket(row["product"]) == "one_shot":
+            one_shot_by_day[day_key] += amount
+        else:
+            subscription_by_day[day_key] += amount
+
+    return {
+        "subscription": [subscription_by_day[label] for label in iso_labels],
+        "one_shot": [one_shot_by_day[label] for label in iso_labels],
+    }
 
 
 def export_naboopay_csv_response(params: dict, *, excel: bool = False) -> HttpResponse | tuple[None, str]:

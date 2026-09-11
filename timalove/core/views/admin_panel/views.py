@@ -333,7 +333,10 @@ def paiements(request):
     date_from = request.GET.get("date_from") or None
     date_to = request.GET.get("date_to") or None
     q = request.GET.get("q", "")
+    is_partial = request.GET.get("format") == "partial"
     naboopay_error = None
+    summary = {}
+    summary_error = None
     if finance_controller.uses_naboopay_live():
         page_obj, naboopay_error = finance_controller.list_naboopay_transactions(
             status=status,
@@ -345,16 +348,17 @@ def paiements(request):
             page=_page_param(request),
             per_page=30,
         )
-        summary, summary_error = finance_controller.naboopay_finance_summary(
-            status=status,
-            product_type=product_type,
-            period=period,
-            date_from=date_from,
-            date_to=date_to,
-            search=q,
-        )
-        if summary_error and not summary:
-            naboopay_error = summary_error
+        if not is_partial:
+            summary, summary_error = finance_controller.naboopay_finance_summary(
+                status=status,
+                product_type=product_type,
+                period=period,
+                date_from=date_from,
+                date_to=date_to,
+                search=q,
+            )
+            if summary_error and not summary:
+                naboopay_error = summary_error
         if page_obj is None:
             page_obj = finance_controller.NabooPayFinancePage(
                 [],

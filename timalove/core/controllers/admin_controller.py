@@ -123,6 +123,10 @@ def _month_bounds(reference: datetime | None = None) -> tuple[datetime, datetime
 
 
 def _revenue_sum(start: datetime, end: datetime) -> int:
+    from core.controllers import finance_controller
+
+    if finance_controller.uses_naboopay_live():
+        return finance_controller.naboopay_revenue_sum(start, end)
     return int(
         Transaction.objects.filter(
             status=TransactionStatus.PAID,
@@ -425,12 +429,19 @@ def dashboard_analytics(days: int = 30) -> dict:
     passes_week = Swipe.objects.filter(created_at__gte=week, is_like=False).count()
     super_week = Swipe.objects.filter(created_at__gte=week, is_super_like=True).count()
 
-    one_shot_types = [TransactionType.BOOST, TransactionType.COACHING]
-    subscription_revenue = _daily_amount_series(
-        iso_labels,
-        type=TransactionType.SUBSCRIPTION,
-    )
-    one_shot_revenue = _daily_amount_series(iso_labels, type__in=one_shot_types)
+    from core.controllers import finance_controller
+
+    if finance_controller.uses_naboopay_live():
+        naboo_revenue = finance_controller.naboopay_daily_revenue_series(iso_labels)
+        subscription_revenue = naboo_revenue["subscription"]
+        one_shot_revenue = naboo_revenue["one_shot"]
+    else:
+        one_shot_types = [TransactionType.BOOST, TransactionType.COACHING]
+        subscription_revenue = _daily_amount_series(
+            iso_labels,
+            type=TransactionType.SUBSCRIPTION,
+        )
+        one_shot_revenue = _daily_amount_series(iso_labels, type__in=one_shot_types)
 
     return {
         "labels": display_labels,
