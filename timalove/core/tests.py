@@ -1456,6 +1456,33 @@ class MonitoringSystemEventTests(TestCase):
         self.assertNotIn("HTTP 404", titles)
         self.assertNotIn("Requête lente", titles)
 
+    def test_http404_not_recorded(self):
+        from django.http import Http404
+        from django.test import RequestFactory
+
+        from core.controllers import monitoring_controller
+        from core.models import SystemEvent
+
+        rf = RequestFactory()
+        req = rf.get("/profil/inconnu/")
+        monitoring_controller.record_exception(req, Http404("Profil introuvable"))
+
+        self.assertFalse(SystemEvent.objects.filter(exception_type="Http404").exists())
+
+    def test_duplicate_http500_skipped_when_exception_logged(self):
+        from django.test import RequestFactory
+
+        from core.controllers import monitoring_controller
+        from core.models import SystemEvent
+
+        rf = RequestFactory()
+        req = rf.get("/espace-prive/paiements/")
+        monitoring_controller.record_exception(req, RuntimeError("Erreur unique test"))
+        monitoring_controller.record_http_error(req, 500)
+
+        http_events = SystemEvent.objects.filter(source="http", path="/espace-prive/paiements/")
+        self.assertEqual(http_events.count(), 0)
+
 
 class StrictGenderDiscoveryTests(TestCase):
     def setUp(self):

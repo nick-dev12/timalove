@@ -22,8 +22,13 @@ class SystemEventLogHandler(logging.Handler):
         # Évite le bruit / récursion
         if record.name.startswith("django.db") or "monitoring_controller" in record.name:
             return
-        if record.name in {"django.security.DisallowedHost", "django.security"}:
+        if record.name in {"django.security.DisallowedHost", "django.security", "django.request"}:
             return
+        if record.exc_info and record.exc_info[0]:
+            from core.controllers.monitoring_controller import _is_ignorable_exception
+
+            if _is_ignorable_exception(record.exc_info[1]):
+                return
         try:
             msg_preview = record.getMessage() if hasattr(record, "getMessage") else str(record.msg)
         except Exception:  # noqa: BLE001

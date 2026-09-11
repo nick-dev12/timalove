@@ -9,6 +9,7 @@ from datetime import timedelta
 from typing import Any
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,24 @@ TRACE_MAX = 4000
 MSG_MAX = 2000
 # Niveaux affichés dans le journal Monitoring (pas les avertissements / requêtes lentes).
 JOURNAL_LEVELS = ("error", "critical")
+JOURNAL_MAX_AGE_DAYS = 14
+
+# Erreurs attendues / non bloquantes — ne pas journaliser ni afficher.
+IGNORE_EXCEPTION_TYPES = frozenset(
+    {
+        "Http404",
+        "PermissionDenied",
+        "SuspiciousOperation",
+        "ValidationError",
+    }
+)
+
+IGNORE_LOGGING_TITLES = (
+    "Internal Server Error:",
+    "Bad Request:",
+    "Not Found:",
+    "Forbidden:",
+)
 
 
 def _client_ip(request) -> str | None:
@@ -65,6 +84,26 @@ def _location_from_traceback(tb_text: str) -> str:
 def _fingerprint(*, level: str, source: str, title: str, path: str, exception_type: str) -> str:
     raw = f"{level}|{source}|{title}|{path}|{exception_type}"
     return hashlib.sha256(raw.encode("utf-8", errors="replace")).hexdigest()[:40]
+
+
+def _is_ignorable_exception(exception: Exception | None) -> bool:
+    if exception is None:
+        return False
+    from django.core.exceptions import PermissionDenied, SuspiciousOperation, ValidationError
+    from django.http import Http404
+
+    if isinstance(exception, (Http404, PermissionDenied, SuspiciousOperation, ValidationError)):
+        return True
+    return type(exception).__name__ in IGNORE_EXCEPTION_TYPES
+
+
+def _apply_journal_filters(qs):
+    qs = qs.exclude(exception_type__in=IGNORE_EXCEPTION_TYPES)
+    for prefix in IGNORE_LOGGING_TITLES:
+        qs = qs.exclude(source="logging", title__startswith=prefix)
+    qs = qs.exclude(source="logging", metadata__logger="django.request")
+    cutoff = timezone.now() - timedelta(days=JOURNAL_MAX_AGE_DAYS)
+    return qs.filter(last_seen_at__gte=cutoff)
 
 
 def record_event(
@@ -201,6 +240,10 @@ def _prune_old_events() -> None:
 
 
 def record_exception(request, exception: Exception) -> None:
+    if _is_ignorable_exception(exception):
+        return
+    if request is not None:
+        request._monitoring_exception_logged = True  # noqa: SLF001
     traceback_text = "".join(tb_mod.format_exception(type(exception), exception, exception.__traceback__))
     record_event(
         level="error",
@@ -216,6 +259,8 @@ def record_exception(request, exception: Exception) -> None:
 
 def record_http_error(request, status_code: int, *, detail: str = "") -> None:
     if status_code < 500:
+        return
+    if getattr(request, "_monitoring_exception_logged", False):
         return
     path = getattr(request, "path", "") or ""
     record_event(
@@ -237,6 +282,7 @@ def list_events(*, level: str = "", source: str = "", limit: int = 60) -> list:
     from core.models import SystemEvent
 
     qs = SystemEvent.objects.filter(level__in=JOURNAL_LEVELS)
+    qs = _apply_journal_filters(qs)
     if level in JOURNAL_LEVELS:
         qs = qs.filter(level=level)
     if source:
@@ -245,7 +291,7 @@ def list_events(*, level: str = "", source: str = "", limit: int = 60) -> list:
         qs = qs.filter(source=source)
     else:
         qs = qs.exclude(source=SystemEvent.Source.SLOW)
-    return list(qs[:limit])
+    return list(qs.order_by("-last_seen_at")[:limit])
 
 
 def events_summary() -> dict[str, Any]:
@@ -256,6 +302,7 @@ def events_summary() -> dict[str, Any]:
     now = timezone.now()
     day_ago = now - timedelta(days=1)
     qs = SystemEvent.objects.filter(last_seen_at__gte=day_ago, level__in=JOURNAL_LEVELS)
+    qs = _apply_journal_filters(qs)
     return {
         "errors_24h": qs.filter(level="error").count(),
         "warnings_24h": 0,
@@ -288,6 +335,19 @@ def format_event_for_ui(event) -> dict[str, Any]:
         "last_seen_at": event.last_seen_at,
         "where": _where_label(event),
     }
+
+
+def prune_benign_events() -> int:
+    """Supprime du journal les erreurs non bloquantes et doublons logger HTTP."""
+    from core.models import SystemEvent
+
+    criteria = Q(exception_type__in=IGNORE_EXCEPTION_TYPES) | Q(
+        source="logging", metadata__logger="django.request"
+    )
+    for prefix in IGNORE_LOGGING_TITLES:
+        criteria |= Q(source="logging", title__startswith=prefix)
+    deleted, _details = SystemEvent.objects.filter(criteria).delete()
+    return int(deleted)
 
 
 def _where_label(event) -> str:

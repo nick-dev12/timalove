@@ -430,6 +430,8 @@ def coaching(request):
 
 @require_GET
 def temoignages(request):
+    from core.controllers import home_controller
+
     return render(request, "landing/temoignages.html", home_controller.testimonials_page_context())
 
 
