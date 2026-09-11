@@ -318,10 +318,14 @@ def paiements(request):
 
     export = request.GET.get("export")
     if export in ("csv", "xlsx", "excel"):
-        return finance_controller.export_transactions_csv_response(
-            request.GET.dict(),
-            excel=export in ("xlsx", "excel"),
-        )
+        try:
+            return finance_controller.export_transactions_csv_response(
+                request.GET.dict(),
+                excel=export in ("xlsx", "excel"),
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect("admin_panel:paiements")
 
     status = request.GET.get("status") or None
     product_type = request.GET.get("product_type") or None
@@ -329,24 +333,77 @@ def paiements(request):
     date_from = request.GET.get("date_from") or None
     date_to = request.GET.get("date_to") or None
     q = request.GET.get("q", "")
-    page_obj = finance_controller.list_transactions(
-        status=status,
-        product_type=product_type,
-        period=period,
-        date_from=date_from,
-        date_to=date_to,
-        search=q,
-        page=_page_param(request),
-        per_page=30,
-    )
-    summary = finance_controller.finance_summary(
-        status=status,
-        product_type=product_type,
-        period=period,
-        date_from=date_from,
-        date_to=date_to,
-        search=q,
-    )
+    naboopay_error = None
+    if finance_controller.uses_naboopay_live():
+        page_obj, naboopay_error = finance_controller.list_naboopay_transactions(
+            status=status,
+            product_type=product_type,
+            period=period,
+            date_from=date_from,
+            date_to=date_to,
+            search=q,
+            page=_page_param(request),
+            per_page=30,
+        )
+        summary, summary_error = finance_controller.naboopay_finance_summary(
+            status=status,
+            product_type=product_type,
+            period=period,
+            date_from=date_from,
+            date_to=date_to,
+            search=q,
+        )
+        if summary_error and not summary:
+            naboopay_error = summary_error
+        if page_obj is None:
+            page_obj = finance_controller.NabooPayFinancePage(
+                [],
+                page=1,
+                per_page=30,
+                total_count=0,
+                total_pages=1,
+            )
+    else:
+        django_page = finance_controller.list_transactions(
+            status=status,
+            product_type=product_type,
+            period=period,
+            date_from=date_from,
+            date_to=date_to,
+            search=q,
+            page=_page_param(request),
+            per_page=30,
+        )
+        rows = [finance_controller.transaction_row(tx) for tx in django_page]
+        page_obj = finance_controller.NabooPayFinancePage(
+            rows,
+            page=django_page.number,
+            per_page=django_page.paginator.per_page,
+            total_count=django_page.paginator.count,
+            total_pages=django_page.paginator.num_pages,
+        )
+        summary = finance_controller.finance_summary(
+            status=status,
+            product_type=product_type,
+            period=period,
+            date_from=date_from,
+            date_to=date_to,
+            search=q,
+        )
+    if naboopay_error:
+        messages.warning(request, f"Source NabooPay : {naboopay_error}")
+    if not summary:
+        summary = {
+            "paid_amount_label": "0 FCFA",
+            "failed_amount_label": "0 FCFA",
+            "refunded_amount_label": "0 FCFA",
+            "paid_count": 0,
+            "failed_count": 0,
+            "refunded_count": 0,
+            "dispute_count": 0,
+            "channels": {"labels": [], "values": []},
+        }
+
     ctx = {
         "page_obj": page_obj,
         "summary": summary,
@@ -365,15 +422,17 @@ def paiements(request):
         "date_from": date_from or "",
         "date_to": date_to or "",
         "q": q,
-        "chart_channels_json": json.dumps(summary["channels"]),
+        "chart_channels_json": json.dumps(summary.get("channels") or {"labels": [], "values": []}),
+        "naboopay_live": finance_controller.uses_naboopay_live(),
     }
     if request.GET.get("format") == "partial":
         html = render(request, "admin_panel/partials/paiements_rows.html", ctx)
         response = HttpResponse(html.content, content_type="text/html; charset=utf-8")
-        response["X-Payments-Total"] = str(page_obj.paginator.count)
-        response["X-Payments-Has-Next"] = "1" if page_obj.has_next else "0"
+        total = page_obj.paginator.count if page_obj else 0
+        response["X-Payments-Total"] = str(total)
+        response["X-Payments-Has-Next"] = "1" if page_obj and page_obj.has_next else "0"
         response["X-Payments-Next-Page"] = (
-            str(page_obj.next_page_number()) if page_obj.has_next else ""
+            str(page_obj.next_page_number()) if page_obj and page_obj.has_next else ""
         )
         return response
     return render(

@@ -1544,6 +1544,30 @@ class StrictGenderDiscoveryTests(TestCase):
         self.assertIn(self.woman.pk, ids)
 
 
+class NabooPayFinanceTests(TestCase):
+    def test_naboopay_row_maps_pending_transaction(self):
+        from core.controllers.finance_controller import naboopay_transaction_row
+
+        row = naboopay_transaction_row(
+            {
+                "order_id": "dad31fe4-6b71-4c9e-aa24-007e35863bad",
+                "amount": 2990,
+                "currency": "XOF",
+                "transaction_status": "pending",
+                "customer": {"first_name": "Saloum", "last_name": "Ndiaye", "phone": "+221776744575"},
+                "products": [{"name": "TimaLove — Premium 1 mois", "price": 2990, "quantity": 1}],
+                "created_at": "2026-09-11T00:13:26.06Z",
+                "paid_at": "0001-01-01T00:00:00Z",
+                "selected_payment_method": "",
+            }
+        )
+        self.assertEqual(row["user_name"], "Saloum Ndiaye")
+        self.assertEqual(row["status"], "pending")
+        self.assertEqual(row["amount"], 2990)
+        self.assertEqual(row["product"], "TimaLove — Premium 1 mois")
+        self.assertEqual(row["provider"], "NabooPay")
+
+
 class CountryNormalizeTests(TestCase):
     def test_merges_senegal_variants(self):
         from core.data.country_normalize import normalize_country_label

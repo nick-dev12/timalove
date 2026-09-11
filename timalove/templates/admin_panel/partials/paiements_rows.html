@@ -1,29 +1,28 @@
-{% load admin_tags %}
 {% for tx in page_obj %}
 <tr>
-  <td data-label="ID transaction"><code class="adm-plan-id" title="{{ tx.order_id }}">#{{ tx.id.hex|slice:":8" }}</code></td>
+  <td data-label="ID transaction"><code class="adm-plan-id" title="{{ tx.order_id }}">#{{ tx.id_short }}</code></td>
   <td data-label="Utilisateur">
-    {% if tx.user %}
-    <strong>{{ tx.user.display_name|default:tx.user.first_name }}</strong>
-    <span class="adm-table__meta">{{ tx.user.email|default:tx.user.user.email }}</span>
-    {% else %}
-    <span class="adm-table-muted">—</span>
+    <strong>{{ tx.user_name }}</strong>
+    {% if tx.user_email %}
+    <span class="adm-table__meta">{{ tx.user_email }}</span>
+    {% elif tx.user_phone %}
+    <span class="adm-table__meta">{{ tx.user_phone }}</span>
     {% endif %}
   </td>
-  <td data-label="Prestataire">{{ tx|tx_provider }}</td>
+  <td data-label="Prestataire">{{ tx.provider }}</td>
   <td data-label="Montant"><strong>{{ tx.amount|floatformat:0 }}</strong></td>
   <td data-label="Devise">{{ tx.currency|default:"XOF" }}</td>
-  <td data-label="Produit">{{ tx|tx_product }}</td>
+  <td data-label="Produit">{{ tx.product }}</td>
   <td data-label="Statut">
-    <span class="adm-badge adm-badge--{{ tx.status|tx_status_badge }}">{{ tx|tx_status_admin }}</span>
+    <span class="adm-badge adm-badge--{{ tx.status|tx_status_badge }}">{{ tx.status_label }}</span>
   </td>
   <td data-label="Date">{% if tx.paid_at %}{{ tx.paid_at|date:"d/m/Y H:i" }}{% else %}{{ tx.created_at|date:"d/m/Y H:i" }}{% endif %}</td>
   <td class="adm-table__actions" data-label="">
-    {% if tx.status == 'paid' %}
+    {% if tx.can_refund and tx.local_id %}
     <form method="post" class="adm-inline-form" data-confirm="Confirmer le remboursement de cette transaction ?">
       {% csrf_token %}
       <input type="hidden" name="action" value="refund">
-      <input type="hidden" name="id" value="{{ tx.id }}">
+      <input type="hidden" name="id" value="{{ tx.local_id }}">
       <button class="adm-btn adm-btn--ghost adm-btn--sm" type="submit">Rembourser</button>
     </form>
     {% else %}

@@ -13,6 +13,7 @@ from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.utils import timezone
 
+from core.controllers import naboopay_controller
 from core.models import Profile, Transaction
 from core.models.choices import PaymentMethod, SubscriptionTier, TransactionStatus, TransactionType
 
@@ -186,6 +187,9 @@ def transaction_row(tx: Transaction) -> dict:
         "paid_at": tx.paid_at,
         "refunded_at": tx.refunded_at,
         "can_refund": tx.status == TransactionStatus.PAID,
+        "local_id": str(tx.id),
+        "user_phone": profile.phone if profile else "",
+        "source": "local",
     }
 
 
@@ -311,7 +315,373 @@ def _export_queryset(params: dict):
     ).order_by("-event_at")
 
 
+PRODUCT_TYPE_SEARCH: dict[str, str] = {
+    "subscription": "TimaLove",
+    "boost": "Boost",
+    "super_like": "Super",
+    "coaching": "Coaching",
+}
+
+
+class NabooPayFinancePage:
+    """Pagination compatible templates admin (données NabooPay live)."""
+
+    def __init__(self, rows: list[dict], *, page: int, per_page: int, total_count: int, total_pages: int):
+        self.object_list = rows
+        self.number = page
+        self.paginator = type(
+            "NabooPaginator",
+            (),
+            {"count": total_count, "num_pages": total_pages, "per_page": per_page},
+        )()
+
+    def __iter__(self):
+        return iter(self.object_list)
+
+    def __len__(self):
+        return len(self.object_list)
+
+    @property
+    def has_next(self) -> bool:
+        return self.number < self.paginator.num_pages
+
+    @property
+    def has_previous(self) -> bool:
+        return self.number > 1
+
+    @property
+    def next_page_number(self) -> int:
+        return self.number + 1
+
+    @property
+    def previous_page_number(self) -> int:
+        return self.number - 1
+
+
+def uses_naboopay_live() -> bool:
+    return naboopay_controller.is_configured()
+
+
+def _naboo_period_dates(period: str | None, date_from: str | None, date_to: str | None) -> tuple[str | None, str | None]:
+    start, end = _period_bounds(period, date_from, date_to)
+    start_iso = start.isoformat() if start else None
+    end_iso = end.isoformat() if end else None
+    return start_iso, end_iso
+
+
+def _parse_naboo_datetime(value: str | None):
+    if not value or value.startswith("0001-"):
+        return None
+    from django.utils.dateparse import parse_datetime
+
+    parsed = parse_datetime(value)
+    if not parsed:
+        return None
+    if timezone.is_naive(parsed):
+        return timezone.make_aware(parsed, timezone.utc)
+    return parsed
+
+
+def _naboo_product_label(products: list | None) -> str:
+    if not products:
+        return "—"
+    first = products[0] if isinstance(products[0], dict) else {}
+    return (first.get("name") or first.get("description") or "—").strip() or "—"
+
+
+def _naboo_provider_label(tx: dict) -> str:
+    method = (tx.get("selected_payment_method") or "").strip().lower()
+    if method in {PaymentMethod.WAVE, "wave"}:
+        return "Wave"
+    if method in {PaymentMethod.ORANGE_MONEY, "orange_money"}:
+        return "Orange Money"
+    if method in {PaymentMethod.CB, "cb", "card"}:
+        return "Stripe"
+    return "NabooPay"
+
+
+def _map_naboo_status(raw: str | None) -> str:
+    key = (raw or "").strip().lower()
+    return naboopay_controller.NABOO_TO_ADMIN_STATUS.get(key, TransactionStatus.PENDING)
+
+
+def _local_tx_ids_by_naboo_order(order_ids: list[str]) -> dict[str, str]:
+    if not order_ids:
+        return {}
+    mapping: dict[str, str] = {}
+    qs = Transaction.objects.filter(status=TransactionStatus.PAID).filter(
+        Q(payment_details__naboo_order_id__in=order_ids) | Q(naboo_transaction_id__in=order_ids)
+    ).only("id", "payment_details", "naboo_transaction_id")
+    for tx in qs:
+        details = tx.payment_details or {}
+        for naboo_id in {str(details.get("naboo_order_id") or ""), str(tx.naboo_transaction_id or "")}:
+            if naboo_id in order_ids:
+                mapping[naboo_id] = str(tx.id)
+    return mapping
+
+
+def naboopay_transaction_row(tx: dict) -> dict:
+    customer = tx.get("customer") or {}
+    first = (customer.get("first_name") or "").strip()
+    last = (customer.get("last_name") or "").strip()
+    phone = (customer.get("phone") or "").strip()
+    user_name = f"{first} {last}".strip() or "Client NabooPay"
+    status = _map_naboo_status(tx.get("transaction_status"))
+    paid_at = _parse_naboo_datetime(tx.get("paid_at"))
+    created_at = _parse_naboo_datetime(tx.get("created_at")) or timezone.now()
+    event_at = paid_at or created_at
+    order_id = str(tx.get("order_id") or "")
+    amount = int(tx.get("amount") or 0)
+    currency = (tx.get("currency") or "XOF").upper()
+    return {
+        "id": order_id,
+        "id_short": order_id.replace("-", "")[:8],
+        "order_id": order_id,
+        "user_ref": phone or "—",
+        "user_name": user_name,
+        "user_email": "",
+        "user_phone": phone,
+        "provider": _naboo_provider_label(tx),
+        "amount": amount,
+        "amount_label": _format_money(amount, currency),
+        "currency": currency,
+        "product": _naboo_product_label(tx.get("products")),
+        "status": status,
+        "status_label": transaction_status_admin_label(status),
+        "created_at": created_at,
+        "paid_at": paid_at,
+        "event_at": event_at,
+        "can_refund": status == TransactionStatus.PAID,
+        "source": "naboopay",
+    }
+
+
+def _naboo_list_params(
+    *,
+    status: str | None = None,
+    product_type: str | None = None,
+    period: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    search: str = "",
+) -> dict:
+    start_iso, end_iso = _naboo_period_dates(period, date_from, date_to)
+    naboo_status = naboopay_controller.ADMIN_TO_NABOO_STATUS.get(status or "", "") or None
+    combined_search = (search or "").strip()
+    if product_type and product_type in PRODUCT_TYPE_SEARCH:
+        token = PRODUCT_TYPE_SEARCH[product_type]
+        combined_search = f"{combined_search} {token}".strip()
+    return {
+        "status": naboo_status,
+        "search": combined_search or None,
+        "start_date": start_iso,
+        "end_date": end_iso,
+    }
+
+
+def list_naboopay_transactions(
+    *,
+    status: str | None = None,
+    product_type: str | None = None,
+    period: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    search: str = "",
+    page: int = 1,
+    per_page: int = 30,
+) -> tuple[NabooPayFinancePage | None, str | None]:
+    params = _naboo_list_params(
+        status=status,
+        product_type=product_type,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
+    )
+    result = naboopay_controller.list_transactions(page=page, limit=per_page, **params)
+    if not result.get("ok"):
+        return None, result.get("error") or "NabooPay indisponible."
+
+    pagination = result.get("pagination") or {}
+    raw_rows = result.get("transactions") or []
+    order_ids = [str(tx.get("order_id") or "") for tx in raw_rows if tx.get("order_id")]
+    local_ids = _local_tx_ids_by_naboo_order(order_ids)
+    rows = []
+    for tx in raw_rows:
+        row = naboopay_transaction_row(tx)
+        local_id = local_ids.get(row["order_id"])
+        row["local_id"] = local_id
+        row["can_refund"] = bool(local_id)
+        rows.append(row)
+    page_obj = NabooPayFinancePage(
+        rows,
+        page=int(pagination.get("page") or page),
+        per_page=int(pagination.get("limit") or per_page),
+        total_count=int(pagination.get("total_count") or len(rows)),
+        total_pages=int(pagination.get("total_pages") or 1),
+    )
+    return page_obj, None
+
+
+def _iter_all_naboopay_transactions(
+    *,
+    status: str | None = None,
+    product_type: str | None = None,
+    period: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    search: str = "",
+    per_page: int = 100,
+    max_pages: int = 50,
+) -> tuple[list[dict], str | None]:
+    params = _naboo_list_params(
+        status=status,
+        product_type=product_type,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
+    )
+    rows: list[dict] = []
+    page = 1
+    total_pages = 1
+    while page <= total_pages and page <= max_pages:
+        result = naboopay_controller.list_transactions(page=page, limit=per_page, **params)
+        if not result.get("ok"):
+            return rows, result.get("error") or "NabooPay indisponible."
+        pagination = result.get("pagination") or {}
+        total_pages = int(pagination.get("total_pages") or 1)
+        for tx in result.get("transactions") or []:
+            rows.append(naboopay_transaction_row(tx))
+        page += 1
+    return rows, None
+
+
+def naboopay_finance_summary(
+    *,
+    status: str | None = None,
+    product_type: str | None = None,
+    period: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    search: str = "",
+) -> tuple[dict, str | None]:
+    rows, error = _iter_all_naboopay_transactions(
+        status=status,
+        product_type=product_type,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
+    )
+    if error and not rows:
+        return {}, error
+
+    def _sum_status(key: str) -> tuple[int, int]:
+        subset = [row for row in rows if row["status"] == key]
+        return len(subset), sum(int(row["amount"] or 0) for row in subset)
+
+    paid_count, paid_amount = _sum_status(TransactionStatus.PAID)
+    failed_count, failed_amount = _sum_status(TransactionStatus.FAILED)
+    pending_count, pending_amount = _sum_status(TransactionStatus.PENDING)
+    refunded_count, refunded_amount = _sum_status(TransactionStatus.REFUNDED)
+    dispute_count, _ = _sum_status(TransactionStatus.DISPUTE)
+    total_amount = sum(int(row["amount"] or 0) for row in rows)
+
+    channels: dict[str, int] = {}
+    for row in rows:
+        if row["status"] not in {TransactionStatus.PAID, TransactionStatus.REFUNDED}:
+            continue
+        label = row["provider"]
+        channels[label] = channels.get(label, 0) + int(row["amount"] or 0)
+    channel_ordered = sorted(channels.items(), key=lambda item: item[1], reverse=True)
+
+    summary = {
+        "total_amount": total_amount,
+        "paid_amount": paid_amount,
+        "failed_amount": failed_amount,
+        "pending_amount": pending_amount,
+        "refunded_amount": refunded_amount,
+        "total_amount_label": _format_money(total_amount),
+        "paid_amount_label": _format_money(paid_amount),
+        "failed_amount_label": _format_money(failed_amount),
+        "pending_amount_label": _format_money(pending_amount),
+        "refunded_amount_label": _format_money(refunded_amount),
+        "total_count": len(rows),
+        "paid_count": paid_count,
+        "failed_count": failed_count,
+        "pending_count": pending_count,
+        "refunded_count": refunded_count,
+        "dispute_count": dispute_count,
+        "channels": {
+            "labels": [label for label, _ in channel_ordered],
+            "values": [amount for _, amount in channel_ordered],
+        },
+        "source": "naboopay",
+    }
+    return summary, error
+
+
+def export_naboopay_csv_response(params: dict, *, excel: bool = False) -> HttpResponse | tuple[None, str]:
+    rows, error = _iter_all_naboopay_transactions(
+        status=params.get("status") or None,
+        product_type=params.get("product_type") or None,
+        period=params.get("period") or None,
+        date_from=params.get("date_from") or None,
+        date_to=params.get("date_to") or None,
+        search=(params.get("q") or "").strip(),
+    )
+    if error and not rows:
+        return None, error
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, delimiter=";")
+    writer.writerow(
+        [
+            "ID transaction NabooPay",
+            "Client",
+            "Téléphone",
+            "Prestataire",
+            "Montant",
+            "Devise",
+            "Produit",
+            "Statut",
+            "Date création",
+            "Date paiement",
+        ]
+    )
+    for row in rows:
+        writer.writerow(
+            [
+                row["order_id"],
+                row["user_name"],
+                row.get("user_phone") or "",
+                row["provider"],
+                row["amount"],
+                row["currency"],
+                row["product"],
+                row["status_label"],
+                timezone.localtime(row["created_at"]).strftime("%Y-%m-%d %H:%M"),
+                timezone.localtime(row["paid_at"]).strftime("%Y-%m-%d %H:%M") if row["paid_at"] else "",
+            ]
+        )
+
+    content = "\ufeff" + buffer.getvalue()
+    filename = f"timalove-naboopay-{timezone.localdate().isoformat()}.{'xls' if excel else 'csv'}"
+    response = HttpResponse(content, content_type="text/csv; charset=utf-8")
+    if excel:
+        response["Content-Type"] = "application/vnd.ms-excel; charset=utf-8"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response, None
+
+
 def export_transactions_csv_response(params: dict, *, excel: bool = False) -> HttpResponse:
+    if uses_naboopay_live():
+        response, error = export_naboopay_csv_response(params, excel=excel)
+        if response:
+            return response
+        raise ValueError(error or "Export NabooPay impossible.")
+
     qs = _export_queryset(params)
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=";")

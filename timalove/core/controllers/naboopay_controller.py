@@ -19,6 +19,25 @@ DEFAULT_BASE_URL = "https://api.naboopay.com"
 
 ACCEPTED_STATUSES = frozenset({"paid", "completed", "paid_and_blocked"})
 
+NABOO_TO_ADMIN_STATUS: dict[str, str] = {
+    "pending": "pending",
+    "paid": "paid",
+    "completed": "paid",
+    "paid_and_blocked": "paid",
+    "failed": "failed",
+    "refunded": "refunded",
+    "dispute": "dispute",
+    "chargeback": "dispute",
+}
+
+ADMIN_TO_NABOO_STATUS: dict[str, str] = {
+    "pending": "pending",
+    "paid": "paid",
+    "failed": "failed",
+    "refunded": "refunded",
+    "dispute": "dispute",
+}
+
 NETWORK_USER_MESSAGE = (
     "Le service de paiement NabooPay est injoignable pour le moment. Réessayez dans quelques minutes."
 )
@@ -194,6 +213,59 @@ def initialize(
     message = data.get("error") or data.get("message") or "Impossible d’ouvrir NabooPay."
     logger.warning("[naboopay] init refusée : %s", message)
     return {"ok": False, "error": str(message), "raw": data}
+
+
+def list_transactions(
+    *,
+    page: int = 1,
+    limit: int = 30,
+    status: str | None = None,
+    search: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    payment_method: str | None = None,
+) -> dict:
+    """Liste paginée des transactions NabooPay (source admin Finances)."""
+    if not is_configured():
+        return {"ok": False, "error": "NabooPay n’est pas configuré.", "transactions": [], "pagination": {}}
+
+    params: dict[str, str | int] = {
+        "page": max(int(page or 1), 1),
+        "limit": max(min(int(limit or 30), 100), 1),
+    }
+    if status:
+        params["status"] = status.strip().lower()
+    if search:
+        params["search"] = search.strip()[:120]
+    if start_date:
+        params["start_date"] = start_date
+    if end_date:
+        params["end_date"] = end_date
+    if payment_method:
+        params["payment_method"] = payment_method.strip().lower()
+
+    query = urllib.parse.urlencode(params)
+    data = _request("GET", f"/api/v2/transactions?{query}")
+    if is_network_failure(data):
+        return {
+            "ok": False,
+            "error": NETWORK_USER_MESSAGE,
+            "network": True,
+            "transactions": [],
+            "pagination": {},
+            "raw": data,
+        }
+    if data.get("error") and not data.get("transactions"):
+        message = data.get("error") or data.get("message") or "Impossible de charger NabooPay."
+        return {"ok": False, "error": str(message), "transactions": [], "pagination": {}, "raw": data}
+
+    pagination = data.get("pagination") or {}
+    return {
+        "ok": True,
+        "transactions": data.get("transactions") or [],
+        "pagination": pagination,
+        "raw": data,
+    }
 
 
 def check(naboo_order_id: str) -> dict:

@@ -3,10 +3,10 @@
 {% block head %}
 {{ block.super }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/admin-payments.js' %}?v=20260826f1" defer></script>
+<script src="{% static 'js/admin-payments.js' %}?v=20260911naboo1" defer></script>
 {% endblock %}
 {% block subtitle %}
-<p class="adm__subtitle">Suivi financier détaillé, contestations et export comptable</p>
+<p class="adm__subtitle">Suivi financier détaillé, contestations et export comptable{% if naboopay_live %} — données synchronisées depuis NabooPay{% endif %}</p>
 {% endblock %}
 {% block content %}
 <div class="adm-stats adm-stats--compact adm-stats--quad">
