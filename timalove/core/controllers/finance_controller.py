@@ -351,11 +351,9 @@ class NabooPayFinancePage:
     def has_previous(self) -> bool:
         return self.number > 1
 
-    @property
     def next_page_number(self) -> int:
         return self.number + 1
 
-    @property
     def previous_page_number(self) -> int:
         return self.number - 1
 
