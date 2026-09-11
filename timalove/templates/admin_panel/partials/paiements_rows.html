@@ -1,3 +1,4 @@
+{% load admin_tags %}
 {% for tx in page_obj %}
 <tr>
   <td data-label="ID transaction"><code class="adm-plan-id" title="{{ tx.order_id }}">#{{ tx.id_short }}</code></td>
