@@ -1,5 +1,6 @@
 import json
 
+from django.contrib import messages as django_messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
@@ -462,11 +463,10 @@ def payments_confirm(request):
     simulate = request.GET.get("simulate") == "1"
     ok, msg = payment_controller.confirm_order(order_id, simulate=simulate)
     if request.user.is_authenticated:
-        messages_mod = __import__("django.contrib.messages", fromlist=["messages"]).messages
         if ok:
-            messages_mod.success(request, msg)
+            django_messages.success(request, msg)
         else:
-            messages_mod.error(request, msg)
+            django_messages.error(request, msg)
         return redirect(f"{reverse('app:profil')}?tab=settings")
     return JsonResponse({"ok": ok, "message": msg})
 

@@ -1571,6 +1571,40 @@ class StrictGenderDiscoveryTests(TestCase):
         self.assertIn(self.woman.pk, ids)
 
 
+class ApiPaymentsConfirmTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        self.profile = make_profile("confirm@test.com", Gender.MALE, "Confirm")
+
+    @patch("core.views.api.views.payment_controller.confirm_order")
+    def test_payments_confirm_redirects_with_message(self, confirm_mock):
+        confirm_mock.return_value = (True, "Paiement confirmé.")
+        client = Client()
+        client.force_login(self.profile.user)
+        resp = client.get("/api/payments/confirm/?order_id=test-order&simulate=1", follow=False)
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/profil", resp["Location"])
+
+
+class ProfilePhotoPrimaryTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        self.profile = make_profile("photo@test.com", Gender.FEMALE, "Photo")
+        self.profile.photo_url = "https://example.com/main.jpg"
+        self.profile.save(update_fields=["photo_url", "updated_at"])
+
+    def test_invalid_photo_id_returns_400_not_500(self):
+        client = Client()
+        client.force_login(self.profile.user)
+        resp = client.post(
+            "/api/profile/photo/primary/",
+            data='{"id":"not-a-uuid"}',
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.json()["ok"])
+
+
 class NabooPayFinanceTests(TestCase):
     def test_naboo_product_bucket(self):
         from core.controllers.finance_controller import _naboo_product_bucket

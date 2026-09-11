@@ -442,6 +442,10 @@ def add_gallery_photo(profile: Profile, *, upload=None, data_url: str = "") -> d
 def set_primary_photo(profile: Profile, photo_id: str) -> str:
     if photo_id == "primary":
         return profile.photo_url or ""
+    try:
+        uuid.UUID(str(photo_id))
+    except (ValueError, TypeError, AttributeError):
+        raise ValueError("Photo introuvable.") from None
     photo = ProfileGalleryPhoto.objects.filter(profile=profile, pk=photo_id).first()
     if not photo:
         raise ValueError("Photo introuvable.")

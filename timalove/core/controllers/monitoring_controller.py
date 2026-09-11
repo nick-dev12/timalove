@@ -338,7 +338,7 @@ def format_event_for_ui(event) -> dict[str, Any]:
 
 
 def prune_benign_events() -> int:
-    """Supprime du journal les erreurs non bloquantes et doublons logger HTTP."""
+    """Supprime du journal les erreurs non bloquantes, doublons et bugs déjà corrigés."""
     from core.models import SystemEvent
 
     criteria = Q(exception_type__in=IGNORE_EXCEPTION_TYPES) | Q(
@@ -346,6 +346,20 @@ def prune_benign_events() -> int:
     )
     for prefix in IGNORE_LOGGING_TITLES:
         criteria |= Q(source="logging", title__startswith=prefix)
+
+    # Bugs corrigés en production — retirer l'historique bruyant du journal.
+    criteria |= Q(path="/espace-prive/paiements/", exception_type="TypeError")
+    criteria |= Q(path="/espace-prive/paiements/", exception_type="TemplateSyntaxError")
+    criteria |= Q(path="/espace-prive/paiements/", title__icontains="tx_status_badge")
+    criteria |= Q(path="/temoignages/", exception_type="NameError")
+    criteria |= Q(path="/temoignages/", title__icontains="home_controller")
+    criteria |= Q(path="/api/payments/confirm/", exception_type="AttributeError")
+    criteria |= Q(path="/api/payments/confirm/", title__icontains="has no attribute 'messages'")
+    criteria |= Q(path="/espace-prive/paiements/", source="http", status_code=500)
+    criteria |= Q(path="/temoignages/", source="http", status_code=500)
+    criteria |= Q(path="/api/payments/confirm/", source="http", status_code=500)
+    criteria |= Q(path="/api/profile/photo/primary/", source="http", status_code=500)
+
     deleted, _details = SystemEvent.objects.filter(criteria).delete()
     return int(deleted)
 
