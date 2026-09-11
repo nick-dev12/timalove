@@ -10,16 +10,7 @@ class ExceptionLoggingMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        response = self.get_response(request)
-        status = getattr(response, "status_code", 200) or 200
-        if status >= 500:
-            try:
-                from core.controllers import monitoring_controller
-
-                monitoring_controller.record_http_error(request, status)
-            except Exception:  # noqa: BLE001
-                pass
-        return response
+        return self.get_response(request)
 
     def process_exception(self, request: HttpRequest, exception: Exception):
         try:

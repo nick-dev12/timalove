@@ -1452,7 +1452,7 @@ class MonitoringSystemEventTests(TestCase):
         self.assertNotIn("warning", levels)
         self.assertNotIn(SystemEvent.Source.SLOW, sources)
         self.assertIn("Erreur reelle", titles)
-        self.assertIn("HTTP 500", titles)
+        self.assertNotIn("HTTP 500", titles)
         self.assertNotIn("HTTP 404", titles)
         self.assertNotIn("Requête lente", titles)
 

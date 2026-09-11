@@ -108,6 +108,8 @@ def _apply_journal_filters(qs):
     for prefix in IGNORE_LOGGING_TITLES:
         qs = qs.exclude(source="logging", title__startswith=prefix)
     qs = qs.exclude(source="logging", metadata__logger="django.request")
+    # Les entrées HTTP 500 génériques dupliquent l'exception sans stack trace utile.
+    qs = qs.exclude(source="http")
     cutoff = timezone.now() - timedelta(days=JOURNAL_MAX_AGE_DAYS)
     return qs.filter(last_seen_at__gte=cutoff)
 
@@ -372,6 +374,7 @@ def prune_benign_events() -> int:
     criteria |= Q(path="/espace-prive/signalements/", exception_type="EmptyPage")
     criteria |= Q(path="/coaching/", exception_type="DataError")
     criteria |= Q(path="/coaching/", title__icontains="integer out of range")
+    criteria |= Q(source="http")
 
     deleted, _details = SystemEvent.objects.filter(criteria).delete()
     return int(deleted)
