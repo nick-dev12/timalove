@@ -13,7 +13,7 @@ from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.utils import timezone
 
-from core.controllers import naboopay_controller
+from core.controllers import naboopay_controller, naboopay_sync_controller
 from core.models import Profile, Transaction
 from core.models.choices import PaymentMethod, SubscriptionTier, TransactionStatus, TransactionType
 
@@ -456,7 +456,7 @@ def naboopay_transaction_row(tx: dict) -> dict:
     }
 
 
-def _naboo_list_params(
+def _cached_naboopay_rows(
     *,
     status: str | None = None,
     product_type: str | None = None,
@@ -464,19 +464,33 @@ def _naboo_list_params(
     date_from: str | None = None,
     date_to: str | None = None,
     search: str = "",
-) -> dict:
-    start_iso, end_iso = _naboo_period_dates(period, date_from, date_to)
-    naboo_status = naboopay_controller.ADMIN_TO_NABOO_STATUS.get(status or "", "") or None
-    combined_search = (search or "").strip()
-    if product_type and product_type in PRODUCT_TYPE_SEARCH:
-        token = PRODUCT_TYPE_SEARCH[product_type]
-        combined_search = f"{combined_search} {token}".strip()
-    return {
-        "status": naboo_status,
-        "search": combined_search or None,
-        "start_date": start_iso,
-        "end_date": end_iso,
-    }
+) -> tuple[list[dict], dict, str | None]:
+    rows, meta, error = naboopay_sync_controller.get_rows()
+    if error and not rows:
+        return [], meta, error
+    filtered = naboopay_sync_controller.filter_rows(
+        rows,
+        status=status,
+        product_type=product_type,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
+    )
+    return filtered, meta, error
+
+
+def _attach_local_refund_flags(rows: list[dict]) -> list[dict]:
+    order_ids = [row["order_id"] for row in rows if row.get("order_id")]
+    local_ids = _local_tx_ids_by_naboo_order(order_ids)
+    enriched = []
+    for row in rows:
+        payload = dict(row)
+        local_id = local_ids.get(payload["order_id"])
+        payload["local_id"] = local_id
+        payload["can_refund"] = bool(local_id)
+        enriched.append(payload)
+    return enriched
 
 
 def list_naboopay_transactions(
@@ -490,7 +504,7 @@ def list_naboopay_transactions(
     page: int = 1,
     per_page: int = 30,
 ) -> tuple[NabooPayFinancePage | None, str | None]:
-    params = _naboo_list_params(
+    filtered, _meta, error = _cached_naboopay_rows(
         status=status,
         product_type=product_type,
         period=period,
@@ -498,63 +512,23 @@ def list_naboopay_transactions(
         date_to=date_to,
         search=search,
     )
-    result = naboopay_controller.list_transactions(page=page, limit=per_page, **params)
-    if not result.get("ok"):
-        return None, result.get("error") or "NabooPay indisponible."
+    if error and not filtered:
+        return None, error
 
-    pagination = result.get("pagination") or {}
-    raw_rows = result.get("transactions") or []
-    order_ids = [str(tx.get("order_id") or "") for tx in raw_rows if tx.get("order_id")]
-    local_ids = _local_tx_ids_by_naboo_order(order_ids)
-    rows = []
-    for tx in raw_rows:
-        row = naboopay_transaction_row(tx)
-        local_id = local_ids.get(row["order_id"])
-        row["local_id"] = local_id
-        row["can_refund"] = bool(local_id)
-        rows.append(row)
+    safe_page = max(int(page or 1), 1)
+    safe_per_page = max(int(per_page or 30), 1)
+    total_count = len(filtered)
+    total_pages = max(1, (total_count + safe_per_page - 1) // safe_per_page)
+    start = (safe_page - 1) * safe_per_page
+    page_rows = _attach_local_refund_flags(filtered[start : start + safe_per_page])
     page_obj = NabooPayFinancePage(
-        rows,
-        page=int(pagination.get("page") or page),
-        per_page=int(pagination.get("limit") or per_page),
-        total_count=int(pagination.get("total_count") or len(rows)),
-        total_pages=int(pagination.get("total_pages") or 1),
+        page_rows,
+        page=safe_page,
+        per_page=safe_per_page,
+        total_count=total_count,
+        total_pages=total_pages,
     )
-    return page_obj, None
-
-
-def _iter_all_naboopay_transactions(
-    *,
-    status: str | None = None,
-    product_type: str | None = None,
-    period: str | None = None,
-    date_from: str | None = None,
-    date_to: str | None = None,
-    search: str = "",
-    per_page: int = 100,
-    max_pages: int = 50,
-) -> tuple[list[dict], str | None]:
-    params = _naboo_list_params(
-        status=status,
-        product_type=product_type,
-        period=period,
-        date_from=date_from,
-        date_to=date_to,
-        search=search,
-    )
-    rows: list[dict] = []
-    page = 1
-    total_pages = 1
-    while page <= total_pages and page <= max_pages:
-        result = naboopay_controller.list_transactions(page=page, limit=per_page, **params)
-        if not result.get("ok"):
-            return rows, result.get("error") or "NabooPay indisponible."
-        pagination = result.get("pagination") or {}
-        total_pages = int(pagination.get("total_pages") or 1)
-        for tx in result.get("transactions") or []:
-            rows.append(naboopay_transaction_row(tx))
-        page += 1
-    return rows, None
+    return page_obj, error
 
 
 def naboopay_finance_summary(
@@ -566,7 +540,7 @@ def naboopay_finance_summary(
     date_to: str | None = None,
     search: str = "",
 ) -> tuple[dict, str | None]:
-    rows, error = _iter_all_naboopay_transactions(
+    rows, _meta, error = _cached_naboopay_rows(
         status=status,
         product_type=product_type,
         period=period,
@@ -630,23 +604,21 @@ def _naboo_product_bucket(product: str) -> str:
 
 
 def _naboopay_paid_rows_between(start: datetime, end: datetime) -> list[dict]:
-    start_iso = timezone.localtime(start).date().isoformat()
-    end_iso = timezone.localtime(end).date().isoformat()
-    rows, _error = _iter_all_naboopay_transactions(
-        period=None,
-        date_from=start_iso,
-        date_to=end_iso,
-        per_page=100,
-        max_pages=50,
-    )
+    rows, _meta, _error = naboopay_sync_controller.get_rows()
     paid_rows: list[dict] = []
     for row in rows:
         if row["status"] != TransactionStatus.PAID:
             continue
         event = row["paid_at"] or row["created_at"]
-        if start <= event <= end:
+        if event and start <= event <= end:
             paid_rows.append(row)
     return paid_rows
+
+
+def naboopay_sync_public_meta() -> dict:
+    if not uses_naboopay_live():
+        return {}
+    return naboopay_sync_controller.public_meta(naboopay_sync_controller.last_meta())
 
 
 def naboopay_revenue_sum(start: datetime, end: datetime) -> int:
@@ -683,7 +655,7 @@ def naboopay_daily_revenue_series(iso_labels: list[str]) -> dict[str, list[int]]
 
 
 def export_naboopay_csv_response(params: dict, *, excel: bool = False) -> HttpResponse | tuple[None, str]:
-    rows, error = _iter_all_naboopay_transactions(
+    rows, _meta, error = _cached_naboopay_rows(
         status=params.get("status") or None,
         product_type=params.get("product_type") or None,
         period=params.get("period") or None,

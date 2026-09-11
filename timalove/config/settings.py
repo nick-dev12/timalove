@@ -166,6 +166,23 @@ if not DEBUG:
     SECURE_REFERRER_POLICY = "same-origin"
 
 REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379/0")
+CACHE_REDIS_URL = env("CACHE_REDIS_URL", default=REDIS_URL.replace("/0", "/2") if "/0" in REDIS_URL else f"{REDIS_URL}/2")
+if env.bool("USE_REDIS_CACHE", default=env.bool("USE_REDIS_CHANNELS", default=False)):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": CACHE_REDIS_URL,
+            "TIMEOUT": 60 * 60 * 24,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "timalove-naboopay",
+        }
+    }
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer",

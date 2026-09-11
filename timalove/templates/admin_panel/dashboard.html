@@ -3,12 +3,15 @@
 {% block head %}
 {{ block.super }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/admin-dashboard.js' %}?v=20260911geo5" defer></script>
+<script src="{% static 'js/admin-live.js' %}?v=20260911live1" defer></script>
+<script src="{% static 'js/admin-dashboard.js' %}?v=20260911live1" defer></script>
 {% endblock %}
 {% block subtitle %}
 <p class="adm__subtitle">Lecture instantanée de la santé de TimaLove — {{ "now"|date:"d F Y" }}</p>
 {% endblock %}
 {% block content %}
+{% include "admin_panel/partials/adm_live_bar.html" %}
+
 <section class="adm-hero">
   <div class="adm-hero__copy">
     <p class="adm-hero__eyebrow">{{ admin_staff_role|default:"Espace admin" }}</p>
@@ -28,32 +31,22 @@
     </div>
   </div>
   <div class="adm-hero__metrics" aria-hidden="true">
-    {% for kpi in kpis %}{% if kpi.id == 'dau' %}
-    <div class="adm-hero__metric"><span>Actifs 24 h</span><strong>{{ kpi.value_label }}</strong></div>
-    {% elif kpi.id == 'reports' %}
-    <div class="adm-hero__metric"><span>Signalements</span><strong>{{ kpi.value_label }}</strong></div>
-    {% endif %}{% endfor %}
+    <div class="adm-hero__metric" data-hero-metric="dau"><span>Actifs 24 h</span><strong>—</strong></div>
+    <div class="adm-hero__metric" data-hero-metric="reports"><span>Signalements</span><strong>—</strong></div>
   </div>
 </section>
 
-<div class="adm-kpis">
-  {% for kpi in kpis %}
-  <article class="adm-kpi adm-kpi--{{ kpi.id }}{% if kpi.alert %} adm-kpi--alert{% endif %}">
-    <div class="adm-kpi__head">
-      <span class="adm-kpi__label">{{ kpi.label }}</span>
-      <span class="adm-kpi__trend adm-kpi__trend--{{ kpi.trend }}" title="{{ kpi.hint }}">
-        {% if kpi.trend == 'up' %}+{% elif kpi.trend == 'down' %}-{% endif %}{{ kpi.delta_pct|floatformat:1 }}%
-      </span>
-    </div>
-    <strong class="adm-kpi__value">{{ kpi.value_label }}{% if kpi.suffix %} <span class="adm-kpi__suffix">{{ kpi.suffix }}</span>{% endif %}</strong>
-    <span class="adm-kpi__hint">{{ kpi.hint }}</span>
+<div class="adm-kpis adm-live-loading" data-dashboard-kpis>
+  {% for _ in "123456" %}
+  <article class="adm-kpi adm-kpi--skeleton">
+    <div class="adm-kpi__head"><span class="adm-skeleton-line adm-skeleton-line--sm"></span></div>
+    <span class="adm-skeleton-line adm-skeleton-line--lg"></span>
+    <span class="adm-skeleton-line adm-skeleton-line--xs"></span>
   </article>
   {% endfor %}
 </div>
 
-{{ charts|json_script:"admin-charts-data" }}
-
-<section class="adm-dash-grid">
+<section class="adm-dash-grid adm-live-loading" data-dashboard-charts>
   <article class="adm-card adm-chart-card adm-chart-card--wide">
     <div class="adm-card__head">
       <h2 class="adm-card__title">Courbe de croissance des revenus</h2>
@@ -130,7 +123,7 @@
 </div>
 
 <section class="adm-dash-bottom">
-  <article class="adm-card">
+  <article class="adm-card adm-live-loading" data-dashboard-recent-tx-wrap>
     <div class="adm-card__head adm-card__head--row">
       <div>
         <h2 class="adm-card__title">Dernières transactions</h2>
@@ -143,24 +136,16 @@
         <thead>
           <tr><th>ID</th><th>Type</th><th>Montant</th><th>Statut</th><th>Date</th></tr>
         </thead>
-        <tbody>
-          {% for tx in recent.transactions %}
-          <tr>
-            <td data-label="ID"><code class="adm-plan-id">#{{ tx.id }}</code></td>
-            <td data-label="Type">{{ tx.type }}</td>
-            <td data-label="Montant"><strong>{{ tx.amount_label }}</strong> FCFA</td>
-            <td data-label="Statut"><span class="adm-badge adm-badge--{% if tx.status == 'paid' %}ok{% elif tx.status == 'failed' %}danger{% elif tx.status == 'pending' %}warn{% else %}muted{% endif %}">{{ tx.status_label }}</span></td>
-            <td data-label="Date">{{ tx.created_at|date:"d/m/Y H:i" }}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="5"><div class="adm-empty">Aucune transaction récente</div></td></tr>
+        <tbody data-dashboard-recent-tx>
+          {% for _ in "12345678" %}
+          <tr class="adm-skeleton-row"><td colspan="5"><span class="adm-skeleton-line"></span></td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </article>
 
-  <article class="adm-card{% for kpi in kpis %}{% if kpi.id == 'reports' and kpi.alert %} adm-card--alert{% endif %}{% endfor %}">
+  <article class="adm-card adm-live-loading" data-dashboard-recent-reports-wrap>
     <div class="adm-card__head adm-card__head--row">
       <div>
         <h2 class="adm-card__title">Modération prioritaire</h2>
@@ -168,22 +153,19 @@
       </div>
       <a class="adm-btn adm-btn--primary adm-btn--sm" href="{% url 'admin_panel:signalements' %}">Traiter</a>
     </div>
-    <div class="adm-mod-queue">
-      {% for r in recent.reports %}
-      <article class="adm-mod-item">
-        <div class="adm-mod-item__main">
-          <strong>{{ r.get_reason_display|default:r.reason }}</strong>
-          <p>
-            {% if r.reported_profile %}{{ r.reported_profile.first_name }} {{ r.reported_profile.last_name|slice:":1"|upper }}.{% else %}—{% endif %}
-            · {{ r.created_at|date:"d/m/Y H:i" }}
-          </p>
-        </div>
-        <span class="adm-badge adm-badge--warn">En attente</span>
+    <div class="adm-mod-queue" data-dashboard-recent-reports>
+      {% for _ in "12345" %}
+      <article class="adm-mod-item adm-mod-item--skeleton">
+        <span class="adm-skeleton-line adm-skeleton-line--md"></span>
+        <span class="adm-skeleton-line adm-skeleton-line--sm"></span>
       </article>
-      {% empty %}
-      <div class="adm-empty">Aucun signalement urgent</div>
       {% endfor %}
     </div>
   </article>
 </section>
+
+<div id="dashboard-async-config" hidden
+  data-kpis-url="{% url 'admin_panel:dashboard_data_kpis' %}"
+  data-charts-url="{% url 'admin_panel:dashboard_data_charts' %}"
+  data-recent-url="{% url 'admin_panel:dashboard_data_recent' %}"></div>
 {% endblock %}

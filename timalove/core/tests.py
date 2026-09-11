@@ -1573,6 +1573,123 @@ class NabooPayFinanceTests(TestCase):
         self.assertEqual(row["product"], "TimaLove — Premium 1 mois")
         self.assertEqual(row["provider"], "NabooPay")
 
+    def test_naboopay_sync_incremental_merges_only_new_rows(self):
+        from unittest.mock import patch
+
+        from django.core.cache import cache
+
+        from core.controllers import naboopay_sync_controller
+        from core.controllers.finance_controller import naboopay_transaction_row
+
+        cache.clear()
+        existing = naboopay_transaction_row(
+            {
+                "order_id": "11111111-1111-1111-1111-111111111111",
+                "amount": 1000,
+                "currency": "XOF",
+                "transaction_status": "paid",
+                "customer": {"first_name": "A", "last_name": "B", "phone": "+221770000001"},
+                "products": [{"name": "TimaLove — Premium 1 mois"}],
+                "created_at": "2026-09-10T10:00:00Z",
+                "paid_at": "2026-09-10T10:05:00Z",
+                "selected_payment_method": "wave",
+            }
+        )
+        naboopay_sync_controller._save_rows([existing], {"synced_at": "2026-09-10T12:00:00+00:00"})
+
+        new_tx = {
+            "order_id": "22222222-2222-2222-2222-222222222222",
+            "amount": 2000,
+            "currency": "XOF",
+            "transaction_status": "paid",
+            "customer": {"first_name": "C", "last_name": "D", "phone": "+221770000002"},
+            "products": [{"name": "TimaLove — Boost 24h"}],
+            "created_at": "2026-09-11T00:00:00Z",
+            "paid_at": "2026-09-11T00:01:00Z",
+            "selected_payment_method": "wave",
+        }
+
+        with patch("core.controllers.naboopay_sync_controller.naboopay_controller.list_transactions") as mocked:
+            mocked.return_value = {
+                "ok": True,
+                "transactions": [new_tx],
+                "pagination": {"page": 1, "total_pages": 1, "total_count": 2, "limit": 100},
+            }
+            rows, meta, error = naboopay_sync_controller.sync()
+
+        self.assertIsNone(error)
+        self.assertEqual(meta["sync_mode"], "incremental")
+        self.assertEqual(meta["last_new_count"], 1)
+        self.assertEqual(len(rows), 2)
+
+    def test_naboopay_sync_serves_cache_without_api_when_fresh(self):
+        from unittest.mock import patch
+
+        from django.core.cache import cache
+        from django.utils import timezone
+
+        from core.controllers import naboopay_sync_controller
+        from core.controllers.finance_controller import naboopay_transaction_row
+
+        cache.clear()
+        row = naboopay_transaction_row(
+            {
+                "order_id": "33333333-3333-3333-3333-333333333333",
+                "amount": 500,
+                "currency": "XOF",
+                "transaction_status": "paid",
+                "customer": {"first_name": "E", "last_name": "F", "phone": "+221770000003"},
+                "products": [{"name": "TimaLove — Premium 1 mois"}],
+                "created_at": "2026-09-11T00:00:00Z",
+                "paid_at": "2026-09-11T00:01:00Z",
+                "selected_payment_method": "wave",
+            }
+        )
+        naboopay_sync_controller._save_rows(
+            [row],
+            {"synced_at": timezone.now().isoformat(), "row_count": 1},
+        )
+
+        with patch("core.controllers.naboopay_sync_controller.naboopay_controller.list_transactions") as mocked:
+            rows, meta, error = naboopay_sync_controller.sync()
+            mocked.assert_not_called()
+
+        self.assertIsNone(error)
+        self.assertTrue(meta["from_cache"])
+        self.assertEqual(meta["sync_mode"], "cache")
+        self.assertEqual(len(rows), 1)
+
+    def test_naboopay_filter_rows_by_status(self):
+        from core.controllers import naboopay_sync_controller
+        from core.controllers.finance_controller import naboopay_transaction_row
+        from core.models.choices import TransactionStatus
+
+        paid = naboopay_transaction_row(
+            {
+                "order_id": "aaaa",
+                "amount": 1000,
+                "transaction_status": "paid",
+                "customer": {},
+                "products": [],
+                "created_at": "2026-09-11T00:00:00Z",
+                "paid_at": "2026-09-11T00:01:00Z",
+            }
+        )
+        failed = naboopay_transaction_row(
+            {
+                "order_id": "bbbb",
+                "amount": 500,
+                "transaction_status": "failed",
+                "customer": {},
+                "products": [],
+                "created_at": "2026-09-11T00:00:00Z",
+                "paid_at": "0001-01-01T00:00:00Z",
+            }
+        )
+        filtered = naboopay_sync_controller.filter_rows([paid, failed], status=TransactionStatus.PAID)
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered[0]["order_id"], "aaaa")
+
 
 class CountryNormalizeTests(TestCase):
     def test_merges_senegal_variants(self):

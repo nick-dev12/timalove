@@ -1,80 +1,7 @@
 (function () {
-  const COLORS = {
-    rose: "#E8637A",
-    bordeaux: "#2D1F22",
-    bordeauxMedium: "#5C3A3F",
-    secondary: "#C4858B",
-    vip: "#D4A017",
-    success: "#4CAF50",
-    info: "#2196F3",
-    cream: "#FDF5F0",
-  };
-
-  const PALETTE = [COLORS.rose, COLORS.bordeauxMedium, COLORS.secondary, COLORS.vip, COLORS.info, COLORS.success];
-
-  function readChannelData() {
-    const node = document.getElementById("finance-channels-data");
-    if (!node) return null;
-    try {
-      return JSON.parse(node.textContent);
-    } catch (_err) {
-      return null;
-    }
-  }
-
-  function initChart() {
-    if (typeof Chart === "undefined") return;
-    const data = readChannelData();
-    const canvas = document.getElementById("finance-channels-chart");
-    if (!canvas || !data || !data.labels?.length) return;
-
-    Chart.defaults.font.family = "'DM Sans', sans-serif";
-    Chart.defaults.color = COLORS.bordeaux;
-
-    new Chart(canvas, {
-      type: "doughnut",
-      data: {
-        labels: data.labels,
-        datasets: [
-          {
-            data: data.values,
-            backgroundColor: data.labels.map((_, i) => PALETTE[i % PALETTE.length]),
-            borderWidth: 0,
-            hoverOffset: 6,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: "58%",
-        plugins: {
-          legend: {
-            position: "bottom",
-            labels: {
-              color: COLORS.bordeaux,
-              boxWidth: 12,
-              usePointStyle: true,
-              padding: 14,
-            },
-          },
-          tooltip: {
-            backgroundColor: COLORS.bordeaux,
-            callbacks: {
-              label(context) {
-                const value = context.raw || 0;
-                return ` ${context.label} : ${Number(value).toLocaleString("fr-FR")} FCFA`;
-              },
-            },
-          },
-        },
-      },
-    });
-  }
-
   document.addEventListener("DOMContentLoaded", () => {
-    initChart();
-
+    const live = window.AdmLive;
+    const cfg = document.getElementById("payments-async-config");
     const toolbar = document.querySelector("[data-payments-toolbar]");
     const tbody = document.querySelector("[data-payments-tbody]");
     const searchInput = document.querySelector("[data-payments-search]");
@@ -88,8 +15,10 @@
     const statusEl = document.querySelector("[data-payments-status-text]");
     const exportCsv = document.querySelector("[data-payments-export-csv]");
     const exportExcel = document.querySelector("[data-payments-export-excel]");
-    const metaTpl = document.getElementById("payments-page-meta");
-    if (!toolbar || !tbody || !searchInput) return;
+    const statsWrap = document.querySelector("[data-payments-stats]");
+    const channelsWrap = document.querySelector("[data-payments-channels]");
+    const tableWrap = document.querySelector("[data-payments-table-wrap]");
+    if (!live || !cfg || !toolbar || !tbody || !searchInput) return;
 
     let debounceTimer = null;
     let loading = false;
@@ -109,8 +38,9 @@
     function syncExportLinks() {
       const qs = filterQuery().toString();
       const suffix = qs ? `?${qs}&` : "?";
-      if (exportCsv) exportCsv.href = `${window.location.pathname}${suffix}export=csv`;
-      if (exportExcel) exportExcel.href = `${window.location.pathname}${suffix}export=excel`;
+      const base = cfg.dataset.partialBase || window.location.pathname;
+      if (exportCsv) exportCsv.href = `${base}${suffix}export=csv`;
+      if (exportExcel) exportExcel.href = `${base}${suffix}export=excel`;
     }
 
     function readMeta() {
@@ -133,10 +63,53 @@
         tpl.dataset.shown = String(shown);
       }
       if (moreBtn) moreBtn.hidden = !hasNext;
-      if (statusEl) {
+      if (statusEl && !loading) {
         statusEl.textContent = total
           ? `${shown} affiché(s) sur ${total} transaction(s)`
           : "Aucun résultat";
+      }
+    }
+
+    function countDataRows() {
+      return tbody.querySelectorAll("tr:not(.adm-empty-row):not(.adm-skeleton-row)").length;
+    }
+
+    function applySummary(summary, error) {
+      if (!summary) return;
+      const fields = {
+        "paid-amount": summary.paid_amount_label,
+        "paid-count": summary.paid_count,
+        "failed-amount": summary.failed_amount_label,
+        "failed-count": summary.failed_count,
+        "refunded-amount": summary.refunded_amount_label,
+        "refunded-count": summary.refunded_count,
+        "dispute-count": summary.dispute_count,
+      };
+      Object.entries(fields).forEach(([key, value]) => {
+        document.querySelectorAll(`[data-stat-${key}]`).forEach((el) => {
+          el.textContent = value ?? "—";
+        });
+      });
+      if (channelsWrap) {
+        channelsWrap.hidden = false;
+        live.buildChannelMini(summary.channels, channelsWrap.querySelector("[data-channels-list]"));
+        live.reveal(channelsWrap);
+      }
+      live.reveal(statsWrap);
+      if (error && statusEl) {
+        statusEl.textContent = `${error} — liste partielle affichée si disponible.`;
+      }
+    }
+
+    async function fetchSummary() {
+      const params = filterQuery();
+      const url = `${cfg.dataset.summaryUrl}?${params.toString()}`;
+      try {
+        const data = await live.fetchJson(url);
+        live.applySyncMeta(data.sync);
+        applySummary(data.summary, data.error);
+      } catch (_err) {
+        if (statusEl) statusEl.textContent = "Résumé financier indisponible.";
       }
     }
 
@@ -147,20 +120,19 @@
       return params;
     }
 
-    function countDataRows() {
-      return tbody.querySelectorAll("tr:not(.adm-empty-row)").length;
-    }
-
     async function fetchRows({ page, append }) {
       if (loading) return;
       loading = true;
+      live.markPending();
       if (moreBtn) {
         moreBtn.disabled = true;
         moreBtn.textContent = append ? "Chargement…" : moreBtn.textContent;
       }
+      if (!append && statusEl) statusEl.textContent = "Chargement des transactions…";
       const q = searchInput.value.trim();
+      const base = cfg.dataset.partialBase || window.location.pathname;
       try {
-        const res = await fetch(`${window.location.pathname}?${buildParams(page).toString()}`, {
+        const res = await fetch(`${base}?${buildParams(page).toString()}`, {
           headers: { "X-Requested-With": "XMLHttpRequest" },
           credentials: "same-origin",
         });
@@ -188,10 +160,12 @@
         });
         if (clearBtn) clearBtn.hidden = !q;
         syncExportLinks();
+        live.reveal(tableWrap);
       } catch (_err) {
         if (statusEl) statusEl.textContent = "Chargement indisponible. Réessayez.";
       } finally {
         loading = false;
+        live.markDone();
         if (moreBtn) {
           moreBtn.disabled = false;
           moreBtn.textContent = "Voir plus";
@@ -199,21 +173,24 @@
       }
     }
 
-    function scheduleFetch() {
-      window.clearTimeout(debounceTimer);
-      debounceTimer = window.setTimeout(() => {
-        fetchRows({ page: 1, append: false });
-      }, 320);
+    function reloadAll() {
+      fetchSummary();
+      fetchRows({ page: 1, append: false });
     }
 
-    searchInput.addEventListener("input", scheduleFetch);
+    function scheduleReload() {
+      window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(reloadAll, 320);
+    }
+
+    searchInput.addEventListener("input", scheduleReload);
     clearBtn?.addEventListener("click", () => {
       searchInput.value = "";
-      fetchRows({ page: 1, append: false });
+      reloadAll();
     });
 
     [statusSelect, productSelect, periodSelect, dateFrom, dateTo].forEach((el) => {
-      el?.addEventListener("change", () => fetchRows({ page: 1, append: false }));
+      el?.addEventListener("change", reloadAll);
     });
 
     moreBtn?.addEventListener("click", () => {
@@ -227,14 +204,7 @@
       if (form && !window.confirm(form.dataset.confirm)) e.preventDefault();
     });
 
-    if (metaTpl) {
-      applyMeta({
-        total: Number(metaTpl.dataset.total || 0),
-        hasNext: metaTpl.dataset.hasNext === "1",
-        nextPage: metaTpl.dataset.nextPage || "",
-        shown: countDataRows(),
-      });
-    }
     syncExportLinks();
+    Promise.all([fetchSummary(), fetchRows({ page: 1, append: false })]);
   });
 })();

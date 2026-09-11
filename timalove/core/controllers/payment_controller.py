@@ -444,7 +444,7 @@ def handle_naboopay_notify(payload: dict, raw_body: bytes, signature: str | None
         logger.warning("[naboopay] Transaction inconnue pour order_id=%s", external_id)
         return False, "Transaction introuvable."
 
-    return fulfill_order(
+    ok, message = fulfill_order(
         internal_id,
         provider_ref=external_id,
         extra={
@@ -453,6 +453,11 @@ def handle_naboopay_notify(payload: dict, raw_body: bytes, signature: str | None
             "provider": "naboopay",
         },
     )
+    if ok:
+        from core.controllers import naboopay_sync_controller
+
+        naboopay_sync_controller.request_sync()
+    return ok, message
 
 
 @transaction.atomic

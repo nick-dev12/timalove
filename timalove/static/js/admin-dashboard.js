@@ -15,16 +15,6 @@
 
   const PALETTE = [COLORS.rose, COLORS.bordeauxMedium, COLORS.secondary, COLORS.vip, COLORS.info, COLORS.success];
 
-  function readData() {
-    const node = document.getElementById("admin-charts-data");
-    if (!node) return null;
-    try {
-      return JSON.parse(node.textContent);
-    } catch (_err) {
-      return null;
-    }
-  }
-
   function baseOptions(extra = {}) {
     return {
       responsive: true,
@@ -62,6 +52,113 @@
       tension: 0.25,
       fill: false,
     };
+  }
+
+  function trendPrefix(trend) {
+    if (trend === "up") return "+";
+    if (trend === "down") return "-";
+    return "";
+  }
+
+  function formatDate(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function statusBadgeClass(status) {
+    if (status === "paid") return "ok";
+    if (status === "failed") return "danger";
+    if (status === "pending") return "warn";
+    return "muted";
+  }
+
+  function renderKpis(kpis) {
+    const wrap = document.querySelector("[data-dashboard-kpis]");
+    if (!wrap || !Array.isArray(kpis)) return;
+
+    wrap.innerHTML = kpis
+      .map((kpi) => {
+        const alertClass = kpi.alert ? " adm-kpi--alert" : "";
+        const suffix = kpi.suffix
+          ? ` <span class="adm-kpi__suffix">${kpi.suffix}</span>`
+          : "";
+        return `<article class="adm-kpi adm-kpi--${kpi.id}${alertClass}">
+          <div class="adm-kpi__head">
+            <span class="adm-kpi__label">${kpi.label}</span>
+            <span class="adm-kpi__trend adm-kpi__trend--${kpi.trend}" title="${kpi.hint}">
+              ${trendPrefix(kpi.trend)}${Number(kpi.delta_pct || 0).toFixed(1)}%
+            </span>
+          </div>
+          <strong class="adm-kpi__value">${kpi.value_label}${suffix}</strong>
+          <span class="adm-kpi__hint">${kpi.hint}</span>
+        </article>`;
+      })
+      .join("");
+
+    kpis.forEach((kpi) => {
+      const hero = document.querySelector(`[data-hero-metric="${kpi.id}"] strong`);
+      if (hero) hero.textContent = kpi.value_label;
+    });
+
+    const reportsKpi = kpis.find((k) => k.id === "reports");
+    const reportsCard = document.querySelector("[data-dashboard-recent-reports-wrap]");
+    if (reportsCard && reportsKpi?.alert) {
+      reportsCard.classList.add("adm-card--alert");
+    }
+
+    window.AdmLive?.reveal(wrap);
+  }
+
+  function renderRecent(recent) {
+    const txBody = document.querySelector("[data-dashboard-recent-tx]");
+    const reportsWrap = document.querySelector("[data-dashboard-recent-reports]");
+    const txCard = document.querySelector("[data-dashboard-recent-tx-wrap]");
+    const reportsCard = document.querySelector("[data-dashboard-recent-reports-wrap]");
+
+    if (txBody) {
+      const rows = recent?.transactions || [];
+      txBody.innerHTML = rows.length
+        ? rows
+            .map(
+              (tx) => `<tr>
+                <td data-label="ID"><code class="adm-plan-id">#${tx.id}</code></td>
+                <td data-label="Type">${tx.type}</td>
+                <td data-label="Montant"><strong>${tx.amount_label}</strong> FCFA</td>
+                <td data-label="Statut"><span class="adm-badge adm-badge--${statusBadgeClass(tx.status)}">${tx.status_label}</span></td>
+                <td data-label="Date">${formatDate(tx.created_at)}</td>
+              </tr>`
+            )
+            .join("")
+        : '<tr><td colspan="5"><div class="adm-empty">Aucune transaction récente</div></td></tr>';
+    }
+
+    if (reportsWrap) {
+      const reports = recent?.reports || [];
+      reportsWrap.innerHTML = reports.length
+        ? reports
+            .map(
+              (r) => `<article class="adm-mod-item">
+                <div class="adm-mod-item__main">
+                  <strong>${r.reason}</strong>
+                  <p>${r.profile_name} · ${formatDate(r.created_at)}</p>
+                </div>
+                <span class="adm-badge adm-badge--warn">En attente</span>
+              </article>`
+            )
+            .join("")
+        : '<div class="adm-empty">Aucun signalement urgent</div>';
+    }
+
+    window.AdmLive?.reveal(txCard);
+    window.AdmLive?.reveal(reportsCard);
   }
 
   function initGeoAllModal(geography) {
@@ -109,9 +206,7 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const data = readData();
-    if (data && data.geography) initGeoAllModal(data.geography);
+  function initCharts(data) {
     if (typeof Chart === "undefined" || !data) return;
 
     Chart.defaults.font.family = "'DM Sans', sans-serif";
@@ -218,7 +313,6 @@
     if (geoCtx && data.geography && data.geography.labels.length) {
       const geoLabels = data.geography.labels;
       const geoValues = data.geography.values;
-      const max = Math.max(...geoValues, 1);
       const wrap = geoCtx.closest(".adm-chart-wrap");
       if (wrap) {
         wrap.style.height = `${Math.max(300, geoLabels.length * 44 + 64)}px`;
@@ -294,5 +388,38 @@
         }),
       });
     }
+
+    if (data.geography) initGeoAllModal(data.geography);
+    window.AdmLive?.reveal(document.querySelector("[data-dashboard-charts]"));
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const cfg = document.getElementById("dashboard-async-config");
+    const live = window.AdmLive;
+    if (!cfg || !live) return;
+
+    Promise.all([
+      live.fetchJson(cfg.dataset.kpisUrl).then((payload) => {
+        live.applySyncMeta(payload.sync);
+        renderKpis(payload.kpis);
+      }),
+      live.fetchJson(cfg.dataset.recentUrl).then((payload) => renderRecent(payload.recent)),
+      live.fetchJson(cfg.dataset.chartsUrl).then((payload) => {
+        live.applySyncMeta(payload.sync);
+        if (typeof Chart !== "undefined") {
+          initCharts(payload.charts);
+          return;
+        }
+        const waitChart = window.setInterval(() => {
+          if (typeof Chart !== "undefined") {
+            window.clearInterval(waitChart);
+            initCharts(payload.charts);
+          }
+        }, 40);
+      }),
+    ]).catch(() => {
+      const text = document.querySelector("[data-adm-live-text]");
+      if (text) text.textContent = "Certaines données n'ont pas pu être chargées.";
+    });
   });
 })();

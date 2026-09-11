@@ -3151,4 +3151,162 @@ body.is-adm-sheet {
   background: #fffcfb;
 }
 
+/* Chargement asynchrone admin (dashboard / paiements) */
+.adm-live-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  background: var(--rose-pale, #fff0f3);
+  color: var(--text-secondary, #6b5a5e);
+  font-size: 0.82rem;
+}
+
+.adm-live-bar.is-syncing .adm-live-bar__pulse {
+  animation: adm-live-pulse 1.1s ease-in-out infinite;
+}
+
+.adm-live-bar__pulse {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--rose-primary, #e8637a);
+  flex-shrink: 0;
+}
+
+@keyframes adm-live-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.adm-live-loading .adm-skeleton-line,
+.adm-kpi--skeleton .adm-skeleton-line,
+.adm-mod-item--skeleton .adm-skeleton-line {
+  display: block;
+  border-radius: 6px;
+  background: #f5e6e8;
+  animation: adm-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.adm-skeleton-line {
+  height: 0.85rem;
+  width: 100%;
+}
+
+.adm-skeleton-line--lg {
+  height: 1.35rem;
+  width: 55%;
+  margin: 0.35rem 0;
+}
+
+.adm-skeleton-line--md {
+  height: 0.95rem;
+  width: 70%;
+}
+
+.adm-skeleton-line--sm {
+  height: 0.75rem;
+  width: 40%;
+}
+
+.adm-skeleton-line--xs {
+  height: 0.65rem;
+  width: 55%;
+}
+
+.adm-skeleton-row td {
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+@keyframes adm-skeleton-shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.adm-live-ready {
+  animation: adm-live-fade 0.35s ease;
+}
+
+@keyframes adm-live-fade {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.adm-channel-mini {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1.25rem;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 14px;
+  background: var(--white, #fff);
+  border: 1px solid #f5e6e8;
+}
+
+.adm-channel-mini__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted, #9b8a8e);
+}
+
+.adm-channel-mini__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-channel-mini__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--bordeaux-dark, #2d1f22);
+}
+
+.adm-channel-mini__item strong {
+  font-weight: 600;
+}
+
+.adm-channel-mini__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.adm-channel-mini__pct {
+  color: var(--text-muted, #9b8a8e);
+  font-size: 0.75rem;
+}
+
+.adm-channel-mini__empty {
+  font-size: 0.82rem;
+  color: var(--text-muted, #9b8a8e);
+}
+
 

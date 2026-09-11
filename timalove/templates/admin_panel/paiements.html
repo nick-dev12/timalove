@@ -2,46 +2,42 @@
 {% load static %}
 {% block head %}
 {{ block.super }}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/admin-payments.js' %}?v=20260911naboo2" defer></script>
+<script src="{% static 'js/admin-live.js' %}?v=20260911live1" defer></script>
+<script src="{% static 'js/admin-payments.js' %}?v=20260911live1" defer></script>
 {% endblock %}
 {% block subtitle %}
 <p class="adm__subtitle">Suivi financier détaillé, contestations et export comptable{% if naboopay_live %} — données synchronisées depuis NabooPay{% endif %}</p>
 {% endblock %}
 {% block content %}
-<div class="adm-stats adm-stats--compact adm-stats--quad">
+{% include "admin_panel/partials/adm_live_bar.html" %}
+
+<div class="adm-stats adm-stats--compact adm-stats--quad adm-live-loading" data-payments-stats>
   <article class="adm-stat adm-stat--accent">
     <span class="adm-stat__label">Revenus réussis</span>
-    <strong class="adm-stat__value adm-stat__value--money">{{ summary.paid_amount_label }}</strong>
-    <span class="adm-stat__meta">{{ summary.paid_count }} transaction(s)</span>
+    <strong class="adm-stat__value adm-stat__value--money" data-stat-paid-amount>{{ summary.paid_amount_label }}</strong>
+    <span class="adm-stat__meta"><span data-stat-paid-count>{{ summary.paid_count }}</span> transaction(s)</span>
   </article>
   <article class="adm-stat">
     <span class="adm-stat__label">Échoués</span>
-    <strong class="adm-stat__value adm-stat__value--money">{{ summary.failed_amount_label }}</strong>
-    <span class="adm-stat__meta">{{ summary.failed_count }} transaction(s)</span>
+    <strong class="adm-stat__value adm-stat__value--money" data-stat-failed-amount>{{ summary.failed_amount_label }}</strong>
+    <span class="adm-stat__meta"><span data-stat-failed-count>{{ summary.failed_count }}</span> transaction(s)</span>
   </article>
   <article class="adm-stat">
     <span class="adm-stat__label">Remboursés</span>
-    <strong class="adm-stat__value adm-stat__value--money">{{ summary.refunded_amount_label }}</strong>
-    <span class="adm-stat__meta">{{ summary.refunded_count }} remboursement(s)</span>
+    <strong class="adm-stat__value adm-stat__value--money" data-stat-refunded-amount>{{ summary.refunded_amount_label }}</strong>
+    <span class="adm-stat__meta"><span data-stat-refunded-count>{{ summary.refunded_count }}</span> remboursement(s)</span>
   </article>
   <article class="adm-stat adm-stat--alert-stat">
     <span class="adm-stat__label">Litiges</span>
-    <strong class="adm-stat__value">{{ summary.dispute_count }}</strong>
+    <strong class="adm-stat__value" data-stat-dispute-count>{{ summary.dispute_count }}</strong>
     <span class="adm-stat__meta">Chargebacks en cours</span>
   </article>
 </div>
 
-<div class="adm-card adm-finance-chart">
-  <div class="adm-card__head">
-    <h2 class="adm-card__title">Répartition des revenus par canal</h2>
-    <p class="adm-card__hint">Prestataires de paiement — montants encaissés (réussis + remboursés)</p>
-  </div>
-  <div class="adm-chart-wrap adm-chart-wrap--finance">
-    <canvas id="finance-channels-chart" aria-label="Graphique répartition revenus par canal"></canvas>
-  </div>
-  <script id="finance-channels-data" type="application/json">{{ chart_channels_json|safe }}</script>
-</div>
+<aside class="adm-channel-mini adm-live-loading" data-payments-channels hidden>
+  <span class="adm-channel-mini__label">Canaux</span>
+  <ul class="adm-channel-mini__list" data-channels-list></ul>
+</aside>
 
 <div class="adm-members-toolbar adm-finance-toolbar" data-payments-toolbar>
   <div class="adm-finance-toolbar__top">
@@ -93,12 +89,10 @@
       <input class="adm-input adm-input--date" id="payments-to" type="date" name="date_to" value="{{ date_to }}" data-payments-to>
     </div>
   </div>
-  <p class="adm-members-toolbar__hint" data-payments-status-text aria-live="polite">
-    {% if page_obj.paginator.count %}{{ page_obj|length }} affiché(s) sur {{ page_obj.paginator.count }} transaction(s){% else %}Aucun résultat{% endif %}
-  </p>
+  <p class="adm-members-toolbar__hint" data-payments-status-text aria-live="polite">Chargement des transactions…</p>
 </div>
 
-<div class="adm-card adm-card--flush-mobile">
+<div class="adm-card adm-card--flush-mobile adm-live-loading" data-payments-table-wrap>
   <div class="adm-table-wrap adm-table-wrap--stackable">
     <table class="adm-table adm-table--finance adm-table--stackable">
       <thead>
@@ -115,17 +109,21 @@
         </tr>
       </thead>
       <tbody id="payments-tbody" data-payments-tbody>
-        {% include "admin_panel/partials/paiements_rows.html" %}
+        {% include "admin_panel/partials/paiements_skeleton_rows.html" %}
       </tbody>
     </table>
   </div>
   <div class="adm-members-more-wrap">
-    <button class="adm-btn adm-btn--primary" type="button" data-payments-more{% if not page_obj.has_next %} hidden{% endif %}>Voir plus</button>
+    <button class="adm-btn adm-btn--primary" type="button" data-payments-more hidden>Voir plus</button>
   </div>
   <template id="payments-page-meta"
-    data-has-next="{% if page_obj.has_next %}1{% else %}0{% endif %}"
-    data-next-page="{% if page_obj.has_next %}{{ page_obj.next_page_number }}{% endif %}"
-    data-total="{{ page_obj.paginator.count }}"
-    data-shown="{{ page_obj|length }}"></template>
+    data-has-next="0"
+    data-next-page=""
+    data-total="0"
+    data-shown="0"></template>
 </div>
+
+<div id="payments-async-config" hidden
+  data-summary-url="{% url 'admin_panel:paiements_data_summary' %}"
+  data-partial-base="{{ request.path }}"></div>
 {% endblock %}
