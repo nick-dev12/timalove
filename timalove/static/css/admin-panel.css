@@ -3031,6 +3031,25 @@ body.is-adm-sheet {
   margin-bottom: 1.35rem;
 }
 
+.adm-monitor-audit-hint {
+  margin: 1.25rem 0 0;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: var(--rose-pale, #fff0f3);
+  color: var(--text-secondary, #6b5a5e);
+  font-size: 0.92rem;
+}
+
+.adm-monitor-audit-hint a {
+  color: var(--rose-primary, #e8637a);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.adm-monitor-audit-hint a:hover {
+  text-decoration: underline;
+}
+
 .adm-kpis--monitor .adm-kpi__hint {
   color: var(--rose-primary, #e8637a);
   text-decoration: none;

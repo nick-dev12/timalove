@@ -11,7 +11,6 @@ urlpatterns = [
     path("dashboard/", views.dashboard, name="dashboard"),
     path("dashboard/data/kpis/", views.dashboard_data_kpis, name="dashboard_data_kpis"),
     path("dashboard/data/charts/", views.dashboard_data_charts, name="dashboard_data_charts"),
-    path("dashboard/data/recent/", views.dashboard_data_recent, name="dashboard_data_recent"),
     path("membres/", views.membres, name="membres"),
     path("membres/<uuid:profile_id>/", views.membre_detail, name="membre_detail"),
     path("signalements/", views.signalements, name="signalements"),

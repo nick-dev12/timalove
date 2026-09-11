@@ -364,27 +364,6 @@ def _top_countries(limit: int = 8) -> dict:
     }
 
 
-def dashboard_recent_activity() -> dict:
-    transactions = []
-    for tx in Transaction.objects.select_related("user").order_by("-created_at")[:8]:
-        transactions.append(
-            {
-                "id": str(tx.id).replace("-", "")[:8],
-                "type": tx.get_type_display(),
-                "amount_label": _format_fcfa(tx.amount),
-                "status": tx.status,
-                "status_label": tx.get_status_display(),
-                "created_at": tx.created_at,
-            }
-        )
-    reports = list(
-        Report.objects.filter(status=ReportStatus.PENDING)
-        .select_related("reporter", "reported_profile")
-        .order_by("-created_at")[:5]
-    )
-    return {"transactions": transactions, "reports": reports}
-
-
 def dashboard_analytics(days: int = 30) -> dict:
     gender_map = {"male": "Hommes", "female": "Femmes"}
 
@@ -951,11 +930,9 @@ def monitoring_overview(*, level: str = "", source: str = "") -> dict:
     from django.db import connection
 
     from core.controllers import monitoring_controller, site_settings_controller
-    from core.models import AuditLog
 
     now = timezone.now()
     day_ago = now - timedelta(days=1)
-    week_ago = now - timedelta(days=7)
 
     db_ok = False
     db_detail = "Hors ligne"
@@ -1010,17 +987,13 @@ def monitoring_overview(*, level: str = "", source: str = "") -> dict:
 
     maintenance = site_settings_controller.is_maintenance_mode()
     pending_reports = Report.objects.filter(status=ReportStatus.PENDING).count()
-    pending_regs = Profile.objects.filter(registration_status=RegistrationStatus.PENDING).count()
-    bans_24h = Profile.objects.filter(banned_at__gte=day_ago).count()
     messages_24h = Message.objects.filter(created_at__gte=day_ago).count()
-    new_members_7d = Profile.objects.filter(role="member", created_at__gte=week_ago).count()
 
     event_summary = monitoring_controller.events_summary()
     system_events = [
         monitoring_controller.format_event_for_ui(e)
         for e in monitoring_controller.list_events(level=level, source=source, limit=80)
     ]
-    recent_logs = list(AuditLog.objects.select_related("actor").order_by("-created_at")[:12])
 
     services = [
         {
@@ -1086,16 +1059,11 @@ def monitoring_overview(*, level: str = "", source: str = "") -> dict:
         "metrics": [
             {"label": "Erreurs 24 h", "value": event_summary["errors_24h"], "href": None},
             {"label": "Critiques 24 h", "value": event_summary["critical_24h"], "href": None},
-            {"label": "Signalements ouverts", "value": pending_reports, "href": "admin_panel:signalements"},
-            {"label": "Inscriptions en attente", "value": pending_regs, "href": "admin_panel:membres"},
             {"label": "Messages 24 h", "value": messages_24h, "href": None},
-            {"label": "Bannissements 24 h", "value": bans_24h, "href": "admin_panel:membres"},
-            {"label": "Nouveaux membres 7 j", "value": new_members_7d, "href": "admin_panel:membres"},
         ],
         "system_events": system_events,
         "event_summary": event_summary,
         "filter_level": level,
         "filter_source": source,
-        "recent_logs": recent_logs,
         "checked_at": now,
     }

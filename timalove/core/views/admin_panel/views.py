@@ -109,35 +109,6 @@ def _empty_payments_page():
     )
 
 
-def _serialize_recent_activity(recent: dict) -> dict:
-    transactions = []
-    for tx in recent.get("transactions") or []:
-        transactions.append(
-            {
-                "id": tx.get("id"),
-                "type": tx.get("type"),
-                "amount_label": tx.get("amount_label"),
-                "status": tx.get("status"),
-                "status_label": tx.get("status_label"),
-                "created_at": tx.get("created_at").isoformat() if tx.get("created_at") else "",
-            }
-        )
-    reports = []
-    for report in recent.get("reports") or []:
-        profile = getattr(report, "reported_profile", None)
-        name = "—"
-        if profile:
-            name = f"{profile.first_name} {profile.last_name[:1].upper()}."
-        reports.append(
-            {
-                "reason": report.get_reason_display() if hasattr(report, "get_reason_display") else report.reason,
-                "profile_name": name,
-                "created_at": report.created_at.isoformat() if report.created_at else "",
-            }
-        )
-    return {"transactions": transactions, "reports": reports}
-
-
 def _payments_service_kwargs(filters: dict) -> dict:
     return {
         "status": filters["status"],
@@ -219,11 +190,6 @@ def dashboard_data_charts(request):
     if sync:
         payload["sync"] = sync
     return JsonResponse(payload)
-
-
-@require_GET
-def dashboard_data_recent(request):
-    return JsonResponse({"recent": _serialize_recent_activity(admin_controller.dashboard_recent_activity())})
 
 
 @require_GET

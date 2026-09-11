@@ -60,26 +60,6 @@
     return "";
   }
 
-  function formatDate(iso) {
-    if (!iso) return "—";
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleString("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  function statusBadgeClass(status) {
-    if (status === "paid") return "ok";
-    if (status === "failed") return "danger";
-    if (status === "pending") return "warn";
-    return "muted";
-  }
-
   function renderKpis(kpis) {
     const wrap = document.querySelector("[data-dashboard-kpis]");
     if (!wrap || !Array.isArray(kpis)) return;
@@ -108,57 +88,7 @@
       if (hero) hero.textContent = kpi.value_label;
     });
 
-    const reportsKpi = kpis.find((k) => k.id === "reports");
-    const reportsCard = document.querySelector("[data-dashboard-recent-reports-wrap]");
-    if (reportsCard && reportsKpi?.alert) {
-      reportsCard.classList.add("adm-card--alert");
-    }
-
     window.AdmLive?.reveal(wrap);
-  }
-
-  function renderRecent(recent) {
-    const txBody = document.querySelector("[data-dashboard-recent-tx]");
-    const reportsWrap = document.querySelector("[data-dashboard-recent-reports]");
-    const txCard = document.querySelector("[data-dashboard-recent-tx-wrap]");
-    const reportsCard = document.querySelector("[data-dashboard-recent-reports-wrap]");
-
-    if (txBody) {
-      const rows = recent?.transactions || [];
-      txBody.innerHTML = rows.length
-        ? rows
-            .map(
-              (tx) => `<tr>
-                <td data-label="ID"><code class="adm-plan-id">#${tx.id}</code></td>
-                <td data-label="Type">${tx.type}</td>
-                <td data-label="Montant"><strong>${tx.amount_label}</strong> FCFA</td>
-                <td data-label="Statut"><span class="adm-badge adm-badge--${statusBadgeClass(tx.status)}">${tx.status_label}</span></td>
-                <td data-label="Date">${formatDate(tx.created_at)}</td>
-              </tr>`
-            )
-            .join("")
-        : '<tr><td colspan="5"><div class="adm-empty">Aucune transaction récente</div></td></tr>';
-    }
-
-    if (reportsWrap) {
-      const reports = recent?.reports || [];
-      reportsWrap.innerHTML = reports.length
-        ? reports
-            .map(
-              (r) => `<article class="adm-mod-item">
-                <div class="adm-mod-item__main">
-                  <strong>${r.reason}</strong>
-                  <p>${r.profile_name} · ${formatDate(r.created_at)}</p>
-                </div>
-                <span class="adm-badge adm-badge--warn">En attente</span>
-              </article>`
-            )
-            .join("")
-        : '<div class="adm-empty">Aucun signalement urgent</div>';
-    }
-
-    window.AdmLive?.reveal(txCard);
-    window.AdmLive?.reveal(reportsCard);
   }
 
   function initGeoAllModal(geography) {
@@ -403,7 +333,6 @@
         live.applySyncMeta(payload.sync);
         renderKpis(payload.kpis);
       }),
-      live.fetchJson(cfg.dataset.recentUrl).then((payload) => renderRecent(payload.recent)),
       live.fetchJson(cfg.dataset.chartsUrl).then((payload) => {
         live.applySyncMeta(payload.sync);
         if (typeof Chart !== "undefined") {

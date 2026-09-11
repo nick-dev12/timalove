@@ -122,50 +122,7 @@
   </div>
 </div>
 
-<section class="adm-dash-bottom">
-  <article class="adm-card adm-live-loading" data-dashboard-recent-tx-wrap>
-    <div class="adm-card__head adm-card__head--row">
-      <div>
-        <h2 class="adm-card__title">Dernières transactions</h2>
-        <p class="adm-card__lead">Flux financier récent.</p>
-      </div>
-      <a class="adm-btn adm-btn--ghost adm-btn--sm" href="{% url 'admin_panel:paiements' %}">Tout voir</a>
-    </div>
-    <div class="adm-table-wrap adm-table-wrap--stackable">
-      <table class="adm-table adm-table--compact adm-table--stackable">
-        <thead>
-          <tr><th>ID</th><th>Type</th><th>Montant</th><th>Statut</th><th>Date</th></tr>
-        </thead>
-        <tbody data-dashboard-recent-tx>
-          {% for _ in "12345678" %}
-          <tr class="adm-skeleton-row"><td colspan="5"><span class="adm-skeleton-line"></span></td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </article>
-
-  <article class="adm-card adm-live-loading" data-dashboard-recent-reports-wrap>
-    <div class="adm-card__head adm-card__head--row">
-      <div>
-        <h2 class="adm-card__title">Modération prioritaire</h2>
-        <p class="adm-card__lead">Signalements en attente de traitement.</p>
-      </div>
-      <a class="adm-btn adm-btn--primary adm-btn--sm" href="{% url 'admin_panel:signalements' %}">Traiter</a>
-    </div>
-    <div class="adm-mod-queue" data-dashboard-recent-reports>
-      {% for _ in "12345" %}
-      <article class="adm-mod-item adm-mod-item--skeleton">
-        <span class="adm-skeleton-line adm-skeleton-line--md"></span>
-        <span class="adm-skeleton-line adm-skeleton-line--sm"></span>
-      </article>
-      {% endfor %}
-    </div>
-  </article>
-</section>
-
 <div id="dashboard-async-config" hidden
   data-kpis-url="{% url 'admin_panel:dashboard_data_kpis' %}"
-  data-charts-url="{% url 'admin_panel:dashboard_data_charts' %}"
-  data-recent-url="{% url 'admin_panel:dashboard_data_recent' %}"></div>
+  data-charts-url="{% url 'admin_panel:dashboard_data_charts' %}"></div>
 {% endblock %}

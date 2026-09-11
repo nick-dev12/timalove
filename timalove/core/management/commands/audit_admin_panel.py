@@ -67,12 +67,6 @@ class Command(BaseCommand):
             record("Dashboard", "dashboard_analytics()", "FAIL", str(exc))
 
         try:
-            recent = admin_controller.dashboard_recent_activity()
-            record("Dashboard", "dashboard_recent_activity()", "OK", f"{len(recent)} entrées")
-        except Exception as exc:
-            record("Dashboard", "dashboard_recent_activity()", "FAIL", str(exc))
-
-        try:
             page = admin_controller.list_members(page=1, per_page=5)
             record("Membres", "list_members()", "OK", f"{page.paginator.count} membres")
         except Exception as exc:

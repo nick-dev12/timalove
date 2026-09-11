@@ -135,34 +135,8 @@
   {% endif %}
 </section>
 
-<section class="adm-card">
-  <div class="adm-card__head">
-    <h2 class="adm-card__title">Activité admin récente</h2>
-    <p class="adm-card__lead">Actions humaines (modération, config, staff) — distinctes des erreurs techniques ci-dessus.</p>
-  </div>
-  {% if overview.recent_logs %}
-  <div class="adm-table-wrap">
-    <table class="adm-table">
-      <thead>
-        <tr>
-          <th scope="col">Quand</th>
-          <th scope="col">Action</th>
-          <th scope="col">Détail</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for log in overview.recent_logs %}
-        <tr>
-          <td data-label="Quand">{{ log.created_at|date:"d/m H:i" }}</td>
-          <td data-label="Action"><code>{{ log.action }}</code></td>
-          <td data-label="Détail">{{ log.message }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <p class="adm-empty">Aucune action journalisée pour le moment.</p>
-  {% endif %}
-</section>
+<p class="adm-monitor-audit-hint">
+  Journal des actions admin (modération, config, staff) :
+  <a href="{% url 'admin_panel:roles_audit' %}?tab=audit">Rôles &amp; Audit →</a>
+</p>
 {% endblock %}
