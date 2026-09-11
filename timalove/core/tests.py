@@ -1559,23 +1559,28 @@ class CountryNormalizeTests(TestCase):
         self.assertEqual(normalize_country_label("Dakar"), "Sénégal")
         self.assertEqual(normalize_country_label("Thiès"), "Sénégal")
 
-    def test_top_countries_aggregates_normalized(self):
+    def test_top_countries_aggregates_residence_normalized(self):
         from core.controllers.admin_controller import _top_countries
 
         make_profile("geo-a@test.com", Gender.MALE, "A")
         p1 = Profile.objects.get(email="geo-a@test.com")
-        p1.country = "Senegal"
-        p1.save(update_fields=["country", "updated_at"])
+        p1.country = "France"
+        p1.residence_country = "Senegal"
+        p1.save(update_fields=["country", "residence_country", "updated_at"])
 
         make_profile("geo-b@test.com", Gender.FEMALE, "B")
         p2 = Profile.objects.get(email="geo-b@test.com")
-        p2.country = "Dakar"
-        p2.save(update_fields=["country", "updated_at"])
+        p2.country = "France"
+        p2.residence_country = "Dakar"
+        p2.save(update_fields=["country", "residence_country", "updated_at"])
 
         data = _top_countries(limit=5)
         self.assertIn("Sénégal", data["labels"])
         senegal_count = data["values"][data["labels"].index("Sénégal")]
         self.assertGreaterEqual(senegal_count, 2)
+        self.assertIn("all", data)
+        self.assertGreaterEqual(len(data["all"]), 1)
+        self.assertEqual(data["country_count"], len(data["all"]))
 
 
 class GenderPromptTests(TestCase):

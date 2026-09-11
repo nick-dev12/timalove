@@ -64,10 +64,55 @@
     };
   }
 
+  function initGeoAllModal(geography) {
+    const modal = document.getElementById("adm-geo-modal");
+    const openBtn = document.querySelector("[data-geo-all-open]");
+    const listBody = document.querySelector("[data-geo-all-list]");
+    const summary = document.querySelector("[data-geo-all-summary]");
+    if (!modal || !openBtn || !listBody || !geography || !geography.all || !geography.all.length) {
+      return;
+    }
+
+    openBtn.hidden = false;
+    if (summary) {
+      summary.textContent = `${geography.country_count || geography.all.length} pays · ${(geography.total || 0).toLocaleString("fr-FR")} membres`;
+    }
+    listBody.innerHTML = geography.all
+      .map(
+        (row, index) =>
+          `<tr><td>${index + 1}</td><td>${row.country}</td><td><strong>${row.count.toLocaleString("fr-FR")}</strong></td></tr>`
+      )
+      .join("");
+
+    let lastFocus = null;
+
+    function openModal() {
+      lastFocus = document.activeElement;
+      modal.hidden = false;
+      document.body.classList.add("is-adm-geo-modal");
+      const closeBtn = modal.querySelector("[data-geo-all-close]");
+      if (closeBtn) closeBtn.focus();
+    }
+
+    function closeModal() {
+      modal.hidden = true;
+      document.body.classList.remove("is-adm-geo-modal");
+      if (lastFocus && typeof lastFocus.focus === "function") lastFocus.focus();
+    }
+
+    openBtn.addEventListener("click", openModal);
+    modal.querySelectorAll("[data-geo-all-close]").forEach((node) => {
+      node.addEventListener("click", closeModal);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !modal.hidden) closeModal();
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
-    if (typeof Chart === "undefined") return;
     const data = readData();
-    if (!data) return;
+    if (data && data.geography) initGeoAllModal(data.geography);
+    if (typeof Chart === "undefined" || !data) return;
 
     Chart.defaults.font.family = "'DM Sans', sans-serif";
     Chart.defaults.color = COLORS.bordeaux;
@@ -171,38 +216,55 @@
 
     const geoCtx = document.getElementById("chart-geography");
     if (geoCtx && data.geography && data.geography.labels.length) {
-      const geoTotal = data.geography.total || data.geography.values.reduce((a, b) => a + b, 0);
-      const max = Math.max(...data.geography.values, 1);
-      const shades = data.geography.values.map((value) => {
-        const ratio = value / max;
-        if (ratio > 0.75) return COLORS.rose;
-        if (ratio > 0.5) return COLORS.secondary;
-        if (ratio > 0.25) return COLORS.bordeauxMedium;
-        return COLORS.bordeauxMedium;
-      });
+      const geoLabels = data.geography.labels;
+      const geoValues = data.geography.values;
+      const max = Math.max(...geoValues, 1);
+      const wrap = geoCtx.closest(".adm-chart-wrap");
+      if (wrap) {
+        wrap.style.height = `${Math.max(300, geoLabels.length * 44 + 64)}px`;
+      }
+      const geoCountLabels = geoValues.map((value) => value.toLocaleString("fr-FR"));
+      const geoBarLabels = {
+        id: "geoBarLabels",
+        afterDatasetsDraw(chart) {
+          const { ctx, chartArea } = chart;
+          const meta = chart.getDatasetMeta(0);
+          ctx.save();
+          ctx.fillStyle = COLORS.bordeaux;
+          ctx.font = "600 12px 'DM Sans', sans-serif";
+          ctx.textAlign = "right";
+          ctx.textBaseline = "middle";
+          meta.data.forEach((bar, index) => {
+            ctx.fillText(geoCountLabels[index], chartArea.right - 2, bar.y);
+          });
+          ctx.restore();
+        },
+      };
       new Chart(geoCtx, {
         type: "bar",
         data: {
-          labels: data.geography.labels,
+          labels: geoLabels,
           datasets: [{
             label: "Membres",
-            data: data.geography.values,
-            backgroundColor: shades,
-            borderRadius: 6,
+            data: geoValues,
+            backgroundColor: COLORS.rose,
+            borderRadius: 8,
             borderSkipped: false,
-            maxBarThickness: 28,
+            maxBarThickness: 26,
+            minBarLength: 12,
           }],
         },
+        plugins: [geoBarLabels],
         options: baseOptions({
           indexAxis: "y",
+          layout: { padding: { right: 8, left: 4 } },
           plugins: {
             legend: { display: false },
             tooltip: {
               callbacks: {
                 label(context) {
                   const value = context.parsed.x || 0;
-                  const pct = geoTotal ? Math.round((value / geoTotal) * 1000) / 10 : 0;
-                  return `${value.toLocaleString("fr-FR")} membres (${pct} %)`;
+                  return `${value.toLocaleString("fr-FR")} membres`;
                 },
               },
             },
@@ -211,13 +273,21 @@
             x: {
               beginAtZero: true,
               grid: { color: gridColor },
-              ticks: { precision: 0 },
+              ticks: {
+                precision: 0,
+                color: COLORS.secondary,
+                font: { size: 11 },
+              },
+              border: { display: false },
             },
             y: {
               grid: { display: false },
+              border: { display: false },
               ticks: {
                 autoSkip: false,
-                font: { size: 11 },
+                font: { size: 12, weight: "600" },
+                color: COLORS.bordeaux,
+                padding: 8,
               },
             },
           },

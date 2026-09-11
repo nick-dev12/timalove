@@ -3,7 +3,7 @@
 {% block head %}
 {{ block.super }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/admin-dashboard.js' %}?v=20260911geo1" defer></script>
+<script src="{% static 'js/admin-dashboard.js' %}?v=20260911geo5" defer></script>
 {% endblock %}
 {% block subtitle %}
 <p class="adm__subtitle">Lecture instantanée de la santé de TimaLove — {{ "now"|date:"d F Y" }}</p>
@@ -87,13 +87,47 @@
   </article>
 
   <article class="adm-card adm-chart-card">
-    <div class="adm-card__head">
-      <h2 class="adm-card__title">Densité géographique</h2>
-      <p class="adm-card__lead">Pays avec le plus de membres (origine prioritaire, variantes et villes consolidées).</p>
+    <div class="adm-card__head adm-card__head--row">
+      <div>
+        <h2 class="adm-card__title">Densité géographique</h2>
+        <p class="adm-card__lead">Pays de résidence des membres (localisation à l’inscription, variantes consolidées).</p>
+      </div>
+      <button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" data-geo-all-open hidden>Voir plus</button>
     </div>
     <div class="adm-chart-wrap adm-chart-wrap--tall"><canvas id="chart-geography" aria-label="Répartition géographique"></canvas></div>
   </article>
 </section>
+
+<div class="adm-geo-modal" id="adm-geo-modal" hidden>
+  <div class="adm-geo-modal__stage">
+    <button type="button" class="adm-geo-modal__backdrop" data-geo-all-close aria-label="Fermer"></button>
+    <div class="adm-geo-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="adm-geo-modal-title">
+      <header class="adm-geo-modal__head">
+        <div>
+          <h2 class="adm-geo-modal__title" id="adm-geo-modal-title">Répartition par pays</h2>
+          <p class="adm-geo-modal__lead" data-geo-all-summary>Pays de résidence des membres.</p>
+        </div>
+        <button type="button" class="adm-geo-modal__close" data-geo-all-close aria-label="Fermer">
+          <span aria-hidden="true">×</span>
+        </button>
+      </header>
+      <div class="adm-geo-modal__body">
+        <div class="adm-table-wrap">
+          <table class="adm-table adm-table--compact adm-geo-modal__table">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Pays</th>
+                <th scope="col">Membres</th>
+              </tr>
+            </thead>
+            <tbody data-geo-all-list></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <section class="adm-dash-bottom">
   <article class="adm-card">

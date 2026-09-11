@@ -1238,6 +1238,113 @@ body.admin-panel-page {
   height: clamp(14rem, 34vw, 20rem);
 }
 
+.adm-geo-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+}
+
+.adm-geo-modal[hidden] {
+  display: none;
+}
+
+.adm-geo-modal__stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 1rem;
+}
+
+.adm-geo-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(45, 31, 34, 0.52);
+  cursor: pointer;
+}
+
+.adm-geo-modal__dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 34rem);
+  max-height: min(88vh, 42rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border: 1px solid rgba(61, 32, 36, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 18px 48px rgba(45, 31, 34, 0.18);
+  overflow: hidden;
+}
+
+.adm-geo-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem 0.85rem;
+  border-bottom: 1px solid rgba(61, 32, 36, 0.08);
+  background: var(--cream);
+}
+
+.adm-geo-modal__title {
+  margin: 0;
+  font-family: var(--font-serif, "Playfair Display", serif);
+  font-size: 1.15rem;
+  color: var(--bordeaux-dark);
+}
+
+.adm-geo-modal__lead {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.adm-geo-modal__close {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid rgba(61, 32, 36, 0.14);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--bordeaux-dark);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.adm-geo-modal__close:hover {
+  background: var(--rose-pale);
+}
+
+.adm-geo-modal__body {
+  overflow: auto;
+  padding: 0.35rem 0.85rem 1rem;
+}
+
+.adm-geo-modal__table td:last-child,
+.adm-geo-modal__table th:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.adm-geo-modal__table td:nth-child(2) {
+  font-weight: 600;
+  color: var(--bordeaux-dark);
+}
+
+.adm-geo-modal__table td:first-child {
+  width: 2.5rem;
+  color: var(--text-muted);
+}
+
+body.is-adm-geo-modal {
+  overflow: hidden;
+}
+
 .adm-table--compact td,
 .adm-table--compact th {
   padding-top: 0.55rem;

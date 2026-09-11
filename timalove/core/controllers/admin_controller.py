@@ -320,19 +320,19 @@ def _engagement_funnel() -> dict:
     }
 
 
-def _top_countries(limit: int = 8) -> dict:
-    """Répartition des membres par pays normalisé (origine puis résidence)."""
+def _member_residence_country_counts() -> list[tuple[str, int]]:
+    """Comptage membres par pays de résidence normalisé (wizard géo « Pays »)."""
     from collections import Counter
 
-    from core.data.country_normalize import OTHER_LABEL, member_country_for_stats
+    from core.data.country_normalize import OTHER_LABEL, member_residence_for_stats
 
     counts: Counter[str] = Counter()
-    for country, residence in (
+    for residence, country in (
         Profile.objects.filter(role="member")
-        .values_list("country", "residence_country")
+        .values_list("residence_country", "country")
         .iterator(chunk_size=500)
     ):
-        label = member_country_for_stats(country, residence)
+        label = member_residence_for_stats(residence, country)
         if label:
             counts[label] += 1
 
@@ -341,12 +341,20 @@ def _top_countries(limit: int = 8) -> dict:
         ranked = [item for item in ranked if item[0] != OTHER_LABEL] + [
             (OTHER_LABEL, counts[OTHER_LABEL])
         ]
+    return ranked
 
+
+def _top_countries(limit: int = 8) -> dict:
+    """Top pays + liste complète pour la modale admin."""
+    ranked = _member_residence_country_counts()
     top = ranked[:limit]
+    total = sum(value for _, value in ranked)
     return {
         "labels": [label for label, _ in top],
         "values": [value for _, value in top],
-        "total": sum(counts.values()),
+        "total": total,
+        "country_count": len(ranked),
+        "all": [{"country": label, "count": value} for label, value in ranked],
     }
 
 

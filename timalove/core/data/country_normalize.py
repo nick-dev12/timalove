@@ -187,6 +187,14 @@ def member_country_for_stats(country: str | None, residence_country: str | None)
     return None
 
 
+def member_residence_for_stats(residence_country: str | None, country: str | None = None) -> str | None:
+    """Pays de résidence (wizard géo « Pays »), repli sur origine si absent."""
+    label = normalize_country_label(residence_country)
+    if label:
+        return label
+    return normalize_country_label(country)
+
+
 def normalize_country_for_storage(raw: str | None) -> str | None:
     """Pour nettoyage en base : ne remplace pas par « Autre »."""
     label = normalize_country_label(raw)
