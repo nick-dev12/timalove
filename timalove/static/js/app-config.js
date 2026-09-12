@@ -76,6 +76,7 @@
       el.setAttribute("data-text-enabled", textOn ? "1" : "0");
     });
     document.querySelectorAll("[data-video-chat]").forEach((btn) => {
+      if (btn === document.body) return;
       btn.hidden = !features.video_chat_enabled;
     });
     document.querySelectorAll("[data-selfie-slot], [data-selfie-hint]").forEach((el) => {
