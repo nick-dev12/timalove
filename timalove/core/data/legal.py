@@ -8,7 +8,7 @@ CONTACT_EMAIL = "timaloveagence@gmail.com"
 SITE_URL = "https://mytimalove.com"
 EDITOR = "Problem Solving Agency"
 BRAND = "TimaLove"
-UPDATED = "7 septembre 2026"
+UPDATED = "12 septembre 2026"
 
 CGV_SECTIONS = [
     {
@@ -626,6 +626,8 @@ CGU_SECTIONS = [
             "Contourner les mesures de sécurité, scrapers, bots, automatisation abusive",
             "Revendre l'accès au Service ou exploiter commercialement les données d'autres membres",
             "Utiliser le Service si vous êtes mineur ou si votre compte a été banni",
+            "Publier, partager, solliciter ou détenir tout contenu d'exploitation ou d'abus sexuels sur mineurs (CSEA / CSAM)",
+            "Tenter de recruter, d'approcher ou de « groomer » un mineur, ou de faciliter un contact sexuel avec un mineur",
         ],
     },
     {
@@ -731,6 +733,103 @@ CGU_SECTIONS = [
         "title": "17 — Contact",
         "paragraphs": [
             f"Pour toute question relative aux CGU : {CONTACT_EMAIL} (objet recommandé : « CGU »).",
+        ],
+    },
+]
+
+CHILD_SAFETY_SECTIONS = [
+    {
+        "id": "engagement",
+        "title": "1 — Engagement de TimaLove",
+        "paragraphs": [
+            f"{BRAND} est une plateforme de mise en relation sérieuse vers le mariage, éditée par {EDITOR}. Elle est strictement réservée aux adultes.",
+            "TimaLove applique une tolérance zéro à l'égard de l'exploitation et des abus sexuels sur les enfants (CSEA), y compris le matériel d'abus sexuels sur mineurs (CSAM), le grooming, le trafic et toute tentative de contact sexuel impliquant un mineur.",
+            "Ces normes sont publiées ici de façon permanente, accessibles sans compte, dans le monde entier, et ne sont pas un fichier PDF.",
+        ],
+    },
+    {
+        "id": "age",
+        "title": "2 — Service réservé aux majeurs (18 ans et plus)",
+        "paragraphs": [
+            "L'inscription, l'accès au site et l'utilisation de l'application mobile sont interdits aux personnes de moins de 18 ans.",
+            "Lors de l'inscription, l'utilisateur déclare être majeur. TimaLove peut demander une preuve d'âge, refuser ou supprimer un compte, et conserver les éléments nécessaires pour empêcher une réinscription abusive.",
+        ],
+        "list": [
+            "Tout compte mineur détecté est suspendu puis supprimé",
+            "Les profils, photos, stories et messages associés sont retirés",
+            "Un signalement de mineur est traité en priorité par la modération",
+        ],
+    },
+    {
+        "id": "interdits",
+        "title": "3 — Contenus et conduites interdits",
+        "paragraphs": [
+            "Sont strictement interdits, et entraînent une suppression immédiate du contenu et du compte, sans préjudice des suites légales :",
+        ],
+        "list": [
+            "Toute image, vidéo, audio ou texte sexuel impliquant un mineur, réel ou généré (y compris IA)",
+            "Toute sollicitation sexuelle d'un mineur, grooming, chantage ou tentative de rencontre à caractère sexuel avec un mineur",
+            "Le partage de liens, groupes ou fichiers menant à du CSAM",
+            "La représentation sexuelle d'une personne présentée comme mineure, même si l'âge réel est inconnu",
+            "Toute facilitation, publicité ou financement d'exploitation sexuelle de mineurs",
+        ],
+        "paragraphs_after": [
+            "TimaLove n'héberge pas sciemment ce type de contenus. Dès qu'un cas est confirmé ou fortement suspecté, le contenu est retiré et le compte bloqué.",
+        ],
+    },
+    {
+        "id": "signalement",
+        "title": "4 — Comment signaler un problème",
+        "paragraphs": [
+            "Tout utilisateur peut signaler un profil, une photo, une story ou un message depuis l'application ou le site (bouton Signaler sur le profil ou dans la discussion).",
+            "Pour un cas impliquant un mineur ou un contenu d'abus sexuel, utilisez aussi l'e-mail ci-dessous : le traitement est prioritaire.",
+        ],
+        "list": [
+            f"E-mail dédié (contact désigné) : {CONTACT_EMAIL} — objet recommandé : « Sécurité des enfants »",
+            "Indiquez si possible : URL ou identifiant du profil, capture, date, et ce que vous avez vu",
+            "Ne renvoyez pas le contenu illégal en pièce jointe si cela n'est pas nécessaire ; décrivez-le et donnez le lien interne",
+        ],
+        "paragraphs_after": [
+            "Un signalement peut aussi être fait sans compte, par e-mail. Nous accusons réception dès que possible et agissons sans attendre une réponse complète de l'auteur du signalement.",
+        ],
+    },
+    {
+        "id": "traitement",
+        "title": "5 — Traitement interne et sanctions",
+        "paragraphs": [
+            "L'équipe de modération examine en priorité les signalements liés aux mineurs et à l'exploitation sexuelle.",
+        ],
+        "list": [
+            "Retrait immédiat du contenu concerné",
+            "Suspension ou bannissement définitif du compte",
+            "Conservation limitée des traces nécessaires à l'enquête et à l'empêchement de réinscription",
+            "Transmission aux autorités compétentes lorsque la loi l'exige ou lorsqu'un risque concret pour un mineur est identifié",
+        ],
+    },
+    {
+        "id": "autorites",
+        "title": "6 — Coopération avec les autorités",
+        "paragraphs": [
+            "TimaLove coopère avec les autorités compétentes (police, gendarmerie, justice, services de protection de l'enfance) au Sénégal et, le cas échéant, dans le pays concerné.",
+            "Lorsqu'un contenu d'abus sexuel sur mineur est confirmé, nous le préservons de façon sécurisée le temps nécessaire à la transmission légale, puis nous le retirons de l'accès public.",
+            "Nous n'informons pas l'auteur du contenu d'une enquête en cours lorsque cela pourrait compromettre la protection d'un mineur ou une procédure officielle.",
+        ],
+    },
+    {
+        "id": "contact-securite",
+        "title": "7 — Contact désigné",
+        "paragraphs": [
+            f"Le contact désigné pour les questions de conformité, de contenus sexuels impliquant des mineurs et de signalements CSEA / CSAM est : {CONTACT_EMAIL}.",
+            f"Éditeur : {EDITOR}. Site : {SITE_URL}.",
+            "Cette personne ou cette équipe est en mesure d'échanger avec Google Play, les autorités et les signalants sur les pratiques de l'application.",
+        ],
+    },
+    {
+        "id": "mise-a-jour",
+        "title": "8 — Mise à jour de ces normes",
+        "paragraphs": [
+            f"Ces normes peuvent être mises à jour pour rester alignées sur le droit applicable et les règles des stores. La version en vigueur est toujours celle publiée sur {SITE_URL}/securite-des-enfants/.",
+            "Elles complètent les Conditions d'utilisation et la Politique de confidentialité. En cas de contradiction sur la protection des mineurs, les présentes normes prévalent.",
         ],
     },
 ]

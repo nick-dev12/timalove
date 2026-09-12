@@ -520,6 +520,19 @@ def suppression_compte(request):
 
 
 @require_GET
+def securite_enfants(request):
+    return render(
+        request,
+        "legal/page.html",
+        {
+            "title": "Normes de sécurité des enfants",
+            "sections": legal_data.CHILD_SAFETY_SECTIONS,
+            "updated": legal_data.UPDATED,
+        },
+    )
+
+
+@require_GET
 def conditions_utilisation(request):
     return render(
         request,

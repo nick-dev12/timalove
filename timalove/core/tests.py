@@ -930,6 +930,7 @@ class PagesSmokeTests(TestCase):
             "/mentions-legales/",
             "/politique-de-confidentialite/",
             "/suppression-de-compte/",
+            "/securite-des-enfants/",
             "/connexion/",
             "/inscription/",
         ]:
