@@ -99,7 +99,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "fr-fr"
-TIME_ZONE = "America/Port-au-Prince"
+TIME_ZONE = env("TIME_ZONE", default="Africa/Dakar")
 USE_I18N = True
 USE_TZ = True
 
