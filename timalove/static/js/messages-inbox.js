@@ -230,7 +230,19 @@
     const blockedBadge = item.blocked_by_me
       ? '<span class="msg-list__blocked-badge">Bloqué</span>'
       : "";
-    const timeHtml = item.last_time ? "<time>" + escapeHtml(item.last_time) + "</time>" : "";
+    const timeHtml = item.last_at
+      ? '<time datetime="' +
+        escapeHtml(item.last_at) +
+        '" data-time-mode="inbox">' +
+        escapeHtml(
+          typeof window.timaloveFormatInboxTime === "function"
+            ? window.timaloveFormatInboxTime(item.last_at)
+            : ""
+        ) +
+        "</time>"
+      : item.last_time
+        ? "<time>" + escapeHtml(item.last_time) + "</time>"
+        : "";
     const unreadHtml =
       item.unread > 0 && !item.blocked_by_me
         ? '<span class="msg-list__unread">' +
@@ -286,6 +298,9 @@
     });
     collectRows();
     filter();
+    if (typeof window.timaloveApplyMessageTimes === "function") {
+      window.timaloveApplyMessageTimes(feed);
+    }
   }
 
   function refreshInbox() {
@@ -429,6 +444,9 @@
 
     collectRows();
     filter();
+    if (typeof window.timaloveApplyMessageTimes === "function") {
+      window.timaloveApplyMessageTimes(feed);
+    }
     refreshInbox();
     refreshTimer = window.setInterval(refreshInbox, 5000);
 

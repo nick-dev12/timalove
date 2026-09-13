@@ -286,6 +286,12 @@
     } else {
       body = "<p></p>";
     }
+    const timeIso = item.created_at || "";
+    const timeLabel =
+      typeof window.timaloveFormatMessageTime === "function"
+        ? window.timaloveFormatMessageTime(item)
+        : item.time || "";
+    const timeAttrs = timeIso ? ' datetime="' + timeIso + '"' : "";
     row.innerHTML =
       '<span class="msg__bubble-avatar" aria-hidden="true">' +
       avatarInner +
@@ -293,8 +299,10 @@
       (item.is_image ? " is-photo" : item.is_voice ? " is-voice" : "") +
       '">' +
       body +
-      "<footer><time>" +
-      (item.time || "") +
+      "<footer><time" +
+      timeAttrs +
+      ">" +
+      timeLabel +
       "</time>" +
       (mine ? checksHtml(Boolean(item.read)) : "") +
       (mine && item.id ? deleteButtonHtml() : "") +
@@ -460,6 +468,9 @@
 
   if (thread) {
     thread.querySelectorAll("[data-voice-player]").forEach(bindVoice);
+    if (typeof window.timaloveApplyMessageTimes === "function") {
+      window.timaloveApplyMessageTimes(thread);
+    }
     pinToLatest();
   }
 

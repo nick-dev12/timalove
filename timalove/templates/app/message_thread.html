@@ -5,7 +5,8 @@
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="{% static 'js/explorer-chrome.js' %}?v=20260826h1" defer></script>
-<script src="{% static 'js/messages-thread.js' %}?v=20260908sub1" defer></script>
+<script src="{% static 'js/message-datetime.js' %}?v=20260913tz1" defer></script>
+<script src="{% static 'js/messages-thread.js' %}?v=20260913tz1" defer></script>
 {% if not is_preview %}
 <script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
 {% endif %}
@@ -117,7 +118,7 @@
           <p>{{ item.content|linebreaksbr }}</p>
           {% endif %}
           <footer>
-            <time>{{ item.time }}</time>
+            <time{% if item.created_at %} datetime="{{ item.created_at }}"{% endif %}>{% if item.time %}{{ item.time }}{% endif %}</time>
             {% if item.mine %}
             <span class="msg__checks{% if item.read %} is-read{% endif %}" aria-hidden="true"{% if item.read %} aria-label="Lu"{% else %} aria-label="Envoyé"{% endif %}>
               <svg viewBox="0 0 16 12" width="16" height="12">

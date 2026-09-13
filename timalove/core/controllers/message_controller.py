@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 
-from datetime import timedelta
+from datetime import timezone as dt_timezone
 
 from django.db import transaction
 from django.db.models import Q
@@ -21,6 +21,14 @@ logger = logging.getLogger(__name__)
 
 PHONE_RE = re.compile(r"(?:\+?\d[\d\s.\-]{7,}\d)")
 PREVIEW_MAX = 52
+
+
+def _iso_utc(dt) -> str:
+    if not dt:
+        return ""
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, dt_timezone.utc)
+    return dt.astimezone(dt_timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _chat_room_name(match: Match) -> str:
@@ -47,7 +55,6 @@ def _broadcast_chat(match: Match, payload: dict) -> None:
 def _serialize_message_ws(msg: Message) -> dict:
     sender = msg.sender
     name = (sender.first_name or "Membre").strip() or "Membre"
-    local = timezone.localtime(msg.created_at)
     is_voice = msg.message_type == MessageType.VOICE
     is_image = msg.message_type == MessageType.IMAGE
     seconds = msg.voice_duration_seconds or 0
@@ -60,7 +67,7 @@ def _serialize_message_ws(msg: Message) -> dict:
         "voice_url": msg.voice_url or "",
         "voice_duration": seconds,
         "voice_label": f"{seconds // 60}:{seconds % 60:02d}",
-        "time": local.strftime("%H:%M"),
+        "created_at": _iso_utc(msg.created_at),
         "read": bool(msg.is_read),
         "photo_url": sender.primary_photo or "",
         "initial": name[:1].upper(),
@@ -88,16 +95,6 @@ def _broadcast_read_receipts(match: Match, reader: Profile) -> None:
     if not read_ids:
         return
     _broadcast_chat(match, {"event": "read_receipts", "read_ids": read_ids})
-
-
-def _format_list_time(dt) -> str:
-    local = timezone.localtime(dt)
-    today = timezone.localtime(timezone.now()).date()
-    if local.date() == today:
-        return local.strftime("%H:%M")
-    if local.date() == today - timedelta(days=1):
-        return "Hier"
-    return local.strftime("%d/%m")
 
 
 def _preview_text(last: Message | None, me: Profile) -> str:
@@ -314,7 +311,7 @@ def list_conversations(profile: Profile, include_hidden: bool = False) -> list[d
                 "last_message": last,
                 "preview": preview,
                 "unread": 0 if flags["blocked_by_me"] else unread,
-                "last_time": _format_list_time(last.created_at) if last else "",
+                "last_at": _iso_utc(last.created_at) if last else "",
                 "conversation_status": m.conversation_status,
                 "conversation_pending": m.conversation_status == ConversationStatus.PENDING,
                 "can_accept": m.conversation_status == ConversationStatus.PENDING
@@ -348,7 +345,7 @@ def inbox_feed(profile: Profile) -> list[dict]:
                 "partner_initial": name[:1].upper(),
                 "partner_online": bool(partner.is_online),
                 "preview": c["preview"] or "Nouvelle conversation",
-                "last_time": c["last_time"] or "",
+                "last_at": c.get("last_at") or "",
                 "unread": int(c["unread"] or 0),
                 "blocked_by_me": bool(c["blocked_by_me"]),
                 "conversation_pending": bool(c.get("conversation_pending")),
@@ -618,7 +615,6 @@ def _person_card(profile: Profile) -> dict:
 def _serialize_message(msg: Message, me: Profile) -> dict:
     sender = msg.sender
     name = (sender.first_name or "Membre").strip() or "Membre"
-    local = timezone.localtime(msg.created_at)
     is_voice = msg.message_type == MessageType.VOICE
     is_image = msg.message_type == MessageType.IMAGE
     return {
@@ -631,7 +627,7 @@ def _serialize_message(msg: Message, me: Profile) -> dict:
         "voice_url": msg.voice_url or "",
         "voice_duration": msg.voice_duration_seconds or 0,
         "voice_label": f"{(msg.voice_duration_seconds or 0) // 60}:{(msg.voice_duration_seconds or 0) % 60:02d}",
-        "time": local.strftime("%H:%M"),
+        "created_at": _iso_utc(msg.created_at),
         "read": bool(msg.is_read),
         "photo_url": sender.primary_photo or "",
         "initial": name[:1].upper(),

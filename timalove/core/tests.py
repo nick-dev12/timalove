@@ -707,15 +707,13 @@ class BlockMessagingTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIn(str(msg.id), r.json()["read_ids"])
 
-    def test_message_time_uses_local_timezone(self):
-        from django.utils import timezone
-
-        with self.settings(TIME_ZONE="Africa/Dakar"):
-            ok, _, msg = message_controller.send_text(self.p1, self.p2.id, "Heure test")
-            self.assertTrue(ok)
-            item = message_controller._serialize_message(msg, self.p1)
-            expected = timezone.localtime(msg.created_at).strftime("%H:%M")
-            self.assertEqual(item["time"], expected)
+    def test_message_created_at_is_utc_iso(self):
+        ok, _, msg = message_controller.send_text(self.p1, self.p2.id, "Heure test")
+        self.assertTrue(ok)
+        item = message_controller._serialize_message(msg, self.p1)
+        self.assertIn("created_at", item)
+        self.assertTrue(item["created_at"].endswith("Z"))
+        self.assertNotIn("time", item)
 
     def test_mark_read_api_works_when_sender_at_free_limit(self):
         """Un homme à la limite peut toujours marquer les messages reçus comme lus."""

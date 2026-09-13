@@ -7,7 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="{% static 'js/subscription-badges.js' %}?v=20260830badge2" defer></script>
 <script src="{% static 'js/explorer-chrome.js' %}?v=20260826h1" defer></script>
-<script src="{% static 'js/messages-inbox.js' %}?v=20260830badge2" defer></script>
+<script src="{% static 'js/message-datetime.js' %}?v=20260913tz1" defer></script>
+<script src="{% static 'js/messages-inbox.js' %}?v=20260913tz1" defer></script>
 {% if user.is_authenticated %}
 <script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
 {% endif %}
@@ -74,7 +75,7 @@
                 </span>
               </span>
               {% if c.blocked_by_me %}<span class="msg-list__blocked-badge">Bloqué</span>{% endif %}
-              {% if c.last_time %}<time>{{ c.last_time }}</time>{% endif %}
+              {% if c.last_at %}<time datetime="{{ c.last_at }}" data-time-mode="inbox"></time>{% elif c.last_time %}<time>{{ c.last_time }}</time>{% endif %}
             </span>
             <span class="msg-list__preview">{{ c.preview|default:"Nouvelle conversation" }}</span>
           </span>
