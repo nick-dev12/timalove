@@ -312,6 +312,14 @@ if ! $SKIP_MIGRATE; then
         warn "Des modèles ont changé sans migration — créez-les sur le PC (makemigrations) puis repush."
     fi
     ok "Migrations appliquées"
+    log "Super admin — vérification (création si absent après import DB)"
+    ENSURE_ADMIN=$(django_cmd "python manage.py ensure_superadmin" 2>&1) || {
+        warn "ensure_superadmin a échoué (non bloquant)"
+        echo "$ENSURE_ADMIN"
+    }
+    if [[ -n "${ENSURE_ADMIN:-}" ]]; then
+        echo "$ENSURE_ADMIN" | tail -n 3
+    fi
 else
     log "Étape 3/5 — Migrations (ignorées)"
 fi

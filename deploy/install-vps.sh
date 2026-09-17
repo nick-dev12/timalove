@@ -396,6 +396,7 @@ ok "Chemins enregistrés dans /etc/timalove/deploy.env"
 log "Étape 9/10 — Django + services systemd"
 
 django_cmd "python manage.py migrate --noinput"
+django_cmd "python manage.py ensure_superadmin"
 django_cmd "python manage.py collectstatic --noinput"
 ok "Migrations + collectstatic"
 
