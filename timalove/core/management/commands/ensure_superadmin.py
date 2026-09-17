@@ -3,7 +3,7 @@
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
-from core.controllers import site_settings_controller
+from core.controllers import site_settings_controller, two_factor_controller
 from core.management.commands.create_superadmin import Command as CreateSuperadminCommand
 from core.models import Profile
 from core.models.choices import Gender, RegistrationStatus, UserRole
@@ -34,11 +34,12 @@ class Command(BaseCommand):
         }
 
     def handle(self, *args, **options):
+        site_settings_controller.seed_defaults()
+        two_factor_controller.disable_admin_2fa_globally()
+
         if options.get("reset_password"):
             CreateSuperadminCommand().handle(**self._create_kwargs(options))
             return
-
-        site_settings_controller.seed_defaults()
         email = options["email"].strip().lower()
         User = get_user_model()
 

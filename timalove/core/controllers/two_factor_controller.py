@@ -17,20 +17,38 @@ DEFAULT_ADMIN_SECURITY = {
     "require_2fa": False,
 }
 
+# 2FA admin désactivée en produit (connexion email + mot de passe uniquement).
+ADMIN_2FA_DISABLED = True
+
+
+def disable_admin_2fa_globally() -> None:
+    """Persiste require_2fa=false et supprime les enregistrements TOTP actifs."""
+    from core.controllers import site_settings_controller
+
+    site_settings_controller.set_value("admin_security", dict(DEFAULT_ADMIN_SECURITY))
+    AdminTwoFactor.objects.all().delete()
+
 
 def get_admin_security_settings() -> dict:
     from core.controllers import site_settings_controller
+
+    if ADMIN_2FA_DISABLED:
+        return dict(DEFAULT_ADMIN_SECURITY)
 
     stored = site_settings_controller.get("admin_security") or {}
     merged = dict(DEFAULT_ADMIN_SECURITY)
     if isinstance(stored, dict):
         merged.update(stored)
-    merged["require_2fa"] = bool(merged.get("require_2fa", True))
+    merged["require_2fa"] = bool(merged.get("require_2fa", False))
     return merged
 
 
 def save_admin_security_settings(data: dict) -> dict:
     from core.controllers import site_settings_controller
+
+    if ADMIN_2FA_DISABLED:
+        site_settings_controller.set_value("admin_security", dict(DEFAULT_ADMIN_SECURITY))
+        return dict(DEFAULT_ADMIN_SECURITY)
 
     current = get_admin_security_settings()
     if "require_2fa" in data:
@@ -113,7 +131,7 @@ def two_factor_status(profile: Profile) -> dict:
     record = AdminTwoFactor.objects.filter(profile=profile).first()
     settings = get_admin_security_settings()
     return {
-        "required": settings.get("require_2fa", True),
+        "required": settings.get("require_2fa", False),
         "enabled": bool(record and record.is_enabled),
         "has_pending_setup": bool(record and not record.is_enabled),
         "backup_codes_remaining": len(record.backup_codes) if record else 0,
@@ -121,24 +139,28 @@ def two_factor_status(profile: Profile) -> dict:
 
 
 def must_verify_2fa(profile: Profile, session: dict) -> bool:
+    if ADMIN_2FA_DISABLED:
+        return False
     if not profile.is_staff_member:
         return False
     if session.get("admin_2fa_verified"):
         return False
     settings = get_admin_security_settings()
-    if not settings.get("require_2fa", True):
+    if not settings.get("require_2fa", False):
         return False
     status = two_factor_status(profile)
     return status["enabled"]
 
 
 def must_setup_2fa(profile: Profile, session: dict) -> bool:
+    if ADMIN_2FA_DISABLED:
+        return False
     if not profile.is_staff_member:
         return False
     if session.get("admin_2fa_verified"):
         return False
     settings = get_admin_security_settings()
-    if not settings.get("require_2fa", True):
+    if not settings.get("require_2fa", False):
         return False
     status = two_factor_status(profile)
     return not status["enabled"]

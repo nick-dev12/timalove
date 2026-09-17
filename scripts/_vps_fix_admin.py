@@ -13,7 +13,7 @@ django.setup()
 
 from django.contrib.auth import authenticate, get_user_model
 
-from core.models import AdminTwoFactor
+from core.controllers import two_factor_controller
 from core.models.choices import UserRole
 
 User = get_user_model()
@@ -22,6 +22,7 @@ PASSWORD = "AdminTimaLove2026!"
 
 
 def main() -> None:
+    two_factor_controller.disable_admin_2fa_globally()
     user = User.objects.filter(email__iexact=EMAIL).select_related("profile").first()
     if not user:
         print("MISSING_USER")
@@ -44,8 +45,6 @@ def main() -> None:
         profile.registration_status = "approved"
         profile.banned_at = None
         profile.save(update_fields=["role", "registration_status", "banned_at", "updated_at"])
-        AdminTwoFactor.objects.filter(profile=profile).delete()
-
     auth = authenticate(username=user.username, password=PASSWORD)
     if auth is None:
         auth = authenticate(username=user.email, password=PASSWORD)

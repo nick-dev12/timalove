@@ -612,6 +612,47 @@ body.admin-panel-page {
   color: var(--text-secondary);
 }
 
+.adm-password {
+  position: relative;
+}
+
+.adm-password .adm-input {
+  padding-right: 2.75rem;
+}
+
+.adm-password__toggle {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.adm-password__eye {
+  display: none;
+  grid-area: 1 / 1;
+}
+
+.adm-password__eye--show {
+  display: block;
+}
+
+.adm-password__toggle.is-revealed .adm-password__eye--show {
+  display: none;
+}
+
+.adm-password__toggle.is-revealed .adm-password__eye--hide {
+  display: block;
+}
+
 @media (min-width: 640px) {
   .adm-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
