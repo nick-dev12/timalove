@@ -5053,6 +5053,10 @@ body:not(.explorer-page) .explorer__bottom {
     --explorer-dock: 4.75rem;
   }
 
+  body.messages-page {
+    --explorer-dock: 5.2rem;
+  }
+
   body.explorer-page.has-explorer-search,
   body.explorer-page:has(.explorer-search) {
     --explorer-chrome: 7.1rem;
@@ -15519,6 +15523,7 @@ body.messages-page {
   overflow: hidden;
   height: 100dvh;
   min-height: 100dvh;
+  --explorer-dock: 5.2rem;
 }
 
 body.messages-page .explorer {
@@ -15537,6 +15542,7 @@ body.messages-page .msg {
   min-height: 0;
   max-height: none;
   overflow: hidden;
+  padding-bottom: calc(var(--explorer-dock) + 0.55rem + env(safe-area-inset-bottom, 0px));
 }
 
 body.messages-page .msg__top {
@@ -15553,13 +15559,6 @@ body.messages-page .msg__limit {
 body.messages-page .msg__thread {
   flex: 1 1 auto;
   min-height: 0;
-}
-
-body.messages-page .msg__composer {
-  position: relative;
-  bottom: auto;
-  flex-shrink: 0;
-  margin-top: 0;
 }
 
 .msg__top {
@@ -16436,10 +16435,16 @@ body.is-msg-delete {
 .msg__composer {
   flex-shrink: 0;
   position: sticky;
-  bottom: calc(var(--explorer-dock) + 0.25rem);
-  padding: 0 0.75rem 0.45rem;
+  bottom: calc(var(--explorer-dock) + 0.25rem + env(safe-area-inset-bottom, 0px));
+  padding: 0 0.75rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
   background: transparent;
   z-index: 3;
+}
+
+body.messages-page .msg__composer {
+  position: relative;
+  bottom: auto;
+  padding-bottom: 0.45rem;
 }
 
 .msg__field {
