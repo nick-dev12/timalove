@@ -65,7 +65,7 @@ Ne pas réécrire l’app, mais **rendre visible** ce qui existe déjà (intenti
 | **A** | Onboarding natif, charte, splash, iPhone only, vocabulaire UI, permissions | ✅ Livré | ⚠️ Flutter à rebuild + upload build iOS 5+ |
 | **B** | Pending, validation, liste curated, messages guidés, coaching dock | ✅ Livré | ✅ Déployé (`deploy.sh`, migration 0021) |
 | **C** | Anti-swipe, recherche off, bandeau objectif, religions, questions culture, Intérêts unifiés, dock Objectif | ✅ Livré | ✅ Déployé (commit `cd13e3d`, tests E2E 17/17) |
-| **D** | Parcours UX (grille, aléatoire, voir plus), modale profil, dock Moi, en ligne, filtres | ✅ Livré | 🟡 Ce déploiement |
+| **D** | Parcours UX (grille, aléatoire, voir plus), modale profil, dock Moi, en ligne, filtres | ✅ Livré | ✅ Déployé (commit `5fd50b0`) |
 | **Manuel** | Métadonnées store, captures, réponse Resolution Center | 🟡 En cours | Captures dans `store-screenshots/` |
 
 ---
@@ -461,7 +461,7 @@ python scripts/_vps_create_apple_review.py
 |--------|--------|
 | Migration `0021` appliquée sur VPS | ✅ |
 | **Deploy Lots B + C** (`deploy.sh`, commit `cd13e3d`) | ✅ |
-| **Deploy Lot D** (Parcours UX + modale profil) | 🟡 Ce déploiement |
+| **Deploy Lot D** (Parcours UX + modale profil, commit `5fd50b0`) | ✅ |
 | Compte review + compte test Lot C | ✅ |
 | `QUOTA_EXEMPT_EMAILS` mis à jour | ✅ |
 | Tests E2E prod `_vps_test_lot_c.py` | ✅ 17/17 |
