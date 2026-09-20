@@ -189,7 +189,7 @@
       if (back) {
         if (!isLive) {
           const on = back.getAttribute("aria-pressed") === "true";
-          setPressed(back, !on, "Aimé", "Liker en retour");
+          setPressed(back, !on, "Intérêt confirmé", "Manifester mon intérêt");
           return;
         }
         const id = profileIdFrom(back);
@@ -203,7 +203,7 @@
               if (handleLimit(null, data)) return;
               throw new Error((data && data.error) || "Impossible d'enregistrer.");
             }
-            setPressed(back, true, "Aimé", "Liker en retour");
+            setPressed(back, true, "Intérêt confirmé", "Manifester mon intérêt");
             if (data.matched && data.match_id) {
               window.setTimeout(function () {
                 window.location.href = "/discussions/" + id + "/";
@@ -252,6 +252,22 @@
             superBtn.classList.remove("is-busy");
           });
       }
+    });
+    root.querySelectorAll("[data-likes-section]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const section = btn.getAttribute("data-likes-section") || "received";
+        root.querySelectorAll("[data-likes-section]").forEach(function (b) {
+          const active = b === btn;
+          b.classList.toggle("is-on", active);
+          b.setAttribute("aria-selected", active ? "true" : "false");
+        });
+        root.querySelectorAll("[data-likes-panel]").forEach(function (panel) {
+          panel.classList.toggle("hidden", panel.getAttribute("data-likes-panel") !== section);
+        });
+        const url = new URL(window.location.href);
+        url.searchParams.set("tab", section === "sent" ? "sent" : "received");
+        window.history.replaceState({}, "", url.pathname + url.search);
+      });
     });
   });
 })();

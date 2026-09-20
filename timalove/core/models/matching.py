@@ -57,6 +57,10 @@ class Match(models.Model):
     user_2_message_count = models.PositiveIntegerField(default=0)
     scheduled_date = models.DateTimeField(blank=True, null=True)
     meet_link = models.TextField(blank=True, null=True)
+    guided_intro_completed = models.BooleanField(
+        default=False,
+        help_text="Premier message guidé envoyé dans la conversation.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

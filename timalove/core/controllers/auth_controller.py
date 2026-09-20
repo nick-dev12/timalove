@@ -416,9 +416,9 @@ def complete_member_profile(profile: Profile, data: dict) -> tuple[bool, str]:
         profile.first_name = data["first_name"].strip()
     if data.get("last_name"):
         profile.last_name = data["last_name"].strip()
-    profile.registration_status = RegistrationStatus.APPROVED
+    profile.registration_status = RegistrationStatus.PENDING
     profile.save()
-    return True, "Profil complété. Bienvenue sur TimaLove."
+    return True, "Profil complété. Votre dossier sera validé sous 24 à 48 h."
 
 
 def logout_user(request) -> None:
@@ -497,12 +497,12 @@ def register_member(data: dict) -> tuple[bool, str, Profile | None]:
         bio=data.get("bio"),
         looking_for=data.get("looking_for"),
         photo_url=data.get("photo_url"),
-        registration_status=RegistrationStatus.APPROVED,
+        registration_status=RegistrationStatus.PENDING,
         role=UserRole.MEMBER,
         onboarding_completed=True,
         onboarding_step=4,
     )
-    return True, "Compte créé avec succès.", profile
+    return True, "Compte créé. Votre dossier sera validé sous 24 à 48 h.", profile
 
 
 def request_password_reset(email: str) -> tuple[bool, str, str | None]:

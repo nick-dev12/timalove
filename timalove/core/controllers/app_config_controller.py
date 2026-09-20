@@ -14,9 +14,11 @@ DEFAULT_APP_CONFIG: dict[str, Any] = {
     "voice_call_enabled": True,
     "selfie_verification_enabled": False,
     "freemium_limits_enabled": True,
-    "explorer_search_enabled": True,
-    "history_search_enabled": True,
+    "explorer_search_enabled": False,
+    "history_search_enabled": False,
     "messages_search_enabled": True,
+    "explorer_curated_mode": True,
+    "guided_messages_enabled": True,
     "force_update_enabled": False,
     "force_update_ios": "1.0.0",
     "force_update_android": "1.0.0",
@@ -24,6 +26,7 @@ DEFAULT_APP_CONFIG: dict[str, Any] = {
     "force_update_message": "Une mise à jour de l'application est requise pour continuer.",
     "force_update_url_ios": "https://apps.apple.com/",
     "force_update_url_android": "https://play.google.com/store",
+    "curated_daily_limit": 8,
 }
 
 FEATURE_BOOL_KEYS = (
@@ -36,6 +39,8 @@ FEATURE_BOOL_KEYS = (
     "explorer_search_enabled",
     "history_search_enabled",
     "messages_search_enabled",
+    "explorer_curated_mode",
+    "guided_messages_enabled",
     "freemium_limits_enabled",
     "force_update_enabled",
 )
@@ -97,6 +102,9 @@ def get_app_config() -> dict[str, Any]:
     merged["voice_call_enabled"] = merged["voice_messages_enabled"]
     for key in FORCE_UPDATE_STR_KEYS:
         merged[key] = str(merged.get(key) or DEFAULT_APP_CONFIG.get(key, "")).strip()
+    if merged.get("explorer_curated_mode"):
+        merged["explorer_search_enabled"] = False
+        merged["history_search_enabled"] = False
     return merged
 
 
@@ -205,6 +213,8 @@ def feature_flags() -> dict[str, bool]:
         "explorer_search_enabled": cfg["explorer_search_enabled"],
         "history_search_enabled": cfg["history_search_enabled"],
         "messages_search_enabled": cfg["messages_search_enabled"],
+        "explorer_curated_mode": cfg["explorer_curated_mode"],
+        "guided_messages_enabled": cfg["guided_messages_enabled"],
     }
 
 
@@ -226,6 +236,18 @@ def voice_messages_enabled() -> bool:
 
 def image_messages_enabled() -> bool:
     return bool(get_app_config()["image_messages_enabled"])
+
+
+def explorer_curated_mode_enabled() -> bool:
+    return bool(get_app_config()["explorer_curated_mode"])
+
+
+def curated_daily_limit() -> int:
+    return _as_int(get_app_config().get("curated_daily_limit"), 8, minimum=3, maximum=20)
+
+
+def guided_messages_enabled() -> bool:
+    return bool(get_app_config()["guided_messages_enabled"])
 
 
 def _quota_rows_enabled() -> bool:

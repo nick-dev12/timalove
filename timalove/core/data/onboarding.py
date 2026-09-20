@@ -122,11 +122,11 @@ STEP_COPY = {
         "footer": "Vous êtes au bon endroit.",
     },
     "2": {
-        "title": "Ce qui vous anime.",
-        "lead": "Choisissez au moins une option parmi les intérêts, et au moins une parmi le caractère. Les valeurs sont optionnelles.",
-        "hint": "Une sélection minimum par liste proposée — les valeurs, vous les ajoutez si vous le souhaitez, une par une.",
+        "title": "Vos valeurs et votre caractère.",
+        "lead": "Des traits sincères et des valeurs de vie — pas une liste de hobbies génériques.",
+        "hint": "Choisissez au moins un trait de caractère. Les valeurs sont optionnelles.",
         "cta": "Continuer",
-        "footer": "On apprend à vous connaître…",
+        "footer": "Ce qui compte pour une union durable.",
     },
     "3": {
         "title": "Votre histoire.",
@@ -144,7 +144,7 @@ STEP_COPY = {
     },
 }
 
-MIN_INTERESTS = 1
+MIN_INTERESTS = 0
 MIN_TRAITS = 1
 MAX_VALUES = 12
 MIN_BIO = 40

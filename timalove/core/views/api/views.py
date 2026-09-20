@@ -1017,6 +1017,7 @@ def profile_filters(request):
             "age_max": data.get("age_max"),
             "gender": data.get("gender"),
             "religion": data.get("religion"),
+            "religions": data.get("religions") or data.get("preferred_religions"),
             "country": data.get("country"),
             "verified_only": _truthy(data.get("verified_only")),
             "online_only": _truthy(data.get("online_only")),

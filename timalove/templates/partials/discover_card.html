@@ -13,9 +13,9 @@
   <form class="discover-actions" method="post" action="{% url 'app:swipe' %}" hx-post="{% url 'app:swipe' %}" hx-target="#discover-card" hx-swap="outerHTML">
     {% csrf_token %}
     <input type="hidden" name="swiped_id" value="{{ card.id }}">
-    <button class="action-btn action-pass" name="action" value="pass" type="submit" title="Passer">✕</button>
-    <button class="action-btn action-super" name="action" value="super_like" type="submit" title="Super like">★</button>
-    <button class="action-btn action-like" name="action" value="like" type="submit" title="Like">♥</button>
+    <button class="action-btn action-pass" name="action" value="pass" type="submit" title="Passer ce profil">✕</button>
+    <button class="action-btn action-super" name="action" value="super_like" type="submit" title="Priorité de mise en relation">★</button>
+    <button class="action-btn action-like" name="action" value="like" type="submit" title="Manifester mon intérêt">♥</button>
   </form>
 </article>
 {% else %}

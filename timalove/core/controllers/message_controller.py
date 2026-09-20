@@ -114,8 +114,51 @@ def _preview_text(last: Message | None, me: Profile) -> str:
 
 
 LIKE_REQUIRED_MSG = (
-    "Likez ou super likez ce profil avant de démarrer une discussion."
+    "Manifestez votre intérêt pour ce profil avant de démarrer une discussion."
 )
+
+from core.data.guided_prompts import GUIDED_INTRO_POOL, daily_suggestion, prompts_for_match
+
+GUIDED_INTRO_PROMPTS: tuple[str, ...] = GUIDED_INTRO_POOL[:3]
+
+
+def guided_intro_prompts(match: Match | None = None) -> tuple[str, ...]:
+    from core.controllers import app_config_controller
+
+    if not app_config_controller.guided_messages_enabled():
+        return ()
+    if match is not None:
+        return prompts_for_match(match.id)
+    return GUIDED_INTRO_PROMPTS
+
+
+def daily_conversation_suggestion(profile: Profile) -> str:
+    from core.controllers import app_config_controller
+
+    if not app_config_controller.guided_messages_enabled():
+        return ""
+    return daily_suggestion(profile.id)
+
+
+def _normalize_prompt(text: str) -> str:
+    return " ".join((text or "").split()).strip().lower()
+
+
+def is_guided_prompt(content: str, match: Match | None = None) -> bool:
+    norm = _normalize_prompt(content)
+    if match is not None:
+        prompts = guided_intro_prompts(match)
+        if any(_normalize_prompt(prompt) == norm for prompt in prompts):
+            return True
+    return any(_normalize_prompt(prompt) == norm for prompt in GUIDED_INTRO_POOL)
+
+
+def needs_guided_intro(match: Match) -> bool:
+    if match.guided_intro_completed:
+        return False
+    if match.messages.exists():
+        return False
+    return bool(guided_intro_prompts(match))
 
 
 def has_outgoing_like(profile: Profile, partner_id) -> bool:
@@ -444,6 +487,11 @@ def send_text(profile: Profile, partner_id, content: str) -> tuple[bool, str, Me
     content = (content or "").strip()
     if not content:
         return False, "Message vide.", None
+    if needs_guided_intro(match):
+        if not is_guided_prompt(content, match):
+            return False, "Choisissez l'une des questions suggérées pour démarrer la conversation.", None
+        match.guided_intro_completed = True
+        match.save(update_fields=["guided_intro_completed", "updated_at"])
     banned = site_settings_controller.get("banned_words", []) or []
     lower = content.lower()
     if any(w and w.lower() in lower for w in banned):
@@ -650,6 +698,7 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
     can_accept = (
         match.conversation_status == ConversationStatus.PENDING and _is_conversation_recipient(match, profile)
     )
+    guided_required = needs_guided_intro(match) and not blocked and not pending_block and not denied
     return {
         "me": _person_card(profile),
         "partner": _person_card(partner),
@@ -663,6 +712,9 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
         "conversation_pending": match.conversation_status == ConversationStatus.PENDING,
         "can_accept": can_accept,
         "partner_profile_id": str(partner.id),
+        "guided_intro_required": guided_required,
+        "guided_prompts": list(guided_intro_prompts(match)),
+        "daily_suggestion": daily_conversation_suggestion(profile),
     }
 
 

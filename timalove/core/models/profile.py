@@ -63,7 +63,7 @@ class Profile(models.Model):
     registration_status = models.CharField(
         max_length=20,
         choices=RegistrationStatus.choices,
-        default=RegistrationStatus.APPROVED,
+        default=RegistrationStatus.PENDING,
     )
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.MEMBER)
     is_verified = models.BooleanField(default=False)

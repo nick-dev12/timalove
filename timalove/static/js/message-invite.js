@@ -95,11 +95,11 @@
     const name = (options && options.name) || "ce profil";
     if (likeRequiredModal) {
       if (likeRequiredTitle) {
-        likeRequiredTitle.textContent = "Like requis pour écrire";
+        likeRequiredTitle.textContent = "Intérêt requis pour écrire";
       }
       if (likeRequiredLead) {
         likeRequiredLead.textContent =
-          "Likez ou super likez " +
+          "Manifestez votre intérêt pour " +
           name +
           " avant de démarrer une discussion. Votre intérêt doit être sincère et explicite.";
       }
@@ -107,7 +107,7 @@
       document.body.classList.add("is-msg-like-required");
       return;
     }
-    toast("Likez ou super likez " + name + " avant de démarrer une discussion.");
+    toast("Manifestez votre intérêt pour " + name + " avant de démarrer une discussion.");
   }
 
   window.timaloveShowLikeRequired = showLikeRequired;
@@ -271,13 +271,13 @@
     if (matched) {
       if (els.kicker) {
         els.kicker.textContent =
-          action === "super_like" ? "Super like — c’est un match !" : "C’est un match !";
+          action === "super_like" ? "Priorité — mise en relation !" : "Mise en relation réussie !";
       }
       if (els.lead) {
         els.lead.textContent = "Une belle rencontre commence par un message sincère.";
       }
     } else if (action === "super_like") {
-      if (els.kicker) els.kicker.textContent = "Super like envoyé";
+      if (els.kicker) els.kicker.textContent = "Priorité envoyée";
       if (els.lead) {
         els.lead.textContent =
           "Vous avez marqué votre intérêt. Écrivez à " + name + " pour vous présenter.";

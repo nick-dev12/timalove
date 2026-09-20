@@ -166,6 +166,21 @@
     <div class="msg__composer msg__composer--disabled" aria-disabled="true">
       <p class="msg__composer-lock">{{ quota_message|default:"Messagerie désactivée pour cette conversation." }}</p>
     </div>
+    {% elif guided_intro_required and guided_prompts %}
+    {% if daily_suggestion %}
+    <p class="msg__daily-suggestion" role="note">{{ daily_suggestion }}</p>
+    {% endif %}
+    <form class="msg__composer msg__composer--guided" method="post" action="{% url 'app:discussion_detail' partner_id %}">
+      {% csrf_token %}
+      <div class="msg__guided" data-guided-intro>
+        <p class="msg__guided-lead">Pour démarrer respectueusement, choisissez une question :</p>
+        <div class="msg__guided-list">
+          {% for prompt in guided_prompts %}
+          <button type="submit" name="content" value="{{ prompt }}" class="msg__guided-btn">{{ prompt }}</button>
+          {% endfor %}
+        </div>
+      </div>
+    </form>
     {% else %}
     <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}" data-partner-id="{{ partner_id }}" data-media-url="{% url 'app:discussion_media' partner_id %}" data-text-enabled="{% if app_features.text_messages_enabled %}1{% else %}0{% endif %}">
       {% csrf_token %}

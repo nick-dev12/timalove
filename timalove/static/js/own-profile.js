@@ -272,9 +272,9 @@
       if (roleEl) roleEl.textContent = fd.get("profession") || "";
     }
 
-    async function saveInterests() {
+    async function saveTraits() {
       await postJSON("/api/profile/update/", {
-        interests: selected("[data-interest]", "data-interest"),
+        interests: [],
         personality_traits: selected("[data-trait]", "data-trait"),
       });
     }
@@ -295,10 +295,11 @@
     async function saveFilters() {
       if (!filtersForm) return;
       const fd = new FormData(filtersForm);
+      const religions = fd.getAll("religions");
       await postJSON("/api/profile/filters/", {
         age_min: fd.get("age_min"),
         age_max: fd.get("age_max"),
-        religion: fd.get("religion"),
+        religions: religions,
         country: fd.get("country"),
         verified_only: fd.get("verified_only") === "on",
         online_only: fd.get("online_only") === "on",
@@ -778,8 +779,8 @@
         { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
       );
     });
-    root.querySelector('[data-save="interests"]')?.addEventListener("click", (e) => {
-      void withButton(e.currentTarget, "interests", saveInterests, "Intérêts enregistrés.");
+    root.querySelector('[data-save="traits"]')?.addEventListener("click", (e) => {
+      void withButton(e.currentTarget, "traits", saveTraits, "Caractère enregistré.");
     });
     root.querySelector('[data-save="values"]')?.addEventListener("click", (e) => {
       void withButton(e.currentTarget, "values", saveValues, "Valeurs enregistrées.");

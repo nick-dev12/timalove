@@ -121,4 +121,13 @@
     </form>
   </section>
 </main>
+{% if user.is_authenticated %}
+<div class="explorer explorer--coaching-dock">
+  {% include "partials/explorer_dock.html" with dock_active="coaching" %}
+</div>
+<style>
+  body.coach-page { padding-bottom: 5.5rem; }
+  .explorer--coaching-dock .explorer__bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; }
+</style>
+{% endif %}
 {% endblock %}

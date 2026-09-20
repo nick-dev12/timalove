@@ -1,0 +1,54 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}Validation en cours{% endblock %}
+{% block body_class %}validation-pending-page{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body.validation-pending-page { background: #FDF5F0; color: #2D1F22; min-height: 100dvh; }
+  .validation-pending { max-width: 560px; margin: 0 auto; padding: 2.5rem 1.25rem 6rem; }
+  .validation-pending__badge { display: inline-block; padding: .35rem .75rem; border-radius: 999px; background: #FFF0F3; color: #C4858B; font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 1rem; }
+  .validation-pending__title { font-family: "Playfair Display", serif; font-size: clamp(1.6rem, 5vw, 2rem); margin: 0 0 .75rem; line-height: 1.15; }
+  .validation-pending__lead { color: #6B5A5E; line-height: 1.55; margin: 0 0 1.5rem; }
+  .validation-pending__card { background: #fff; border-radius: 20px; padding: 1.25rem 1.35rem; margin-bottom: 1rem; box-shadow: 0 8px 24px rgba(45,31,34,.06); }
+  .validation-pending__card strong { display: block; margin-bottom: .35rem; }
+  .validation-pending__card p { margin: 0; color: #6B5A5E; font-size: .95rem; line-height: 1.45; }
+  .validation-pending__actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
+  .validation-pending__reject { border-left: 3px solid #E53935; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="validation-pending">
+  {% if registration_rejected %}
+  <span class="validation-pending__badge">Dossier refusé</span>
+  <h1 class="validation-pending__title">Votre inscription n'a pas été retenue</h1>
+  <p class="validation-pending__lead">
+    Notre équipe n'a pas pu valider votre dossier pour le moment.
+    {% if rejection_reason %}Motif : {{ rejection_reason }}.{% endif %}
+  </p>
+  {% else %}
+  <span class="validation-pending__badge">Validation humaine</span>
+  <h1 class="validation-pending__title">Votre dossier est en cours de validation</h1>
+  <p class="validation-pending__lead">
+    TimaLove vérifie chaque inscription pour garantir une communauté matrimoniale sincère.
+    Délai habituel : <strong>24 à 48 h</strong>.
+  </p>
+  {% endif %}
+
+  <div class="validation-pending__card{% if registration_rejected %} validation-pending__reject{% endif %}">
+    <strong>Pendant l'attente, vous pouvez :</strong>
+    <p>Compléter votre profil, réserver une séance de coaching, consulter nos pages légales.</p>
+  </div>
+
+  <div class="validation-pending__card">
+    <strong>Accès limité</strong>
+    <p>Le parcours de profils, les intérêts et les messages s'ouvrent après validation de votre dossier.</p>
+  </div>
+
+  <div class="validation-pending__actions">
+    <a class="btn btn-primary" href="{% url 'app:profil' %}">Mon profil</a>
+    <a class="btn btn-outline" href="{% url 'public:coaching' %}">Coaching</a>
+    <a class="btn btn-outline" href="{% url 'public:accueil' %}">En savoir plus</a>
+  </div>
+</div>
+{% endblock %}

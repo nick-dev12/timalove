@@ -155,6 +155,16 @@ def save_step_1(profile: Profile, data: dict) -> tuple[bool, str]:
         profile.city = country
     profile.religion = religion
     profile.phone = phone
+    preferred = _as_str_list(data.get("preferred_religions"))
+    preferred = [r for r in preferred if r in {Religion.MUSULMANE, Religion.CHRETIENNE, Religion.AUTRE}]
+    if not preferred:
+        preferred = [religion]
+    from core.controllers import profile_controller
+
+    filters = profile_controller.filters_for(profile)
+    filters["religions"] = preferred
+    filters["religion"] = preferred[0] if len(preferred) == 1 else ""
+    profile.discover_filters = filters
     ok_loc, loc_msg = save_location(profile, data, persist=False)
     if not ok_loc:
         return False, loc_msg
@@ -167,14 +177,11 @@ def save_step_1(profile: Profile, data: dict) -> tuple[bool, str]:
 
 
 def save_step_2(profile: Profile, data: dict) -> tuple[bool, str]:
-    interests = _as_str_list(data.get("interests"))
     traits = _as_str_list(data.get("personality_traits") or data.get("traits"))
-    if len(interests) < MIN_INTERESTS:
-        return False, "Choisissez au moins un centre d’intérêt parmi les options proposées."
     if len(traits) < MIN_TRAITS:
         return False, "Choisissez au moins un trait de caractère parmi les options proposées."
     values = _clean_values(data.get("life_values") or data.get("values"))
-    profile.interests = interests
+    profile.interests = []
     profile.personality_traits = traits
     profile.life_values = values
     profile.onboarding_step = max(profile.onboarding_step or 1, 3)
@@ -227,9 +234,9 @@ def save_step_4(profile: Profile, data: dict) -> tuple[bool, str]:
         profile.is_verified = False
     profile.onboarding_step = 4
     profile.onboarding_completed = True
-    profile.registration_status = RegistrationStatus.APPROVED
+    profile.registration_status = RegistrationStatus.PENDING
     profile.save()
-    return True, "Bienvenue dans TimaLove."
+    return True, "Profil enregistré. Votre dossier sera validé sous 24 à 48 h."
 
 
 def save_image(profile: Profile, *, kind: str, upload: UploadedFile | None = None, data_url: str = "") -> str:

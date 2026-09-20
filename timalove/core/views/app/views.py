@@ -40,12 +40,21 @@ def likes(request):
     likes_controller.mark_inbox_seen(profile)
     notification_controller.mark_read_for_context(profile, "likes")
     ctx = likes_controller.feed_context(profile)
+    outgoing = likes_controller.outgoing(profile)
+    active_tab = (request.GET.get("tab") or "received").strip().lower()
+    if active_tab not in {"received", "sent"}:
+        active_tab = "received"
     ctx.update(
         {
-            "title": "Likes",
+            "title": "Intérêts",
             "is_preview": False,
             "new_count": ctx["pending_count"],
             "super_count": sum(1 for item in ctx["likes"] if item.get("is_super_like")),
+            "active_tab": active_tab,
+            "history_items": outgoing["items"],
+            "history_has_more": outgoing["has_more"],
+            "history_next_offset": outgoing["next_offset"],
+            "history_locked_extra": outgoing.get("history_locked_extra", 0),
         }
     )
     ctx.update(profile_controller.freemium_subscription_context(profile))
@@ -155,6 +164,9 @@ def discussion_detail(request, partner_id):
         "conversation_pending": thread.get("conversation_pending", False),
         "can_accept": thread.get("can_accept", False),
         "partner_profile_id": thread.get("partner_profile_id", partner_id),
+        "guided_intro_required": thread.get("guided_intro_required", False),
+        "guided_prompts": thread.get("guided_prompts", []),
+        "daily_suggestion": thread.get("daily_suggestion", ""),
         "report_reasons": ReportReason.choices,
     }
     if thread.get("messages_remaining") is not None:

@@ -126,6 +126,8 @@ def serialize_card(
         "is_verified": bool(profile.is_verified),
         "bio": (profile.bio or "")[:140],
         "profession": (profile.profession or "").strip(),
+        "relationship_intent": profile.get_relationship_intent_display() if profile.relationship_intent else "",
+        "compatibility": compatibility_score(profile, viewer),
         "profile_url": f"/explorer/profil/{profile.pk}/",
         "liked": liked,
         "super_liked": super_liked,
@@ -450,3 +452,66 @@ def search_profiles(query: str, *, viewer=None, limit: int = 8) -> list[dict]:
             }
         )
     return results
+
+
+SESSION_CURATED_DATE_KEY = "curated_date"
+SESSION_CURATED_IDS_KEY = "curated_ids"
+
+
+def curated_daily_feed(viewer, session) -> tuple[list[dict], dict]:
+    """
+    Sélection du jour — liste fixe (pas de swipe infini).
+    Réinitialisée chaque jour calendaire (timezone locale Django).
+    """
+    from django.utils import timezone
+
+    from core.controllers import app_config_controller
+
+    limit = app_config_controller.curated_daily_limit()
+    today = timezone.localdate().isoformat()
+
+    if session is not None:
+        stored_date = session.get(SESSION_CURATED_DATE_KEY)
+        stored_ids = session.get(SESSION_CURATED_IDS_KEY) or []
+        if stored_date != today:
+            stored_ids = []
+            session[SESSION_CURATED_DATE_KEY] = today
+            session[SESSION_CURATED_IDS_KEY] = []
+            session.modified = True
+    else:
+        stored_ids = []
+
+    eligible = _eligible_ids(viewer)
+    eligible_set = {str(pk) for pk in eligible}
+
+    curated_ids: list = []
+    for raw in stored_ids:
+        try:
+            pk = uuid.UUID(str(raw))
+        except (TypeError, ValueError):
+            continue
+        if str(pk) in eligible_set:
+            curated_ids.append(pk)
+
+    if len(curated_ids) < limit:
+        already = {str(pk) for pk in curated_ids}
+        remaining = [pk for pk in eligible if str(pk) not in already]
+        if remaining:
+            seed = f"curated:{today}:{viewer.pk if viewer else 'guest'}"
+            ordered = _order_feed_ids(remaining, viewer, seed=seed, served_count=0)
+            need = limit - len(curated_ids)
+            curated_ids.extend(ordered[:need])
+
+        if session is not None:
+            session[SESSION_CURATED_DATE_KEY] = today
+            session[SESSION_CURATED_IDS_KEY] = [str(pk) for pk in curated_ids]
+            session.modified = True
+
+    cards = _cards_for_ids(curated_ids, viewer)
+    meta = {
+        "date_label": today,
+        "limit": limit,
+        "count": len(cards),
+        "remaining": max(0, limit - len(cards)),
+    }
+    return cards, meta

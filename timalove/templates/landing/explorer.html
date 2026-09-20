@@ -1,7 +1,7 @@
 {% extends "layouts/base.html" %}
 {% load static %}
-{% block title %}Explorer{% endblock %}
-{% block body_class %}explorer-page{% if not user.is_authenticated %} is-guest{% endif %}{% if app_features.explorer_search_enabled %} has-explorer-search{% endif %}{% endblock %}
+{% block title %}Parcours{% endblock %}
+{% block body_class %}explorer-page{% if curated_mode %} explorer-page--curated{% endif %}{% if not user.is_authenticated %} is-guest{% endif %}{% if app_features.explorer_search_enabled and not curated_mode %} has-explorer-search{% endif %}{% endblock %}
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -9,19 +9,27 @@
   body.explorer-page { display: flex; flex-direction: column; background: #FDF5F0; color: #2D1F22; }
   body.explorer-page .explorer { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   body.explorer-page .explorer__chrome, body.explorer-page .explorer__bottom { opacity: 1 !important; visibility: visible !important; }
+  body.explorer-page--curated { overflow: auto; height: auto; min-height: 100dvh; }
+  body.explorer-page--curated .explorer { min-height: calc(100dvh - 72px); }
+  body.explorer-page--curated .explorer-hearts,
+  body.explorer-page--curated .explorer-rise { display: none; }
 </style>
 <script src="{% static 'js/explorer-like-burst.js' %}?v=20260821b4" defer></script>
 <script src="{% static 'js/explorer-chrome.js' %}?v=20260826h2" defer></script>
-{% if user.is_authenticated %}
+{% if user.is_authenticated and not curated_mode %}
 <script src="{% static 'js/explorer-filters.js' %}?v=20260826f1" defer></script>
 {% endif %}
-{% if app_features.explorer_search_enabled %}
+{% if app_features.explorer_search_enabled and not curated_mode %}
 <script src="{% static 'js/explorer-search.js' %}?v=20260826s1" defer></script>
 {% endif %}
 {% if user.is_authenticated %}
 <script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
 <script src="{% static 'js/explorer-match.js' %}?v=20260910m2" defer></script>
+{% if not curated_mode %}
 <script src="{% static 'js/explorer-swipe.js' %}?v=20260908sub1" defer></script>
+{% else %}
+<script src="{% static 'js/explorer-swipe.js' %}?v=20260908sub1" defer></script>
+{% endif %}
 {% else %}
 <script src="{% static 'js/explorer-match.js' %}?v=20260910m2" defer></script>
 {% endif %}
@@ -55,7 +63,7 @@
 
 <aside class="explorer-wing explorer-wing--left" aria-hidden="true">
   <p class="explorer-wing__kicker">TimaLove</p>
-  <p class="explorer-wing__text">Mise en relation sérieuse vers le mariage.</p>
+  <p class="explorer-wing__text">Parcours guidé vers le mariage.</p>
 </aside>
 <aside class="explorer-wing explorer-wing--right">
   <a class="explorer-wing__card" href="{% url 'public:coaching' %}">
@@ -105,14 +113,18 @@
   </div>
 
   <div
-    class="explorer__feed"
+    class="explorer__feed{% if curated_mode %} explorer__feed--curated{% endif %}"
     id="explorer-feed"
-    data-next-offset="{{ next_offset }}"
+    {% if not curated_mode %}data-next-offset="{{ next_offset }}"
     data-has-more="{{ has_more|yesno:'true,false' }}"
-    data-load-url="{% url 'public:explorer' %}"
+    data-load-url="{% url 'public:explorer' %}"{% endif %}
   >
-    {% include "partials/explorer_slides.html" %}
-    <div id="explorer-sentinel" class="explorer__sentinel" aria-hidden="true"></div>
+    {% if curated_mode %}
+      {% include "partials/explorer_curated_list.html" %}
+    {% else %}
+      {% include "partials/explorer_slides.html" %}
+      <div id="explorer-sentinel" class="explorer__sentinel" aria-hidden="true"></div>
+    {% endif %}
   </div>
 
   {% include "partials/explorer_dock.html" with dock_active="explorer" %}
@@ -121,6 +133,7 @@
 <form hidden aria-hidden="true">{% csrf_token %}</form>
 {% endif %}
 
+{% if not curated_mode %}
 <script>
 (function () {
   const feed = document.getElementById("explorer-feed");
@@ -505,6 +518,7 @@
   };
 })();
 </script>
+{% endif %}
 {% include "partials/message_invite_modal.html" %}
 {% include "partials/profile_modal.html" %}
 {% include "partials/explorer_filters_modal.html" %}

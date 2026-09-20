@@ -22,7 +22,7 @@ STEPS = [
     {
         "number": "03",
         "title": "Mise en relation",
-        "description": "Découvrez des profils compatibles et swipez pour trouver votre match.",
+        "description": "Découvrez des profils compatibles sélectionnés pour votre projet matrimonial.",
     },
     {
         "number": "04",

@@ -31,7 +31,7 @@ def _member_home(request):
 
 def _explorer_access(request):
     """Explorer réservé aux membres connectés avec session valide."""
-    from core.controllers import auth_controller
+    from core.controllers import auth_controller, registration_controller
 
     if not request.user.is_authenticated:
         return redirect("public:home")
@@ -46,6 +46,9 @@ def _explorer_access(request):
         return redirect("auth:connexion")
     if not profile.is_admin and not profile.is_profile_complete:
         return redirect(f"{reverse('auth:connexion')}?signup=1")
+    pending_block = registration_controller.block_if_pending_explorer(profile)
+    if pending_block is not None:
+        return pending_block
     return None
 
 
@@ -91,6 +94,23 @@ def commencer(request):
     return redirect("auth:connexion")
 
 
+@require_GET
+def validation_pending(request):
+    if not request.user.is_authenticated:
+        return redirect("auth:connexion")
+    profile = getattr(request.user, "profile", None)
+    if profile is None or profile.is_admin:
+        return redirect("public:explorer")
+    from core.controllers import registration_controller
+    from core.models.choices import RegistrationStatus
+
+    if profile.registration_status == RegistrationStatus.APPROVED:
+        return redirect("public:explorer")
+    ctx = registration_controller.pending_context(profile)
+    ctx["title"] = "Validation en cours"
+    return render(request, "app/validation_pending.html", ctx)
+
+
 @ensure_csrf_cookie
 @require_GET
 def explorer(request):
@@ -98,8 +118,40 @@ def explorer(request):
     if blocked:
         return blocked
 
-    from core.controllers import explore_controller
+    from core.controllers import app_config_controller, explore_controller
     import secrets
+
+    profile = getattr(request.user, "profile", None)
+    curated_mode = app_config_controller.explorer_curated_mode_enabled() and profile is not None
+
+    if curated_mode:
+        cards, curated_meta = explore_controller.curated_daily_feed(profile, request.session)
+        quota = None
+        from core.controllers import profile_controller, quota_controller
+
+        quota = quota_controller.snapshot(profile)
+        filters_ctx: dict = {}
+        from core.data.countries import COUNTRIES_FR
+        from core.models.choices import Religion
+
+        filters_ctx = {
+            "discover_filters": profile_controller.filters_for(profile),
+            "religions": Religion.choices,
+            "countries": COUNTRIES_FR,
+        }
+        context = {
+            "title": "Parcours",
+            "cards": cards,
+            "curated_mode": True,
+            "curated_meta": curated_meta,
+            "has_more": False,
+            "next_offset": 0,
+            "reveal_first": True,
+            "swipe_quota": quota,
+            **filters_ctx,
+        }
+        context.update(profile_controller.freemium_subscription_context(profile))
+        return render(request, "landing/explorer.html", context)
 
     is_hx = request.headers.get("HX-Request") == "true"
     direction = (request.GET.get("direction") or "").strip()
@@ -148,11 +200,12 @@ def explorer(request):
                 "countries": COUNTRIES_FR,
             }
     context = {
-        "title": "Explorer",
+        "title": "Parcours",
         "cards": cards,
         "has_more": has_more,
         "next_offset": next_offset,
         "reveal_first": not is_hx,
+        "curated_mode": False,
         "swipe_quota": quota,
         **filters_ctx,
     }
@@ -271,40 +324,9 @@ def messages_preview(request, partner_key):
 
 @require_GET
 def historique(request):
-    from core.controllers import likes_controller, quota_controller
+    from django.shortcuts import redirect
 
-    if request.user.is_authenticated:
-        profile = getattr(request.user, "profile", None)
-        if profile:
-            page = likes_controller.outgoing(profile)
-            items = page["items"]
-            hist_limit = page.get("history_limit")
-            locked_extra = page.get("history_locked_extra", 0)
-            from core.controllers import profile_controller
-
-            ctx = {
-                "title": "Historique",
-                "items": items,
-                "stories": items[:12],
-                "has_more": page["has_more"],
-                "next_offset": page["next_offset"],
-                "is_preview": False,
-                "subscription_gated": hist_limit is not None and (locked_extra > 0 or page["has_more"]),
-            }
-            ctx.update(profile_controller.freemium_subscription_context(profile))
-            return render(request, "app/historique.html", ctx)
-    return render(
-        request,
-        "app/historique.html",
-        {
-            "title": "Historique",
-            "items": [],
-            "stories": [],
-            "has_more": False,
-            "next_offset": 0,
-            "is_preview": True,
-        },
-    )
+    return redirect(f"{reverse('app:likes')}?tab=sent")
 
 
 @require_GET

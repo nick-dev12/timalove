@@ -84,7 +84,7 @@
           data-msg-like-required
           data-profile-id="{{ member.id }}"
           data-profile-name="{{ member.first_name }}"
-          aria-label="Like requis pour message à {{ member.first_name }}"
+          aria-label="Intérêt requis pour message à {{ member.first_name }}"
         >
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
           Message
@@ -103,7 +103,7 @@
           </svg>
           <div class="visit__compat-label">
             <strong>{{ member.compatibility }}%</strong>
-            <span>Match</span>
+            <span>Mise en relation</span>
           </div>
         </div>
       </div>
@@ -323,17 +323,17 @@
 
   <footer class="visit__dock">
     {% if user.is_authenticated %}
-    <button type="button" class="visit__dock-btn visit__dock-btn--ghost{% if super_liked %} is-on{% endif %}" data-swipe="super_like" data-profile-id="{{ member.id }}" aria-label="Super like">
+    <button type="button" class="visit__dock-btn visit__dock-btn--ghost{% if super_liked %} is-on{% endif %}" data-swipe="super_like" data-profile-id="{{ member.id }}" aria-label="{% if super_liked %}Priorité envoyée{% else %}Priorité de mise en relation{% endif %}">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
     </button>
-    <button type="button" class="visit__dock-btn visit__dock-btn--primary{% if liked %} is-on{% endif %}" data-swipe="like" data-profile-id="{{ member.id }}" aria-label="{% if liked %}Aimé{% else %}Like{% endif %}">
+    <button type="button" class="visit__dock-btn visit__dock-btn--primary{% if liked %} is-on{% endif %}" data-swipe="like" data-profile-id="{{ member.id }}" aria-label="{% if liked %}Intérêt manifesté{% else %}Manifester mon intérêt{% endif %}">
       <svg viewBox="0 0 24 22" width="22" height="20" aria-hidden="true"><path d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
     </button>
     {% else %}
-    <a class="visit__dock-btn visit__dock-btn--ghost" href="{% url 'auth:connexion' %}" aria-label="Super like">
+    <a class="visit__dock-btn visit__dock-btn--ghost" href="{% url 'auth:connexion' %}" aria-label="Priorité de mise en relation">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
     </a>
-    <a class="visit__dock-btn visit__dock-btn--primary" href="{% url 'auth:connexion' %}" aria-label="Like">
+    <a class="visit__dock-btn visit__dock-btn--primary" href="{% url 'auth:connexion' %}" aria-label="Manifester mon intérêt">
       <svg viewBox="0 0 24 22" width="22" height="20" aria-hidden="true"><path d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
     </a>
     {% endif %}

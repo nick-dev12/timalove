@@ -42,6 +42,7 @@ DEFAULT_FILTERS = {
     "age_max": 99,
     "gender": "",
     "religion": "",
+    "religions": [],
     "country": "",
     "verified_only": False,
     "online_only": False,
@@ -107,6 +108,13 @@ def filters_for(profile: Profile) -> dict:
     out["online_only"] = bool(out.get("online_only"))
     out["gender"] = out.get("gender") or ""
     out["religion"] = out.get("religion") or ""
+    raw_religions = raw.get("religions") if isinstance(raw, dict) else None
+    if isinstance(raw_religions, list):
+        out["religions"] = [str(r).strip() for r in raw_religions if str(r).strip()]
+    elif out["religion"]:
+        out["religions"] = [out["religion"]]
+    else:
+        out["religions"] = []
     out["country"] = (out.get("country") or "").strip()
     return out
 
@@ -142,8 +150,8 @@ def completion_score(profile: Profile) -> int:
         bool(profile.religion),
         bool(profile.photo_url),
         len(gallery_urls(profile)) >= 2,
-        bool(profile.interests),
         bool(profile.personality_traits),
+        bool((profile.relationship_intent or "").strip()),
     ]
     return int(round(100 * sum(1 for c in checks if c) / len(checks)))
 
@@ -377,6 +385,12 @@ def update_filters(profile: Profile, data: dict) -> dict:
     religion = data.get("religion") or ""
     if religion and religion not in {c.value for c in Religion}:
         religion = current["religion"]
+    preferred = data.get("religions") or data.get("preferred_religions") or []
+    if isinstance(preferred, str):
+        preferred = [preferred]
+    preferred = [str(r).strip() for r in preferred if str(r).strip() in {c.value for c in Religion}]
+    if not preferred and religion:
+        preferred = [religion]
     try:
         age_min = max(18, min(99, int(data.get("age_min") or current["age_min"])))
         age_max = max(age_min, min(99, int(data.get("age_max") or current["age_max"])))
@@ -386,7 +400,8 @@ def update_filters(profile: Profile, data: dict) -> dict:
         "age_min": age_min,
         "age_max": age_max,
         "gender": "",
-        "religion": religion,
+        "religion": preferred[0] if len(preferred) == 1 else "",
+        "religions": preferred,
         "country": (data.get("country") or "").strip()[:120],
         "verified_only": bool(data.get("verified_only")),
         "online_only": bool(data.get("online_only")),
@@ -547,7 +562,10 @@ def apply_opposite_gender_filter(qs, viewer: Profile | None):
 def apply_discover_filters(qs, viewer: Profile):
     filters = filters_for(viewer)
     qs = apply_opposite_gender_filter(qs, viewer)
-    if filters.get("religion"):
+    religions = filters.get("religions") or []
+    if religions:
+        qs = qs.filter(religion__in=religions)
+    elif filters.get("religion"):
         qs = qs.filter(religion=filters["religion"])
     if filters.get("country"):
         qs = qs.filter(country__iexact=filters["country"])

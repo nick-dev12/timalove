@@ -1,6 +1,6 @@
 ﻿{% extends "layouts/app.html" %}
 {% block content %}
-{% if matched %}<div class="alert alert-success">C'est un match !</div>{% endif %}
+{% if matched %}<div class="alert alert-success">Mise en relation réussie !</div>{% endif %}
 {% if cards %}
   {% with card=cards.0 %}
   {% include "partials/discover_card.html" %}

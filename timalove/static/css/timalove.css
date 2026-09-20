@@ -17548,3 +17548,40 @@ body.is-gender-prompt {
 .gender-prompt-modal__foot .btn {
   min-width: 7.5rem;
 }
+
+/* Lot B — sélection curated du jour */
+.curated-list { padding: 0 1rem 6.5rem; overflow-y: auto; }
+.curated-list__intro { padding: .5rem 0 1.25rem; }
+.curated-list__kicker { font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--rose-secondary, #C4858B); margin: 0 0 .35rem; }
+.curated-list__title { font-family: "Playfair Display", serif; font-size: clamp(1.35rem, 4vw, 1.75rem); margin: 0 0 .35rem; color: var(--text-primary, #2D1F22); }
+.curated-list__lead { margin: 0; color: var(--text-secondary, #6B5A5E); font-size: .92rem; line-height: 1.45; }
+.curated-list__grid { display: grid; gap: 1rem; }
+.curated-card { display: grid; grid-template-columns: 96px 1fr; gap: .85rem; background: #fff; border-radius: 18px; padding: .85rem; box-shadow: 0 8px 24px rgba(45,31,34,.06); }
+.curated-card__media { display: block; width: 96px; height: 112px; border-radius: 14px; overflow: hidden; background: var(--rose-pale, #FFF0F3); }
+.curated-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.curated-card__placeholder { display: grid; place-items: center; width: 100%; height: 100%; font-size: 1.6rem; font-weight: 600; color: var(--rose-primary, #E8637A); }
+.curated-card__head h2 { margin: 0; font-size: 1rem; }
+.curated-card__place, .curated-card__role { margin: .15rem 0 0; font-size: .82rem; color: var(--text-muted, #9B8A8E); }
+.curated-card__intent { margin: .35rem 0 0; font-size: .78rem; font-weight: 600; color: var(--rose-secondary, #C4858B); }
+.curated-card__compat { margin: .45rem 0 0; border: 0; background: var(--rose-pale, #FFF0F3); color: var(--text-primary, #2D1F22); border-radius: 999px; padding: .35rem .7rem; font-size: .78rem; font-weight: 600; cursor: pointer; }
+.curated-card__actions { display: flex; gap: .45rem; margin-top: .55rem; }
+.curated-card__actions .explorer__action { width: 42px; height: 42px; }
+.curated-list__empty { text-align: center; padding: 2rem 1rem; color: var(--text-secondary, #6B5A5E); }
+
+/* Lot B — messages guidés */
+.msg__composer--guided { padding: .75rem 1rem 1rem; }
+.msg__guided-lead { margin: 0 0 .75rem; font-size: .9rem; color: var(--text-secondary, #6B5A5E); }
+.msg__guided-list { display: grid; gap: .55rem; }
+.msg__guided-btn { text-align: left; border: 1px solid rgba(45,31,34,.08); background: #fff; border-radius: 14px; padding: .75rem .85rem; font-size: .88rem; line-height: 1.4; color: var(--text-primary, #2D1F22); cursor: pointer; }
+.msg__guided-btn:hover { border-color: var(--rose-primary, #E8637A); background: var(--rose-pale, #FFF0F3); }
+
+/* Lot C — objectif matrimonial + intérêts fusionnés */
+.matrimonial-objective { background: #fff; border-radius: 16px; padding: .85rem 1rem; margin: 0 0 1rem; box-shadow: 0 6px 18px rgba(45,31,34,.05); }
+.matrimonial-objective__kicker { margin: 0 0 .2rem; font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--rose-secondary, #C4858B); }
+.matrimonial-objective__value { margin: 0; font-family: "Playfair Display", serif; font-size: 1.15rem; color: var(--text-primary, #2D1F22); }
+.likes__panel.hidden { display: none; }
+.likes__filters--main { margin-bottom: .5rem; }
+.likes__history-grid { display: grid; gap: .85rem; padding: 0 0 6rem; }
+.msg__daily-suggestion { margin: 0 1rem .65rem; padding: .65rem .85rem; border-radius: 14px; background: var(--rose-pale, #FFF0F3); color: var(--text-secondary, #6B5A5E); font-size: .86rem; line-height: 1.45; }
+.ob__chip-check { display: inline-flex; align-items: center; gap: .35rem; padding: .45rem .7rem; border-radius: 999px; background: #fff; border: 1px solid rgba(45,31,34,.1); cursor: pointer; }
+.ob__chip-check input { accent-color: var(--rose-primary, #E8637A); }

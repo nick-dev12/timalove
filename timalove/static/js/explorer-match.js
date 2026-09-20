@@ -48,7 +48,7 @@
     badge.removeAttribute("data-match-ready");
     badge.removeAttribute("aria-busy");
     badge.setAttribute("aria-label", "Calculer la compatibilité");
-    if (label) label.textContent = "Match ?";
+    if (label) label.textContent = "Compatible ?";
   }
 
   function setCalculating(badge) {
@@ -76,7 +76,7 @@
     const prefersReduced =
       window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReduced) {
-      label.textContent = score + "% Match";
+      label.textContent = score + "% Compatible";
       return;
     }
 
@@ -86,14 +86,14 @@
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - Math.pow(1 - t, 3);
       const value = Math.round(score * eased);
-      label.textContent = value + "% Match";
+      label.textContent = value + "% Compatible";
       if (t < 1) {
         window.requestAnimationFrame(frame);
       } else {
-        label.textContent = score + "% Match";
+        label.textContent = score + "% Compatible";
       }
     }
-    label.textContent = "0% Match";
+    label.textContent = "0% Compatible";
     window.requestAnimationFrame(frame);
   }
 

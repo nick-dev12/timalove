@@ -203,9 +203,9 @@ def register_from_draft(data: dict) -> tuple[bool, str, Profile | None, dict[str
     onboarding_controller.save_location(profile, data, persist=True)
     profile.onboarding_completed = True
     profile.onboarding_step = 4
-    profile.registration_status = RegistrationStatus.APPROVED
+    profile.registration_status = RegistrationStatus.PENDING
     profile.save()
-    return True, "Compte créé. Bienvenue sur TimaLove.", profile, {}, None
+    return True, "Compte créé. Votre dossier sera validé sous 24 à 48 h.", profile, {}, None
 
 
 @transaction.atomic
@@ -245,12 +245,12 @@ def complete_oauth_profile(profile: Profile, data: dict) -> tuple[bool, str, dic
     onboarding_controller.save_location(profile, data, persist=True)
     profile.onboarding_completed = True
     profile.onboarding_step = 4
-    profile.registration_status = RegistrationStatus.APPROVED
+    profile.registration_status = RegistrationStatus.PENDING
     profile.save()
     profile.user.first_name = first_name
     profile.user.last_name = last_name
     profile.user.save(update_fields=["first_name", "last_name"])
-    return True, "Profil complété. Bienvenue sur TimaLove.", {}, None
+    return True, "Profil complété. Votre dossier sera validé sous 24 à 48 h.", {}, None
 
 
 def reverse_geocode(latitude, longitude) -> dict:
@@ -421,10 +421,7 @@ def _validate_socio(data: dict) -> dict[str, str]:
 
 def _validate_interests(data: dict) -> dict[str, str]:
     errors: dict[str, str] = {}
-    interests = onboarding_controller._as_str_list(data.get("interests"))
     traits = onboarding_controller._as_str_list(data.get("personality_traits") or data.get("traits"))
-    if len(interests) < MIN_INTERESTS:
-        errors["interests"] = "Choisissez au moins un centre d’intérêt."
     if len(traits) < MIN_TRAITS:
         errors["personality_traits"] = "Choisissez au moins un trait de caractère."
     return errors
@@ -482,7 +479,7 @@ def _apply_socio_fields(profile: Profile, data: dict) -> None:
 
 
 def _apply_profile_extras(profile: Profile, data: dict) -> None:
-    profile.interests = onboarding_controller._as_str_list(data.get("interests"))
+    profile.interests = []
     profile.personality_traits = onboarding_controller._as_str_list(
         data.get("personality_traits") or data.get("traits")
     )

@@ -19,6 +19,7 @@
   </header>
 
   <div class="visit__intro">
+    {% include "partials/matrimonial_objective_banner.html" with profile=member %}
     <header class="visit__ig{% if member.subscription_badge == 'vip' %} is-vip{% elif member.subscription_badge == 'premium' %} is-premium{% endif %}">
       <div class="visit__ig-top">
         <div class="visit__media">
@@ -56,7 +57,7 @@
       </div>
       <ul class="visit__stats" aria-label="Activité du profil">
         <li><strong>{{ member.photos|length }}</strong><span>Photos</span></li>
-        <li><strong>{{ member.followers }}</strong><span>Likes</span></li>
+        <li><strong>{{ member.followers }}</strong><span>Intérêts</span></li>
         <li>
           <strong data-display-completion>{{ member.completion }}%</strong>
           <span>Complet</span>
@@ -129,16 +130,6 @@
           <li><span>Pays de résidence</span><strong>{{ member.residence_country }}</strong></li>
           {% endif %}
         </ul>
-        <p class="visit__label">Centres d’intérêt</p>
-        {% if member.interest_labels %}
-        <div class="visit__pills">
-          {% for label in member.interest_labels %}
-          <span class="is-on">{{ label }}</span>
-          {% endfor %}
-        </div>
-        {% else %}
-        <p class="visit__about-text visit__about-text--muted">Vous n’avez pas encore défini vos intérêts. Un premier choix suffit.</p>
-        {% endif %}
         <p class="visit__label">Caractère</p>
         {% if member.trait_labels %}
         <div class="visit__pills">
@@ -206,15 +197,17 @@
             <label class="visit-form__field"><span>Âge minimum</span><input name="age_min" type="number" min="18" max="99" value="{{ filters.age_min }}"></label>
             <label class="visit-form__field"><span>Âge maximum</span><input name="age_max" type="number" min="18" max="99" value="{{ filters.age_max }}"></label>
           </div>
-          <label class="visit-form__field">
-            <span>Religion</span>
-            <select name="religion">
-              <option value="" {% if not filters.religion %}selected{% endif %}>Toutes</option>
+          <fieldset class="visit-form__field">
+            <legend>Religions recherchées</legend>
+            <div class="visit__pills visit__pills--edit">
               {% for value, label in religions %}
-              <option value="{{ value }}"{% if filters.religion == value %} selected{% endif %}>{{ label }}</option>
+              <label class="visit-form__check">
+                <input type="checkbox" name="religions" value="{{ value }}"{% if value in filters.religions %} checked{% endif %}>
+                {{ label }}
+              </label>
               {% endfor %}
-            </select>
-          </label>
+            </div>
+          </fieldset>
           <label class="visit-form__field">
             <span>Pays</span>
             <select name="country">
@@ -250,20 +243,11 @@
       </div>
 
       <div class="visit__settings-panel" id="settings-panel-profile" role="tabpanel" aria-labelledby="settings-tab-profile" data-settings-panel="profile">
-        <article class="visit-glass visit__card" data-block="interests">
+        <article class="visit-glass visit__card" data-block="traits">
           <div class="visit__card-head">
-            <p class="visit__kicker">Ce qui vous anime</p>
-            <h2 class="visit__card-title">Intérêts et caractère</h2>
-            <p class="visit__card-lead">Choisissez ce qui vous ressemble. Enregistrez ce bloc seulement.</p>
-          </div>
-          <p class="visit__label">Centres d’intérêt</p>
-          <div class="visit__pills visit__pills--edit" data-interests>
-            {% for item in interests %}
-            <button type="button" class="visit__pill-btn{% if item.id in member.interests %} is-on{% endif %}" data-interest="{{ item.id }}">
-              <span class="visit__pill-icon" data-icon="{{ item.icon }}"></span>
-              <span>{{ item.label }}</span>
-            </button>
-            {% endfor %}
+            <p class="visit__kicker">Ce qui vous guide</p>
+            <h2 class="visit__card-title">Caractère</h2>
+            <p class="visit__card-lead">Des traits sincères pour une mise en relation matrimoniale.</p>
           </div>
           <p class="visit__label">Caractère</p>
           <div class="visit__pills visit__pills--edit" data-traits>
@@ -275,8 +259,8 @@
             {% endfor %}
           </div>
           <div class="visit__card-foot">
-            <p class="visit__save-msg" data-save-msg="interests" hidden></p>
-            <button type="button" class="visit__save" data-save="interests">Enregistrer</button>
+            <p class="visit__save-msg" data-save-msg="traits" hidden></p>
+            <button type="button" class="visit__save" data-save="traits">Enregistrer</button>
           </div>
         </article>
 
@@ -644,7 +628,7 @@
           </div>
 
           <div class="visit-notifs__enable" data-notifs-enable-wrap{% if notif_prefs.push %} hidden{% endif %}>
-            <p class="visit__card-lead" data-notifs-enable-lead>Recevez en temps réel les likes, matchs et messages qui comptent pour vous.</p>
+            <p class="visit__card-lead" data-notifs-enable-lead>Recevez en temps réel les intérêts, mises en relation et messages qui comptent pour vous.</p>
             <button type="button" class="visit__save visit__save--block" data-notifs-enable>Activer les notifications</button>
             <button type="button" class="visit__save visit__save--block visit-notifs__enable-btn--active" data-notifs-active-badge hidden disabled>Notifications en temps réel activées</button>
             <p class="visit__save-msg visit-notifs__msg" data-notifs-enable-msg hidden></p>
@@ -660,9 +644,9 @@
             <p class="visit-form-hint visit-form-hint--boxed visit-notifs__health" data-notifs-health hidden aria-live="polite"></p>
             {% endif %}
             <form class="visit-form visit-form--checks" data-notifs-form>
-              <label class="visit-form__check"><input type="checkbox" name="likes"{% if notif_prefs.likes %} checked{% endif %}> Nouveau like</label>
-              <label class="visit-form__check"><input type="checkbox" name="super_likes"{% if notif_prefs.super_likes %} checked{% endif %}> Super like</label>
-              <label class="visit-form__check"><input type="checkbox" name="matches"{% if notif_prefs.matches %} checked{% endif %}> Nouveau match</label>
+              <label class="visit-form__check"><input type="checkbox" name="likes"{% if notif_prefs.likes %} checked{% endif %}> Nouvel intérêt</label>
+              <label class="visit-form__check"><input type="checkbox" name="super_likes"{% if notif_prefs.super_likes %} checked{% endif %}> Priorité reçue</label>
+              <label class="visit-form__check"><input type="checkbox" name="matches"{% if notif_prefs.matches %} checked{% endif %}> Nouvelle mise en relation</label>
               <label class="visit-form__check"><input type="checkbox" name="messages"{% if notif_prefs.messages %} checked{% endif %}> Nouveau message</label>
               <label class="visit-form__check"><input type="checkbox" name="status"{% if notif_prefs.status %} checked{% endif %}> Statut du compte</label>
             </form>

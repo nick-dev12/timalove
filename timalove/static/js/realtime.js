@@ -218,13 +218,13 @@
       return { kicker: "TimaLove", cta: "Découvrir", icon: "♥" };
     }
     if (kind === "new_match") {
-      return { kicker: "C’est un match", cta: "Écrire", icon: "♥" };
+      return { kicker: "Mise en relation", cta: "Écrire", icon: "♥" };
     }
     if (kind === "super_like") {
-      return { kicker: "Super like", cta: "Voir", icon: "★" };
+      return { kicker: "Priorité reçue", cta: "Voir", icon: "★" };
     }
     if (kind === "new_like") {
-      return { kicker: "Nouveau like", cta: "Voir", icon: "♡" };
+      return { kicker: "Nouvel intérêt", cta: "Voir", icon: "♡" };
     }
     return { kicker: "Nouveau message", cta: "Répondre", icon: "✉" };
   }

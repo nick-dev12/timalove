@@ -38,7 +38,7 @@
           aria-label="Calculer la compatibilité"
         >
           <svg viewBox="0 0 24 22" width="13" height="12" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
-          <span data-match-label>Match ?</span>
+          <span data-match-label>Compatible ?</span>
           <span class="explorer__match-bar" aria-hidden="true"><span></span></span>
         </div>
 
@@ -77,23 +77,23 @@
 
           <div class="explorer__actions" role="group" aria-label="Actions">
             {% if user.is_authenticated %}
-            <button type="button" class="explorer__action explorer__action--pass" data-swipe="pass" aria-label="Passer">
+            <button type="button" class="explorer__action explorer__action--pass" data-swipe="pass" aria-label="Passer ce profil">
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
             </button>
-            <button type="button" class="explorer__action explorer__action--like{% if card.liked %} is-on{% endif %}" data-swipe="like" aria-label="Like">
+            <button type="button" class="explorer__action explorer__action--like{% if card.liked %} is-on{% endif %}" data-swipe="like" aria-label="{% if card.liked %}Intérêt manifesté{% else %}Manifester mon intérêt{% endif %}">
               <svg viewBox="0 0 24 22" width="26" height="24" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
             </button>
-            <button type="button" class="explorer__action explorer__action--star{% if card.super_liked %} is-on{% endif %}" data-swipe="super_like" aria-label="Super like">
+            <button type="button" class="explorer__action explorer__action--star{% if card.super_liked %} is-on{% endif %}" data-swipe="super_like" aria-label="{% if card.super_liked %}Priorité envoyée{% else %}Priorité de mise en relation{% endif %}">
               <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
             </button>
             {% else %}
-            <a class="explorer__action explorer__action--pass" href="{% url 'auth:inscription' %}" aria-label="Passer">
+            <a class="explorer__action explorer__action--pass" href="{% url 'auth:inscription' %}" aria-label="Passer ce profil">
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
             </a>
-            <a class="explorer__action explorer__action--like" href="{% url 'auth:inscription' %}" aria-label="Like">
+            <a class="explorer__action explorer__action--like" href="{% url 'auth:inscription' %}" aria-label="Manifester mon intérêt">
               <svg viewBox="0 0 24 22" width="26" height="24" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
             </a>
-            <a class="explorer__action explorer__action--star" href="{% url 'auth:inscription' %}" aria-label="Super like">
+            <a class="explorer__action explorer__action--star" href="{% url 'auth:inscription' %}" aria-label="Priorité de mise en relation">
               <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
             </a>
             {% endif %}

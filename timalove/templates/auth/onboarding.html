@@ -88,7 +88,7 @@
         </label>
         <label class="ob__field">
           <span>Religion <em>*</em></span>
-          <select name="religion" required>
+          <select name="religion" required data-preferred-religion-source>
             <option value="" disabled {% if not profile.religion %}selected{% endif %}>Sélectionnez une option</option>
             {% for value, label in religions %}
             <option value="{{ value }}"{% if profile.religion == value %} selected{% endif %}>{{ label }}</option>
@@ -96,6 +96,18 @@
           </select>
           <small class="ob__help">Sélectionnez l’option qui vous correspond.</small>
         </label>
+        <fieldset class="ob__field">
+          <legend>Religions que je souhaite rencontrer <em>*</em></legend>
+          <div class="ob__choice ob__choice--wrap" data-preferred-religions>
+            {% for value, label in religions %}
+            <label class="ob__chip-check">
+              <input type="checkbox" name="preferred_religions" value="{{ value }}"{% if profile.religion == value %} checked{% endif %}>
+              <span>{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          <small class="ob__help">Compatibilité matrimoniale — vous pouvez en choisir plusieurs.</small>
+        </fieldset>
         <div class="ob-map-block">
           <p class="ob__label">Ma localisation <em>*</em></p>
           <p class="ob__help">Nous enregistrons votre position exacte pour mieux vous situer. Autorisez l’accès, puis actualisez si besoin.</p>
@@ -110,20 +122,9 @@
 
     {# ——— Étape 2 ——— #}
     <section class="ob__panel{% if step == 2 %} is-active{% endif %}" data-ob-panel="2">
-      <p class="ob__kicker">Étape 2 · Passions</p>
+      <p class="ob__kicker">Étape 2 · Valeurs</p>
       <h1>{{ copy.2.title }}</h1>
       <p class="ob__lead">{{ copy.2.lead }}</p>
-      <p class="ob__label">Centres d’intérêt <em>*</em></p>
-      <p class="ob__help">Sélectionnez au moins une option parmi celles proposées.</p>
-      <div class="ob-grid" data-interests>
-        {% for item in interests %}
-        <button type="button" class="ob-card{% if profile.interests and item.id in profile.interests %} is-on{% endif %}" data-interest="{{ item.id }}">
-          <span class="ob-card__check" aria-hidden="true">✓</span>
-          <span class="ob-card__icon" data-icon="{{ item.icon }}"></span>
-          <span class="ob-card__label">{{ item.label }}</span>
-        </button>
-        {% endfor %}
-      </div>
       <p class="ob__label">Votre caractère <em>*</em></p>
       <p class="ob__help">Sélectionnez au moins une option parmi celles proposées.</p>
       <div class="ob__choice ob__choice--wrap" data-traits>

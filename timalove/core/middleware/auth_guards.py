@@ -27,6 +27,7 @@ PUBLIC_PATHS = (
 
 INCOMPLETE_ALLOWED = (
     COMPLETER_PATH,
+    "/validation-en-attente",
     "/connexion",
     "/inscription",
     "/deconnexion",
@@ -58,6 +59,14 @@ class AuthGuardsMiddleware:
 
         if path in PUBLIC_PATHS:
             return self.get_response(request)
+
+        if request.user.is_authenticated:
+            profile = getattr(request.user, "profile", None)
+            from core.controllers import registration_controller
+
+            blocked = registration_controller.redirect_if_not_approved(request, profile)
+            if blocked is not None:
+                return blocked
 
         if path.startswith("/explorer"):
             if not request.user.is_authenticated:

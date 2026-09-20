@@ -1,0 +1,13 @@
+{% load static %}
+<div class="matrimonial-objective" role="status">
+  <p class="matrimonial-objective__kicker">Objectif recherché</p>
+  <p class="matrimonial-objective__value">
+    {% if profile and profile.get_relationship_intent_display %}
+      {{ profile.get_relationship_intent_display }}
+    {% elif relationship_intent %}
+      {{ relationship_intent }}
+    {% else %}
+      Mariage · Relation sérieuse
+    {% endif %}
+  </p>
+</div>

@@ -53,9 +53,11 @@ def app_features(request):
                 "image_messages_enabled": True,
                 "voice_call_enabled": True,
                 "selfie_verification_enabled": False,
-                "explorer_search_enabled": True,
-                "history_search_enabled": True,
+                "explorer_search_enabled": False,
+                "history_search_enabled": False,
                 "messages_search_enabled": True,
+                "explorer_curated_mode": True,
+                "guided_messages_enabled": True,
             }
         }
 
