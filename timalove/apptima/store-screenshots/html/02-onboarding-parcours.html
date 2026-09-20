@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=390, height=844">
+  <title>TimaLove — Onboarding 2</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 390px; height: 844px; background: #FDF5F0; font-family: 'DM Sans', sans-serif; color: #2D1F22; overflow: hidden; display: flex; flex-direction: column; }
+    .header { padding: 52px 20px 12px; display: flex; align-items: center; gap: 10px; }
+    .logo { width: 36px; height: 36px; border-radius: 50%; background: #E8637A; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px; }
+    .brand { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; }
+    .content { flex: 1; padding: 24px 24px 0; }
+    .kicker { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #C4858B; margin-bottom: 12px; }
+    h1 { font-family: 'Playfair Display', serif; font-size: 30px; line-height: 1.15; margin-bottom: 16px; }
+    .lead { color: #6B5A5E; line-height: 1.55; font-size: 15px; margin-bottom: 24px; }
+    ul { list-style: none; display: grid; gap: 12px; }
+    li { background: #fff; border-radius: 14px; padding: 14px 16px; font-size: 14px; line-height: 1.45; box-shadow: 0 4px 16px rgba(45,31,34,.05); }
+    li::before { content: "✓"; color: #E8637A; font-weight: 700; margin-right: 8px; }
+    .footer { padding: 20px; }
+    .dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #F5E6E8; }
+    .dot.on { width: 24px; border-radius: 999px; background: #E8637A; }
+    .btn { width: 100%; border: 0; border-radius: 999px; background: #E8637A; color: #fff; font-size: 16px; font-weight: 600; padding: 16px; }
+  </style>
+</head>
+<body>
+  <div class="header"><div class="logo">T</div><div class="brand">TimaLove</div></div>
+  <div class="content">
+    <p class="kicker">Comment ça marche</p>
+    <h1>Compatibilité avant le dialogue</h1>
+    <p class="lead">Vous avancez par étapes : dossier, sélection compatible, manifestation d'intérêt, puis mise en relation — pas un défilement infini de cartes.</p>
+    <ul>
+      <li>Sélection selon votre projet de vie</li>
+      <li>Score de compatibilité explicite</li>
+      <li>Échanges encadrés et coaching humain disponible</li>
+    </ul>
+  </div>
+  <div class="footer">
+    <div class="dots"><span class="dot"></span><span class="dot on"></span><span class="dot"></span></div>
+    <button class="btn">Continuer</button>
+  </div>
+</body>
+</html>

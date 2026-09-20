@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=390, height=844">
+  <title>TimaLove — Messages guidés</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 390px; height: 844px; background: #FDF5F0; font-family: 'DM Sans', sans-serif; color: #2D1F22; overflow: hidden; display: flex; flex-direction: column; }
+    .header { padding: 48px 16px 12px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #F5E6E8; background: #fff; }
+    .back { font-size: 20px; color: #6B5A5E; }
+    .avatar { width: 40px; height: 40px; border-radius: 50%; background: #E8637A; color: #fff; display: grid; place-items: center; font-weight: 600; }
+    .who { flex: 1; }
+    .who h1 { font-size: 16px; font-weight: 600; }
+    .who p { font-size: 12px; color: #9B8A8E; }
+    .chat { flex: 1; padding: 16px; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; }
+    .empty { text-align: center; color: #9B8A8E; font-size: 13px; margin-bottom: auto; padding-top: 40px; }
+    .guided { background: #fff; border-radius: 18px; padding: 16px; box-shadow: 0 8px 24px rgba(45,31,34,.06); }
+    .guided-k { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #C4858B; margin-bottom: 8px; }
+    .guided h2 { font-family: 'Playfair Display', serif; font-size: 18px; margin-bottom: 8px; }
+    .guided p { font-size: 13px; color: #6B5A5E; line-height: 1.45; margin-bottom: 12px; }
+    .prompt { display: block; width: 100%; text-align: left; border: 1px solid #F5E6E8; background: #FFF0F3; border-radius: 12px; padding: 12px; font-size: 13px; line-height: 1.4; color: #2D1F22; margin-bottom: 8px; }
+    .prompt:last-child { margin-bottom: 0; }
+    .dock { border-top: 1px solid #F5E6E8; background: #fff; display: flex; padding: 8px 0 24px; }
+    .tab { flex: 1; text-align: center; font-size: 10px; color: #9B8A8E; }
+    .tab.on { color: #E8637A; font-weight: 600; }
+    .tab-ico { font-size: 18px; display: block; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <span class="back">←</span>
+    <div class="avatar">F</div>
+    <div class="who"><h1>Fatou Demo</h1><p>Mise en relation · Mariage</p></div>
+  </header>
+  <div class="chat">
+    <p class="empty">Aucun message pour l'instant.<br>Choisissez une question respectueuse pour commencer.</p>
+    <div class="guided">
+      <p class="guided-k">Premier message guidé</p>
+      <h2>Commencez avec respect</h2>
+      <p>Sélectionnez l'une de ces questions orientées mariage et culture :</p>
+      <button class="prompt">Bonjour, comment la culture sénégalaise influence-t-elle votre vision du couple et du mariage ?</button>
+      <button class="prompt">Bonjour, quelle importance accordez-vous aux repas en famille dans votre quotidien ?</button>
+      <button class="prompt">Bonjour, quelles valeurs familiales souhaitez-vous transmettre à vos enfants ?</button>
+    </div>
+  </div>
+  <nav class="dock">
+    <span class="tab"><span class="tab-ico">♥</span>Intérêts</span>
+    <span class="tab"><span class="tab-ico">◎</span>Parcours</span>
+    <span class="tab"><span class="tab-ico">▣</span>Coaching</span>
+    <span class="tab on"><span class="tab-ico">✉</span>Messages</span>
+    <span class="tab"><span class="tab-ico">★</span>Objectif</span>
+  </nav>
+</body>
+</html>

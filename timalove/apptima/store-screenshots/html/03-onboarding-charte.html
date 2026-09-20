@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=390, height=844">
+  <title>TimaLove — Charte</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 390px; height: 844px; background: #FDF5F0; font-family: 'DM Sans', sans-serif; color: #2D1F22; overflow: hidden; display: flex; flex-direction: column; }
+    .header { padding: 52px 20px 12px; display: flex; align-items: center; gap: 10px; }
+    .logo { width: 36px; height: 36px; border-radius: 50%; background: #E8637A; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px; }
+    .brand { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; }
+    .content { flex: 1; padding: 16px 24px 0; overflow: hidden; }
+    .kicker { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #C4858B; margin-bottom: 12px; }
+    h1 { font-family: 'Playfair Display', serif; font-size: 28px; line-height: 1.15; margin-bottom: 12px; }
+    .card { background: #fff; border-radius: 18px; padding: 16px; box-shadow: 0 8px 24px rgba(45,31,34,.06); font-size: 13px; line-height: 1.5; color: #6B5A5E; max-height: 420px; overflow: hidden; }
+    .card p { margin-bottom: 10px; }
+    .check { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; background: #FFF0F3; border-radius: 14px; padding: 14px; }
+    .check input { width: 18px; height: 18px; accent-color: #E8637A; margin-top: 2px; }
+    .check span { font-size: 14px; line-height: 1.45; color: #2D1F22; font-weight: 500; }
+    .footer { padding: 20px; }
+    .dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #F5E6E8; }
+    .dot.on { width: 24px; border-radius: 999px; background: #E8637A; }
+    .btn { width: 100%; border: 0; border-radius: 999px; background: #E8637A; color: #fff; font-size: 16px; font-weight: 600; padding: 16px; }
+  </style>
+</head>
+<body>
+  <div class="header"><div class="logo">T</div><div class="brand">TimaLove</div></div>
+  <div class="content">
+    <p class="kicker">Charte matrimoniale</p>
+    <h1>Respect, sincérité, projet clair</h1>
+    <div class="card">
+      <p>En rejoignant TimaLove, je m'engage à :</p>
+      <p>• Avoir une intention sincère orientée vers le mariage ou une relation sérieuse.</p>
+      <p>• Respecter les autres membres et la modération active.</p>
+      <p>• Ne pas utiliser la plateforme pour des rencontres casual ou trompeuses.</p>
+      <p>• Fournir des informations exactes sur mon profil et mon projet de vie.</p>
+      <p>• Accepter que mon dossier puisse être validé par l'équipe avant accès complet.</p>
+    </div>
+    <label class="check">
+      <input type="checkbox" checked>
+      <span>J'accepte la charte matrimoniale TimaLove et je m'engage à respecter ces principes.</span>
+    </label>
+  </div>
+  <div class="footer">
+    <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot on"></span></div>
+    <button class="btn">Entrer dans TimaLove</button>
+  </div>
+</body>
+</html>

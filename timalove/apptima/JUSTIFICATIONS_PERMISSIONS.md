@@ -1,9 +1,9 @@
 # Justifications des permissions — TimaLove
 
-Application de mise en relation sérieuse vers le mariage (WebView + pont natif).
+Application de **parcours matrimonial** vers le mariage (WebView + pont natif + onboarding charte).
 
 - Android : `com.timalove.app`
-- iOS : `com.mytimalove.app`
+- iOS : `com.mytimalove.app` (**iPhone only**)
 - Site : https://mytimalove.com/
 
 Pages légales :

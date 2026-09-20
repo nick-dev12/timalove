@@ -17568,6 +17568,47 @@ body.is-gender-prompt {
 .curated-card__actions .explorer__action { width: 42px; height: 42px; }
 .curated-list__empty { text-align: center; padding: 2rem 1rem; color: var(--text-secondary, #6B5A5E); }
 
+/* Curated Parcours — barre du bas toujours visible (fix desktop / scroll) */
+body.explorer-page--curated .explorer {
+  min-height: 100dvh;
+  height: auto;
+  overflow: visible;
+  padding-bottom: calc(var(--explorer-dock, 4.75rem) + env(safe-area-inset-bottom, 0px));
+}
+
+body.explorer-page--curated .explorer__feed {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: visible;
+  overscroll-behavior: auto;
+  touch-action: auto;
+}
+
+body.explorer-page--curated .curated-list {
+  overflow: visible;
+  padding-bottom: 1rem;
+}
+
+body.explorer-page--curated .explorer__bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: max(0.55rem, env(safe-area-inset-left, 0px))
+    max(0.55rem, env(safe-area-inset-right, 0px));
+  padding-bottom: calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+
+body.explorer-page--curated .explorer__dock {
+  max-width: var(--explorer-col, 100%);
+  margin-inline: auto;
+}
+
 /* Lot B — messages guidés */
 .msg__composer--guided { padding: .75rem 1rem 1rem; }
 .msg__guided-lead { margin: 0 0 .75rem; font-size: .9rem; color: var(--text-secondary, #6B5A5E); }

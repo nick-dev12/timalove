@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=390, height=844">
+  <title>TimaLove — Intérêts</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 390px; height: 844px; background: #FDF5F0; font-family: 'DM Sans', sans-serif; color: #2D1F22; overflow: hidden; display: flex; flex-direction: column; }
+    .top { padding: 48px 16px 8px; }
+    .logo { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: #E8637A; margin-bottom: 8px; }
+    .banner { margin: 0 16px; background: #3D2024; border-radius: 14px; padding: 12px 14px; }
+    .banner-k { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #C4858B; margin-bottom: 4px; }
+    .banner-v { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; color: #fff; }
+    .intro { padding: 16px 16px 8px; }
+    .kicker { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #C4858B; }
+    h1 { font-family: 'Playfair Display', serif; font-size: 24px; margin: 6px 0; }
+    .tabs { display: flex; gap: 8px; padding: 0 16px 12px; }
+    .tab-btn { flex: 1; border: 0; border-radius: 999px; padding: 10px; font-size: 13px; font-weight: 600; background: #fff; color: #6B5A5E; }
+    .tab-btn.on { background: #E8637A; color: #fff; }
+    .list { padding: 0 16px; flex: 1; display: grid; gap: 10px; align-content: start; }
+    .row { display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 16px; padding: 12px; box-shadow: 0 4px 16px rgba(45,31,34,.05); }
+    .av { width: 52px; height: 52px; border-radius: 50%; background: #F5E6E8; display: grid; place-items: center; font-weight: 600; color: #C4858B; }
+    .info h2 { font-size: 15px; font-weight: 600; }
+    .info p { font-size: 12px; color: #9B8A8E; }
+    .badge { margin-left: auto; background: #FFF0F3; color: #E8637A; font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 999px; }
+    .dock { border-top: 1px solid #F5E6E8; background: #fff; display: flex; padding: 8px 0 24px; }
+    .tab { flex: 1; text-align: center; font-size: 10px; color: #9B8A8E; }
+    .tab.on { color: #E8637A; font-weight: 600; }
+    .tab-ico { font-size: 18px; display: block; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+  <div class="top"><div class="logo">TimaLove</div></div>
+  <div class="banner"><p class="banner-k">Objectif recherché</p><p class="banner-v">Mariage</p></div>
+  <div class="intro"><p class="kicker">Vos échanges de sincérité</p><h1>Intérêts</h1></div>
+  <div class="tabs">
+    <button class="tab-btn on">Reçus</button>
+    <button class="tab-btn">Envoyés</button>
+  </div>
+  <div class="list">
+    <article class="row"><div class="av">A</div><div class="info"><h2>Awa Demo</h2><p>Mariage · Dakar</p></div><span class="badge">Priorité</span></article>
+    <article class="row"><div class="av">F</div><div class="info"><h2>Fatou Demo</h2><p>Mariage · Thiès</p></div><span class="badge">Nouveau</span></article>
+    <article class="row"><div class="av">M</div><div class="info"><h2>Mariama</h2><p>Mariage · Saint-Louis</p></div></article>
+  </div>
+  <nav class="dock">
+    <span class="tab on"><span class="tab-ico">♥</span>Intérêts</span>
+    <span class="tab"><span class="tab-ico">◎</span>Parcours</span>
+    <span class="tab"><span class="tab-ico">▣</span>Coaching</span>
+    <span class="tab"><span class="tab-ico">✉</span>Messages</span>
+    <span class="tab"><span class="tab-ico">★</span>Objectif</span>
+  </nav>
+</body>
+</html>

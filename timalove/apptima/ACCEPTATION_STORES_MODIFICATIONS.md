@@ -12,18 +12,19 @@ Document de référence **unique** listant tout ce qui a été apporté au proje
 ## Sommaire
 
 1. [Contexte et objectif](#1-contexte-et-objectif)
-2. [Vue d’ensemble — Lots A et B](#2-vue-densemble--lots-a-et-b)
+2. [Vue d’ensemble — Lots A, B et C](#2-vue-densemble--lots-a-b-et-c)
 3. [Lot A — Positionnement matrimonial natif](#3-lot-a--positionnement-matrimonial-natif)
 4. [Lot B — Communauté guidée (anti-dating)](#4-lot-b--communauté-guidée-anti-dating)
-5. [Renommage du vocabulaire UI](#5-renommage-du-vocabulaire-ui)
-6. [Compte démo Apple Review + production](#6-compte-démo-apple-review--production)
-7. [Permissions et conformité 5.1.1](#7-permissions-et-conformité-511)
-8. [Fichiers modifiés (inventaire)](#8-fichiers-modifiés-inventaire)
-9. [Déploiement](#9-déploiement)
-10. [App Store Connect & Play Console](#10-app-store-connect--play-console)
-11. [Parcours reviewer (3 minutes)](#11-parcours-reviewer-3-minutes)
-12. [Points restants et risques](#12-points-restants-et-risques)
-13. [Documents connexes](#13-documents-connexes)
+5. [Lot C — Différenciation matrimoniale renforcée](#5-lot-c--différenciation-matrimoniale-renforcée)
+6. [Renommage du vocabulaire UI](#6-renommage-du-vocabulaire-ui)
+7. [Compte démo Apple Review + production](#7-compte-démo-apple-review--production)
+8. [Permissions et conformité 5.1.1](#8-permissions-et-conformité-511)
+9. [Fichiers modifiés (inventaire)](#9-fichiers-modifiés-inventaire)
+10. [Déploiement](#10-déploiement)
+11. [App Store Connect & Play Console](#11-app-store-connect--play-console)
+12. [Parcours reviewer (3 minutes)](#12-parcours-reviewer-3-minutes)
+13. [Points restants et risques](#13-points-restants-et-risques)
+14. [Documents connexes](#14-documents-connexes)
 
 ---
 
@@ -52,16 +53,18 @@ Ne pas réécrire l’app, mais **rendre visible** ce qui existe déjà (intenti
 
 1. **Lot A** — différenciation native + vocabulaire matrimonial + iPhone only.
 2. **Lot B** — validation humaine, parcours curated, messages guidés, coaching en navigation principale.
+3. **Lot C** — suppression des signaux « dating swipe », bandeau objectif, religions recherchées, questions culture, fusion Intérêts/Historique, dock « Objectif ».
 
 ---
 
-## 2. Vue d’ensemble — Lots A et B
+## 2. Vue d’ensemble — Lots A, B et C
 
 | Lot | Thème | Statut code | Statut prod (20/09/2026) |
 |-----|-------|-------------|--------------------------|
-| **A** | Onboarding natif, charte, splash, iPhone only, vocabulaire UI, permissions | ✅ Livré | ⚠️ Flutter à rebuild + deploy web complet |
-| **B** | Pending, validation, liste curated, messages guidés, coaching dock | ✅ Livré | ⚠️ Partiel sur VPS (compte review + migration 0021 seulement) |
-| **Manuel** | Métadonnées store, captures, réponse Resolution Center | ⬜ À faire | — |
+| **A** | Onboarding natif, charte, splash, iPhone only, vocabulaire UI, permissions | ✅ Livré | ⚠️ Flutter à rebuild + upload build iOS 5+ |
+| **B** | Pending, validation, liste curated, messages guidés, coaching dock | ✅ Livré | ✅ Déployé (`deploy.sh`, migration 0021) |
+| **C** | Anti-swipe, recherche off, bandeau objectif, religions, questions culture, Intérêts unifiés, dock Objectif | ✅ Livré | ✅ Déployé (commit `cd13e3d`, tests E2E 17/17) |
+| **Manuel** | Métadonnées store, captures, réponse Resolution Center | 🟡 En cours | Captures dans `store-screenshots/` |
 
 ---
 
@@ -192,7 +195,113 @@ Intérêts | Parcours | Coaching | Messages | Profil
 
 ---
 
-## 5. Renommage du vocabulaire UI
+## 5. Lot C — Différenciation matrimoniale renforcée
+
+Objectif : éliminer les derniers signaux « dating générique » visibles par le reviewer Apple (swipe pass, recherche globale, centres d’intérêt type Tinder, historique séparé) et renforcer l’ancrage **mariage / culture / famille**.
+
+**Commit prod :** `cd13e3d` · **Tests E2E :** `scripts/_vps_test_lot_c.py` (17/17 OK)
+
+### 5.1 Suppression du « pass » swipe
+
+**Fichier :** `templates/partials/explorer_curated_list.html`
+
+- Bouton croix / pass **retiré** de la grille curated.
+- Actions restantes : **Intérêt** (♥) et **Priorité** (★) uniquement — pas de rejet rapide type Tinder.
+
+### 5.2 Recherche globale désactivée
+
+**Fichiers :** `controllers/app_config_controller.py`, `context_processors.py`
+
+| Flag | Valeur Lot C | Effet |
+|------|--------------|-------|
+| `explorer_search_enabled` | `False` (défaut + forcé si curated) | Barre recherche Parcours masquée |
+
+La recherche reste disponible dans **Messages** (discussions) uniquement.
+
+### 5.3 Centres d’intérêt retirés
+
+Retrait du champ « centres d’intérêt » (hobbies type dating app) :
+
+- `templates/auth/onboarding.html` (étape profil)
+- `templates/app/profil.html`
+- Flux inscription / API profil
+
+Remplacé par des champs **projet de vie**, **foi** et **religions recherchées**.
+
+### 5.4 Bandeau « Objectif recherché »
+
+**Nouveau partial :** `templates/partials/matrimonial_objective_banner.html`
+
+Affiché sur :
+
+- **Parcours** (liste curated)
+- **Intérêts**
+- **Objectif** (ex-Profil)
+
+Contenu : intention déclarée (**Mariage**, relation sérieuse…) en bandeau bordeaux visible dès l’ouverture.
+
+### 5.5 Religions recherchées (multi-select)
+
+**Fichiers :** `controllers/onboarding_controller.py`, `controllers/profile_controller.py`, `templates/auth/onboarding.html`, `templates/app/profil.html`
+
+- Sélection multi-religions à l’onboarding (`preferred_religions`).
+- Filtres Parcours : `discover_filters.religions` dans le profil.
+- Aligné avec l’audience matrimoniale francophone (dont diaspora ouest-africaine).
+
+### 5.6 Questions guidées enrichies (culture & famille)
+
+**Nouveau fichier :** `core/data/guided_prompts.py`
+
+| Pool | Contenu |
+|------|---------|
+| `GUIDED_INTRO_POOL` | 12 questions (mariage, culture sénégalaise, famille, repas, belle-famille, valeurs, foi…) |
+| `DAILY_SUGGESTION_POOL` | 5 suggestions du jour rotatives |
+
+**Contrôleur :** `controllers/message_controller.py`
+
+- 3 questions **aléatoires par fil / jour** (`prompts_for_match`).
+- Suggestion du jour affichée dans la conversation (`daily_suggestion`).
+
+### 5.7 Historique fusionné dans Intérêts
+
+**Fichiers :** `templates/app/likes.html`, routes `/historique/`
+
+- Onglets **Reçus** / **Envoyés** dans la page Intérêts.
+- `/historique/` → redirection vers `/likes/?tab=sent`.
+- Dock : entrée **Historique supprimée**.
+
+### 5.8 Dock — onglet « Objectif »
+
+**Fichier :** `templates/partials/explorer_dock.html`
+
+```
+Intérêts | Parcours | Coaching | Messages | Objectif
+```
+
+L’onglet **Profil** devient **Objectif** (intention matrimoniale + filtres + dossier).
+
+### 5.9 Non implémenté (volontaire)
+
+| Item | Raison |
+|------|--------|
+| Blocage homme/femme pour messages / photos | Risque rejet discrimination ; conservé hors scope |
+
+### 5.10 Compte test Lot C
+
+```bash
+python manage.py create_lot_c_test_account
+```
+
+| Champ | Valeur |
+|-------|--------|
+| Email | `test.lotc@timalove.local` |
+| Mot de passe | `AppleReview2026!` |
+
+Ajouter à `.env` : `QUOTA_EXEMPT_EMAILS=...,test.lotc@timalove.local`
+
+---
+
+## 6. Renommage du vocabulaire UI
 
 Objectif : supprimer le framing « dating US » visible par le reviewer.
 
@@ -232,7 +341,7 @@ Objectif : supprimer le framing « dating US » visible par le reviewer.
 
 ---
 
-## 6. Compte démo Apple Review + production
+## 7. Compte démo Apple Review + production
 
 ### Commande Django
 
@@ -264,7 +373,7 @@ python manage.py create_apple_review_account --reset-partners
 Dans `.env` production :
 
 ```
-QUOTA_EXEMPT_EMAILS=apple.review@timalove.local,gooteste@gmail.com
+QUOTA_EXEMPT_EMAILS=apple.review@timalove.local,test.lotc@timalove.local,gooteste@gmail.com
 ```
 
 **Fichiers :** `config/settings.py`, `deploy/env.mytimalove.example`, `timalove/.env.example`
@@ -282,16 +391,17 @@ python scripts/_vps_create_apple_review.py
 | Action | Statut |
 |--------|--------|
 | Migration `0021` appliquée sur VPS | ✅ |
-| Compte review créé | ✅ |
+| **Deploy complet Lots B + C** (`deploy.sh`, commit `cd13e3d`) | ✅ |
+| Compte review + compte test Lot C | ✅ |
 | `QUOTA_EXEMPT_EMAILS` mis à jour | ✅ |
+| Tests E2E prod `_vps_test_lot_c.py` | ✅ 17/17 |
 | Services redémarrés (daphne, celery) | ✅ |
-| **Deploy complet Lot B** (templates, guards, curated UI…) | ⚠️ **Non déployé via git** — hotfix partiel par SCP |
 
-> **Important :** le reviewer Apple **doit** utiliser le compte pré-approuvé. Toute nouvelle inscription reste bloquée sur l’écran de validation.
+> **Important :** le reviewer Apple **doit** utiliser le compte pré-approuvé `apple.review@timalove.local`. Toute nouvelle inscription reste bloquée sur l’écran de validation.
 
 ---
 
-## 7. Permissions et conformité 5.1.1
+## 8. Permissions et conformité 5.1.1
 
 Résumé — détail complet dans **`JUSTIFICATIONS_PERMISSIONS.md`**.
 
@@ -308,7 +418,7 @@ Résumé — détail complet dans **`JUSTIFICATIONS_PERMISSIONS.md`**.
 
 ---
 
-## 8. Fichiers modifiés (inventaire)
+## 9. Fichiers modifiés (inventaire)
 
 ### Flutter — `timalove/apptima/`
 
@@ -335,30 +445,34 @@ Résumé — détail complet dans **`JUSTIFICATIONS_PERMISSIONS.md`**.
 | `models/profile.py` | B | default pending |
 | `models/matching.py` | B | guided_intro_completed |
 | `controllers/signup_controller.py` | B | pending |
-| `controllers/onboarding_controller.py` | B | pending |
+| `controllers/onboarding_controller.py` | B+C | pending + preferred_religions |
 | `controllers/auth_controller.py` | B | pending |
 | `controllers/registration_controller.py` | B | **Nouveau** guards |
 | `controllers/explore_controller.py` | B | curated_daily_feed |
-| `controllers/message_controller.py` | B | messages guidés |
-| `controllers/app_config_controller.py` | B | flags curated / guided |
+| `controllers/message_controller.py` | B+C | messages guidés + prompts culture |
+| `controllers/app_config_controller.py` | B+C | flags curated + search off |
+| `controllers/profile_controller.py` | C | Religions filtres, retrait intérêts |
 | `middleware/auth_guards.py` | B | redirect validation |
 | `views/public/views.py` | B | validation_pending, curated |
 | `views/public/urls.py` | B | `/validation-en-attente/` |
 | `views/app/views.py` | B | guided prompts thread |
-| `context_processors.py` | A+B | flags + tagline |
+| `context_processors.py` | A+C | flags + tagline + search off |
+| `data/guided_prompts.py` | C | **Nouveau** — pool questions culture |
 | `management/commands/create_apple_review_account.py` | A+B | Compte démo |
+| `management/commands/create_lot_c_test_account.py` | C | Compte test E2E |
 
 ### Templates — `timalove/templates/`
 
 | Fichier | Lot | Modification |
 |---------|-----|--------------|
 | `app/validation_pending.html` | B | Écran attente validation |
-| `partials/explorer_curated_list.html` | B | Grille curated |
-| `partials/explorer_dock.html` | A+B | Vocabulaire + Coaching |
-| `app/message_thread.html` | B | Composer guidé |
-| `landing/coaching.html` | B | Page + dock |
-| `landing/explorer.html` | A+B | Parcours, mode curated |
-| `app/likes.html` | A | Intérêts reçus |
+| `partials/explorer_curated_list.html` | B+C | Grille curated, sans pass |
+| `partials/explorer_dock.html` | A+B+C | Vocabulaire + Coaching + Objectif |
+| `partials/matrimonial_objective_banner.html` | C | **Nouveau** bandeau objectif |
+| `app/message_thread.html` | B+C | Composer guidé + suggestion |
+| `app/likes.html` | A+C | Intérêts Reçus/Envoyés |
+| `auth/onboarding.html` | C | Religions, sans centres d’intérêt |
+| `app/profil.html` | C | Objectif, religions filtres |
 | + ~15 partials / pages | A | Vocabulaire matrimonial |
 
 ### Static — `timalove/static/`
@@ -375,12 +489,14 @@ Résumé — détail complet dans **`JUSTIFICATIONS_PERMISSIONS.md`**.
 | Fichier | Modification |
 |---------|--------------|
 | `scripts/_vps_create_apple_review.py` | Wrapper VPS compte review |
+| `scripts/_vps_test_lot_c.py` | Tests E2E prod Lot C |
 | `scripts/_vps_verify_quota_exempt.py` | Vérif quota exempt |
+| `apptima/store-screenshots/` | Captures App Store + mockups HTML |
 | `deploy/env.mytimalove.example` | QUOTA_EXEMPT_EMAILS |
 
 ---
 
-## 9. Déploiement
+## 10. Déploiement
 
 ### Local (dev + test Flutter)
 
@@ -406,14 +522,19 @@ flutter run
 
 > En `DEBUG=True`, Celery exécute les tâches **en synchrone** par défaut — pas besoin de worker pour l’UI.
 
-### Production — deploy complet Lot B
+### Production — deploy complet Lots B + C
 
 ```bash
 # Sur le VPS
 sudo bash /home/jomas/timalove/timalove/deploy.sh
 ```
 
-Avant deploy : **commit + push** de tous les fichiers Lot A/B (actuellement partiellement non versionnés sur Git).
+Vérification post-deploy :
+
+```bash
+python scripts/_vps_test_lot_c.py
+python manage.py create_apple_review_account --reset-partners
+```
 
 ### Migration
 
@@ -423,7 +544,7 @@ python manage.py migrate core 0021
 
 ---
 
-## 10. App Store Connect & Play Console
+## 11. App Store Connect & Play Console
 
 Textes **copy-paste** prêts : **`APP_STORE_RESUBMISSION.md`**
 
@@ -436,19 +557,27 @@ Textes **copy-paste** prêts : **`APP_STORE_RESUBMISSION.md`**
 - [ ] Sous-titre : **« Parcours vers le mariage »**
 - [ ] Description + mots-clés matrimoniaux (pas `dating`, `tinder`, `hookup`)
 - [ ] Catégorie : **Style de vie** ou **Réseaux sociaux**
-- [ ] Captures refaites (ordre recommandé ci-dessous)
+- [ ] Captures uploadées depuis `apptima/store-screenshots/iphone-6.7/` (voir README)
 - [ ] Compte review testé sur iPhone réel
-- [ ] Deploy complet Lot B sur production
+- [ ] Deploy Lots B + C confirmé sur production
 - [ ] URLs légales en 200 : privacy, suppression compte, sécurité enfants
 
-### Captures recommandées (ordre)
+### Captures recommandées (ordre — 8 écrans)
 
-1. Onboarding natif « Parcours vers le mariage »
-2. Charte matrimoniale (case cochée)
-3. Parcours — « Sélection du jour » + % Compatible + intention Mariage
-4. Messages — questions guidées
-5. Coaching (onglet + page)
-6. Profil avec intention **Mariage**
+Fichiers PNG : **`apptima/store-screenshots/iphone-6.7/`**
+
+| # | Fichier | Contenu |
+|---|---------|---------|
+| 1 | `01-onboarding-mission.png` | Onboarding natif — mission matrimoniale |
+| 2 | `02-onboarding-parcours.png` | Onboarding — parcours guidé |
+| 3 | `03-onboarding-charte.png` | Charte matrimoniale (case cochée) |
+| 4 | `04-parcours-curated.png` | Parcours curated + bandeau Objectif |
+| 5 | `05-messages-guides.png` | Messages — questions culture/famille |
+| 6 | `06-coaching.png` | Coaching — onglet principal |
+| 7 | `07-objectif-profil.png` | Objectif — intention Mariage |
+| 8 | `08-interets.png` | Intérêts Reçus/Envoyés |
+
+Régénérer : `python apptima/store-screenshots/render_screenshots.py`
 
 ### Google Play
 
@@ -458,7 +587,7 @@ Textes **copy-paste** prêts : **`APP_STORE_RESUBMISSION.md`**
 
 ---
 
-## 11. Parcours reviewer (3 minutes)
+## 12. Parcours reviewer (3 minutes)
 
 Script à suivre avec le compte `apple.review@timalove.local` :
 
@@ -466,45 +595,44 @@ Script à suivre avec le compte `apple.review@timalove.local` :
 |-------|--------|------------------------------|
 | 1 | Installation fraîche | Onboarding natif 3 écrans + charte obligatoire |
 | 2 | Connexion démo | Accès direct (pas d’écran validation) |
-| 3 | Onglet **Parcours** | Liste curated 8 profils, % Compatible, intention Mariage |
+| 3 | Onglet **Parcours** | Liste curated 8 profils, bandeau **Objectif : Mariage**, % Compatible, pas de croix pass ni recherche |
 | 4 | **Messages → Awa** | Conversation active, intro guidée déjà envoyée |
-| 5 | **Messages → Fatou** | Fil vide → choix obligatoire parmi 3 questions |
+| 5 | **Messages → Fatou** | Fil vide → 3 questions culture/famille obligatoires |
 | 6 | Onglet **Coaching** | Page coaching accessible depuis le dock |
+| 7 | Onglet **Objectif** | Bandeau intention + religions recherchées + filtres |
+| 8 | Onglet **Intérêts** | Onglets Reçus / Envoyés (plus d’Historique séparé) |
 
 ---
 
-## 12. Points restants et risques
+## 13. Points restants et risques
 
 ### À faire avant resoumission
 
 | Item | Priorité |
 |------|----------|
-| Commit + push + `deploy.sh` complet sur VPS | 🔴 Haute |
 | Rebuild iOS avec onboarding natif + build number 5+ | 🔴 Haute |
-| Nouvelles captures App Store | 🔴 Haute |
+| Upload captures `store-screenshots/iphone-6.7/` | 🔴 Haute |
+| Métadonnées + Notes for Review (Lot C) | 🔴 Haute |
 | Nettoyer termes « Match » / « Explorer » restants | 🟡 Moyenne |
 | `pubspec.yaml` description encore « Rencontres sérieuses » | 🟡 Moyenne |
-| `test/widget_test.dart` références Sugar Paper legacy | 🟡 Moyenne |
 | Vérifier absence Sugar Paper / GPS livreur dans le build review | 🔴 Haute |
-
-### Plan B si second refus 4.3
-
-Voir **`APP_STORE_GUIDELINE_4_3.md` §5** :
-
-- PWA matrimoniale en parallèle.
-- Demande de rendez-vous téléphonique App Review Resolution Center.
 
 ### Risque prod actuel
 
-La migration `0021` est appliquée en prod : **nouvelles inscriptions passent en `pending`**, mais l’UI Lot B complète (écran validation, curated, dock coaching) n’est pas encore déployée via git. **Deploy complet urgent** avant ouverture aux nouveaux inscrits.
+Lots B + C sont **déployés** : nouvelles inscriptions passent en `pending` avec UI complète (validation, curated, dock Objectif). Surveiller le flux modération admin si volume d’inscriptions augmente.
+
+### Plan B si second refus 4.3
+
+Voir **`APP_STORE_GUIDELINE_4_3.md` §5** — PWA matrimoniale ou rendez-vous téléphonique App Review Resolution Center.
 
 ---
 
-## 13. Documents connexes
+## 14. Documents connexes
 
 | Document | Contenu |
 |----------|---------|
-| **`APP_STORE_RESUBMISSION.md`** | Textes finaux App Store Connect (Notes, Resolution Center, fiche FR) |
+| **`APP_STORE_RESUBMISSION.md`** | Textes finaux App Store Connect (Notes, Resolution Center, fiche FR, captures) |
+| **`store-screenshots/README.md`** | Specs tailles Apple + mapping fichiers |
 | **`APP_STORE_GUIDELINE_4_3.md`** | Analyse refus 4.3, réponse EN initiale, checklists, plan B |
 | **`JUSTIFICATIONS_PERMISSIONS.md`** | Matrice permissions iOS / Android / App Privacy |
 | **`AUTHENTIFICATION_SOCIALE.md`** | Sign in with Apple / Google |

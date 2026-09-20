@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=390, height=844">
+  <title>TimaLove — Coaching</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 390px; height: 844px; background: #FDF5F0; font-family: 'DM Sans', sans-serif; color: #2D1F22; overflow: hidden; display: flex; flex-direction: column; }
+    .top { padding: 48px 16px 8px; }
+    .logo { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: #E8637A; margin-bottom: 16px; }
+    .hero { background: #3D2024; color: #F5E6E8; border-radius: 20px; padding: 24px 20px; margin: 0 16px; }
+    .hero-k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #C4858B; margin-bottom: 8px; }
+    .hero h1 { font-family: 'Playfair Display', serif; font-size: 26px; color: #fff; line-height: 1.2; margin-bottom: 10px; }
+    .hero p { font-size: 14px; line-height: 1.5; color: #F5E6E8; }
+    .cards { padding: 16px; display: grid; gap: 12px; flex: 1; }
+    .card { background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 4px 16px rgba(45,31,34,.05); }
+    .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .card p { font-size: 13px; color: #6B5A5E; line-height: 1.45; }
+    .btn { display: inline-block; margin-top: 10px; background: #E8637A; color: #fff; border: 0; border-radius: 999px; padding: 10px 16px; font-size: 13px; font-weight: 600; }
+    .dock { border-top: 1px solid #F5E6E8; background: #fff; display: flex; padding: 8px 0 24px; }
+    .tab { flex: 1; text-align: center; font-size: 10px; color: #9B8A8E; }
+    .tab.on { color: #E8637A; font-weight: 600; }
+    .tab-ico { font-size: 18px; display: block; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+  <div class="top"><div class="logo">TimaLove</div></div>
+  <div class="hero">
+    <p class="hero-k">Accompagnement humain</p>
+    <h1>Coaching relationnel</h1>
+    <p>Préparez sereinement votre projet d'union : échanges individuels avec un coach TimaLove, en complément de la mise en relation.</p>
+  </div>
+  <div class="cards">
+    <article class="card">
+      <h2>Session individuelle</h2>
+      <p>Clarifiez vos attentes, vos valeurs et votre projet de couple avant ou pendant une mise en relation.</p>
+      <button class="btn">Demander un créneau</button>
+    </article>
+    <article class="card">
+      <h2>Conseils matrimoniaux</h2>
+      <p>Orientation respectueuse, sans jugement — pour avancer vers une union stable.</p>
+    </article>
+  </div>
+  <nav class="dock">
+    <span class="tab"><span class="tab-ico">♥</span>Intérêts</span>
+    <span class="tab"><span class="tab-ico">◎</span>Parcours</span>
+    <span class="tab on"><span class="tab-ico">▣</span>Coaching</span>
+    <span class="tab"><span class="tab-ico">✉</span>Messages</span>
+    <span class="tab"><span class="tab-ico">★</span>Objectif</span>
+  </nav>
+</body>
+</html>
