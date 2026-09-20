@@ -9,15 +9,26 @@
   body.explorer-page { display: flex; flex-direction: column; background: #FDF5F0; color: #2D1F22; }
   body.explorer-page .explorer { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   body.explorer-page .explorer__chrome, body.explorer-page .explorer__bottom { opacity: 1 !important; visibility: visible !important; }
-  body.explorer-page--curated { overflow: auto; height: auto; min-height: 100dvh; }
-  body.explorer-page--curated .explorer { min-height: 100dvh; overflow: visible; }
+  html:has(body.explorer-page--curated),
+  body.explorer-page--curated {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  body.explorer-page--curated .explorer {
+    flex: 1 1 auto;
+    min-height: 100dvh;
+    height: auto;
+    overflow: visible;
+  }
   body.explorer-page--curated .explorer-hearts,
   body.explorer-page--curated .explorer-rise { display: none; }
 </style>
 <script src="{% static 'js/explorer-like-burst.js' %}?v=20260821b4" defer></script>
 <script src="{% static 'js/explorer-chrome.js' %}?v=20260826h2" defer></script>
-{% if user.is_authenticated and not curated_mode %}
-<script src="{% static 'js/explorer-filters.js' %}?v=20260826f1" defer></script>
+{% if user.is_authenticated %}
+<script src="{% static 'js/explorer-filters.js' %}?v=20260920f1" defer></script>
 {% endif %}
 {% if app_features.explorer_search_enabled and not curated_mode %}
 <script src="{% static 'js/explorer-search.js' %}?v=20260826s1" defer></script>
@@ -25,8 +36,8 @@
 {% if user.is_authenticated %}
 <script src="{% static 'js/message-invite.js' %}?v=20260826m7" defer></script>
 <script src="{% static 'js/explorer-match.js' %}?v=20260910m2" defer></script>
-{% if not curated_mode %}
-<script src="{% static 'js/explorer-swipe.js' %}?v=20260908sub1" defer></script>
+{% if curated_mode %}
+<script src="{% static 'js/explorer-curated.js' %}?v=20260920c1" defer></script>
 {% else %}
 <script src="{% static 'js/explorer-swipe.js' %}?v=20260908sub1" defer></script>
 {% endif %}

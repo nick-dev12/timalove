@@ -407,7 +407,14 @@ def update_filters(profile: Profile, data: dict) -> dict:
         "online_only": bool(data.get("online_only")),
     }
     profile.discover_filters = filters
-    profile.save(update_fields=["discover_filters", "updated_at"])
+    update_fields = ["discover_filters", "updated_at"]
+    intent = (data.get("relationship_intent") or "").strip()
+    from core.models.choices import RelationshipIntent
+
+    if intent and intent in {c.value for c in RelationshipIntent}:
+        profile.relationship_intent = intent
+        update_fields.append("relationship_intent")
+    profile.save(update_fields=update_fields)
     return filters
 
 

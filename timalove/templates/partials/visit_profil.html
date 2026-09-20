@@ -1,11 +1,11 @@
 {% load static %}
 <div class="visit{% if member.subscription_badge == 'vip' %} is-vip{% elif member.subscription_badge == 'premium' %} is-premium{% endif %}" data-profile-id="{{ member.id }}">
   <header class="visit__nav">
-    {% include "partials/btn_back.html" with is_button=True extra_class="visit__nav-back" extra="data-profile-modal-close" %}
     <p class="visit__nav-brand brand-mark">
       <span>TimaLove</span>
       <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
     </p>
+    <span class="visit__nav-spacer" aria-hidden="true"></span>
     <button type="button" class="visit__nav-btn" data-profile-modal-close aria-label="Fermer le profil">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
     </button>
@@ -96,18 +96,23 @@
           Message
         </a>
         {% endif %}
-        <div class="visit__compat" style="--compat: {{ member.compatibility }}" role="img" aria-label="Compatibilité {{ member.compatibility }} pour cent">
-          <svg class="visit__compat-ring" viewBox="0 0 72 72" aria-hidden="true">
-            <circle class="visit__compat-track" cx="36" cy="36" r="30"></circle>
-            <circle class="visit__compat-value" cx="36" cy="36" r="30"></circle>
-          </svg>
-          <div class="visit__compat-label">
-            <strong>{{ member.compatibility }}%</strong>
-            <span>Mise en relation</span>
-          </div>
-        </div>
       </div>
     </header>
+    {% if member.photos or member.photo_url %}
+    <div class="visit__thumbs" role="list" aria-label="Galerie photos">
+      {% for photo in member.photos %}
+      <button type="button" class="visit__thumb visit__gallery-open" role="listitem" aria-label="Photo {{ forloop.counter }} de {{ member.first_name }}">
+        <img src="{{ photo }}" alt="Photo {{ forloop.counter }} de {{ member.first_name }}" loading="lazy" width="80" height="80">
+      </button>
+      {% empty %}
+      {% if member.photo_url %}
+      <button type="button" class="visit__thumb visit__gallery-open" role="listitem" aria-label="Photo de profil de {{ member.first_name }}">
+        <img src="{{ member.photo_url }}" alt="{{ member.first_name }}" loading="lazy" width="80" height="80">
+      </button>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
 
   <main class="visit__sheet">
@@ -135,10 +140,11 @@
       </div>
     </section>
 
-    <div class="visit__tabs" role="tablist" aria-label="Sections du profil" data-visit-tabs>
+    <div class="visit__tabs visit__tabs--profile" role="tablist" aria-label="Sections du profil" data-visit-tabs>
       <button type="button" class="visit__tab is-active" role="tab" aria-selected="true" aria-controls="panel-about" data-tab="about">À propos</button>
-      <button type="button" class="visit__tab" role="tab" aria-selected="false" aria-controls="panel-gallery" data-tab="gallery">Galerie</button>
-      <button type="button" class="visit__tab" role="tab" aria-selected="false" aria-controls="panel-affinity" data-tab="affinity">Affinités</button>
+      <button type="button" class="visit__tab" role="tab" aria-selected="false" aria-controls="panel-interests" data-tab="interests">Ce qui l’anime</button>
+      <button type="button" class="visit__tab" role="tab" aria-selected="false" aria-controls="panel-values" data-tab="values">Ce qui compte</button>
+      <button type="button" class="visit__tab" role="tab" aria-selected="false" aria-controls="panel-looking" data-tab="looking">Vers l’autre</button>
     </div>
 
     <section class="visit__panel" id="panel-about" role="tabpanel" data-panel="about">
@@ -188,7 +194,9 @@
           {% endif %}
         </ul>
       </article>
+    </section>
 
+    <section class="visit__panel" id="panel-interests" role="tabpanel" data-panel="interests" hidden>
       <article class="visit-glass visit__card">
         <div class="visit__card-head">
           <p class="visit__kicker">Ce qui l’anime</p>
@@ -217,7 +225,9 @@
         <p class="visit__about-text visit__about-text--muted">{{ member.first_name }} n’a pas encore défini ses intérêts et son caractère. Un premier échange peut déjà tout dire.</p>
         {% endif %}
       </article>
+    </section>
 
+    <section class="visit__panel" id="panel-values" role="tabpanel" data-panel="values" hidden>
       <article class="visit-glass visit__card">
         <div class="visit__card-head">
           <p class="visit__kicker">Ce qui compte</p>
@@ -233,7 +243,9 @@
         <p class="visit__about-text visit__about-text--muted">{{ member.first_name }} n’a pas encore partagé ses valeurs. La rencontre les révélera, en douceur.</p>
         {% endif %}
       </article>
+    </section>
 
+    <section class="visit__panel" id="panel-looking" role="tabpanel" data-panel="looking" hidden>
       <article class="visit-glass visit__card">
         <div class="visit__card-head">
           <p class="visit__kicker">Vers l’autre</p>
@@ -255,67 +267,6 @@
         <div class="visit__pills">
           <span class="is-on">{{ member.relationship_intent_label }}</span>
         </div>
-        {% endif %}
-      </article>
-    </section>
-
-    <section class="visit__panel" id="panel-gallery" role="tabpanel" data-panel="gallery" hidden>
-      {% if member.photos %}
-      <div class="visit__gallery">
-        {% for photo in member.photos %}
-        <figure class="visit__gallery-item">
-          <button type="button" class="visit__gallery-open" aria-label="Agrandir la photo {{ forloop.counter }} de {{ member.first_name }}">
-            <img src="{{ photo }}" alt="Photo {{ forloop.counter }} de {{ member.first_name }}" loading="lazy">
-          </button>
-        </figure>
-        {% endfor %}
-      </div>
-      {% else %}
-      <article class="visit-glass visit__card">
-        <p class="visit__about-text visit__about-text--muted">Aucune photo supplémentaire pour le moment.</p>
-      </article>
-      {% endif %}
-    </section>
-
-    <section class="visit__panel" id="panel-affinity" role="tabpanel" data-panel="affinity" hidden>
-      <article class="visit-glass visit__card">
-        <h2 class="visit__card-title">Pourquoi ça pourrait matcher</h2>
-        <p class="visit__card-lead">Indices statiques — le vrai scoring arrivera avec le matching.</p>
-        <ul class="visit__affinity">
-          <li>
-            <span class="visit__affinity-score">{{ member.compatibility }}%</span>
-            <div>
-              <strong>Compatibilité globale</strong>
-              <p>Projection basée sur le profil public actuel.</p>
-            </div>
-          </li>
-          <li>
-            <span class="visit__affinity-score">—</span>
-            <div>
-              <strong>Intention de vie</strong>
-              <p>{% if member.relationship_intent_label %}{{ member.first_name }} vise {{ member.relationship_intent_label|lower }}.{% else %}L’intention n’est pas encore précisée — le dialogue l’éclairera.{% endif %}{% if member.life_project %} {{ member.life_project }}{% endif %}</p>
-            </div>
-          </li>
-          <li>
-            <span class="visit__affinity-score">{% if member.looking_for_labels %}{{ member.looking_for_labels|length }}{% else %}—{% endif %}</span>
-            <div>
-              <strong>Profil recherché</strong>
-              <p>{% if member.looking_for_labels %}{{ member.looking_for_labels|join:", " }}.{% elif member.looking_for_text %}{{ member.looking_for_text }}{% else %}Pas encore précisé, avec beaucoup de cœur.{% endif %}</p>
-            </div>
-          </li>
-        </ul>
-      </article>
-
-      <article class="visit-glass visit__card">
-        <h2 class="visit__card-title">Valeurs partagées</h2>
-        {% if member.life_value_labels %}
-        <div class="visit__pills">
-          {% for value in member.life_value_labels %}
-          <span class="is-on">{{ value }}</span>
-          {% endfor %}
-        </div>
-        {% else %}
-        <p class="visit__about-text visit__about-text--muted">Les valeurs se diront au fil de la conversation.</p>
         {% endif %}
       </article>
     </section>

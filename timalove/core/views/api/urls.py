@@ -12,6 +12,7 @@ urlpatterns = [
     path("swipes/", views.swipes, name="swipes"),
     path("likes/incoming/", views.likes_incoming, name="likes_incoming"),
     path("likes/count/", views.likes_count, name="likes_count"),
+    path("profiles/online/", views.profiles_online_status, name="profiles_online_status"),
     path("matches/", views.matches, name="matches"),
     path("matches/<uuid:partner_id>/unmatch/", views.unmatch, name="unmatch"),
     path("messages/", views.messages, name="messages"),

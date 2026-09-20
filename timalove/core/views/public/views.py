@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.http import require_GET, require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from core.controllers import site_settings_controller
 from core.data import legal as legal_data
@@ -125,6 +125,7 @@ def explorer(request):
     curated_mode = app_config_controller.explorer_curated_mode_enabled() and profile is not None
 
     if curated_mode:
+        explore_controller.reset_curated_session(request.session)
         cards, curated_meta = explore_controller.curated_daily_feed(profile, request.session)
         quota = None
         from core.controllers import profile_controller, quota_controller
@@ -132,12 +133,14 @@ def explorer(request):
         quota = quota_controller.snapshot(profile)
         filters_ctx: dict = {}
         from core.data.countries import COUNTRIES_FR
-        from core.models.choices import Religion
+        from core.models.choices import Religion, RelationshipIntent
 
         filters_ctx = {
             "discover_filters": profile_controller.filters_for(profile),
             "religions": Religion.choices,
             "countries": COUNTRIES_FR,
+            "relationship_intents": RelationshipIntent.choices,
+            "member_profile": profile,
         }
         context = {
             "title": "Parcours",
@@ -190,7 +193,7 @@ def explorer(request):
     if request.user.is_authenticated:
         from core.controllers import profile_controller
         from core.data.countries import COUNTRIES_FR
-        from core.models.choices import Religion
+        from core.models.choices import Religion, RelationshipIntent
 
         profile = getattr(request.user, "profile", None)
         if profile is not None:
@@ -198,6 +201,8 @@ def explorer(request):
                 "discover_filters": profile_controller.filters_for(profile),
                 "religions": Religion.choices,
                 "countries": COUNTRIES_FR,
+                "relationship_intents": RelationshipIntent.choices,
+                "member_profile": profile,
             }
     context = {
         "title": "Parcours",
@@ -219,6 +224,39 @@ def explorer(request):
         return render(request, "partials/explorer_slides.html", context)
 
     return render(request, "landing/explorer.html", context)
+
+
+@require_POST
+def explorer_curated_more(request):
+    blocked = _explorer_access(request)
+    if blocked:
+        return blocked
+    from core.controllers import app_config_controller, explore_controller
+
+    profile = getattr(request.user, "profile", None)
+    if profile is None or not app_config_controller.explorer_curated_mode_enabled():
+        return HttpResponse(status=404)
+
+    prev_ids = list(request.session.get(explore_controller.SESSION_CURATED_IDS_KEY) or [])
+    prev_count = len(prev_ids)
+    step = app_config_controller.curated_load_more_step()
+    cards, curated_meta = explore_controller.curated_daily_feed(profile, request.session, expand_by=step)
+    new_cards = cards[prev_count:]
+    context = {
+        "cards": new_cards,
+        "curated_meta": curated_meta,
+    }
+    if request.headers.get("HX-Request") == "true":
+        if not new_cards and not curated_meta.get("has_more"):
+            return HttpResponse("")
+        parts = []
+        if new_cards:
+            parts.append(render(request, "partials/explorer_curated_cards.html", context).content.decode())
+        parts.append(
+            render(request, "partials/explorer_curated_more_btn.html", context).content.decode()
+        )
+        return HttpResponse("".join(parts))
+    return redirect("public:explorer")
 
 
 @require_GET

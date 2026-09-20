@@ -16,15 +16,16 @@ Document de référence **unique** listant tout ce qui a été apporté au proje
 3. [Lot A — Positionnement matrimonial natif](#3-lot-a--positionnement-matrimonial-natif)
 4. [Lot B — Communauté guidée (anti-dating)](#4-lot-b--communauté-guidée-anti-dating)
 5. [Lot C — Différenciation matrimoniale renforcée](#5-lot-c--différenciation-matrimoniale-renforcée)
-6. [Renommage du vocabulaire UI](#6-renommage-du-vocabulaire-ui)
-7. [Compte démo Apple Review + production](#7-compte-démo-apple-review--production)
-8. [Permissions et conformité 5.1.1](#8-permissions-et-conformité-511)
-9. [Fichiers modifiés (inventaire)](#9-fichiers-modifiés-inventaire)
-10. [Déploiement](#10-déploiement)
-11. [App Store Connect & Play Console](#11-app-store-connect--play-console)
-12. [Parcours reviewer (3 minutes)](#12-parcours-reviewer-3-minutes)
-13. [Points restants et risques](#13-points-restants-et-risques)
-14. [Documents connexes](#14-documents-connexes)
+6. [Lot D — Parcours UX & modale profil](#6-lot-d--parcours-ux--modale-profil)
+7. [Renommage du vocabulaire UI](#7-renommage-du-vocabulaire-ui)
+8. [Compte démo Apple Review + production](#8-compte-démo-apple-review--production)
+9. [Permissions et conformité 5.1.1](#9-permissions-et-conformité-511)
+10. [Fichiers modifiés (inventaire)](#10-fichiers-modifiés-inventaire)
+11. [Déploiement](#11-déploiement)
+12. [App Store Connect & Play Console](#12-app-store-connect--play-console)
+13. [Parcours reviewer (3 minutes)](#13-parcours-reviewer-3-minutes)
+14. [Points restants et risques](#14-points-restants-et-risques)
+15. [Documents connexes](#15-documents-connexes)
 
 ---
 
@@ -57,13 +58,14 @@ Ne pas réécrire l’app, mais **rendre visible** ce qui existe déjà (intenti
 
 ---
 
-## 2. Vue d’ensemble — Lots A, B et C
+## 2. Vue d’ensemble — Lots A, B, C et D
 
 | Lot | Thème | Statut code | Statut prod (20/09/2026) |
 |-----|-------|-------------|--------------------------|
 | **A** | Onboarding natif, charte, splash, iPhone only, vocabulaire UI, permissions | ✅ Livré | ⚠️ Flutter à rebuild + upload build iOS 5+ |
 | **B** | Pending, validation, liste curated, messages guidés, coaching dock | ✅ Livré | ✅ Déployé (`deploy.sh`, migration 0021) |
 | **C** | Anti-swipe, recherche off, bandeau objectif, religions, questions culture, Intérêts unifiés, dock Objectif | ✅ Livré | ✅ Déployé (commit `cd13e3d`, tests E2E 17/17) |
+| **D** | Parcours UX (grille, aléatoire, voir plus), modale profil, dock Moi, en ligne, filtres | ✅ Livré | 🟡 Ce déploiement |
 | **Manuel** | Métadonnées store, captures, réponse Resolution Center | 🟡 En cours | Captures dans `store-screenshots/` |
 
 ---
@@ -270,15 +272,22 @@ Contenu : intention déclarée (**Mariage**, relation sérieuse…) en bandeau b
 - `/historique/` → redirection vers `/likes/?tab=sent`.
 - Dock : entrée **Historique supprimée**.
 
-### 5.8 Dock — onglet « Objectif »
+### 5.8 Dock — onglet « Objectif » *(Lot C — remplacé par Lot D)*
 
-**Fichier :** `templates/partials/explorer_dock.html`
+**Lot C (historique) :**
 
 ```
 Intérêts | Parcours | Coaching | Messages | Objectif
 ```
 
-L’onglet **Profil** devient **Objectif** (intention matrimoniale + filtres + dossier).
+**Lot D (actuel) — `templates/partials/explorer_dock.html` :**
+
+```
+Intérêts | Parcours | Messages | Moi 🙂
+```
+
+- **Coaching** retiré du dock (page `/coaching/` toujours accessible via menu si besoin).
+- **Objectif** renommé **Moi 🙂** — même destination `/profil/` (intention + filtres + dossier).
 
 ### 5.9 Non implémenté (volontaire)
 
@@ -301,7 +310,67 @@ Ajouter à `.env` : `QUOTA_EXEMPT_EMAILS=...,test.lotc@timalove.local`
 
 ---
 
-## 6. Renommage du vocabulaire UI
+## 6. Lot D — Parcours UX & modale profil
+
+Objectif : polish UX du **Parcours curated** et de la **modale profil** pour la resoumission App Store — navigation plus claire, moins de signaux « dating swipe », découverte renouvelée à chaque visite.
+
+### 6.1 Parcours — grille & présentation
+
+| Modification | Fichier(s) |
+|--------------|------------|
+| Grille **2 cartes/ligne** (tablette / desktop) | `static/css/timalove.css` |
+| Suppression du texte d’intro `curated-list__lead` | `partials/explorer_curated_list.html` |
+| Cartes extraites en partial `explorer_curated_card.html` | `partials/explorer_curated_*.html` |
+| **Carte entière cliquable** → modale profil (♥ / ★ / compat exclus) | `explorer_curated_card.html`, `explorer-chrome.js` |
+| **Point vert** si membre en ligne (poll 30 s) | `explorer_curated_card.html`, `explorer-curated.js`, API `/api/profiles/online/` |
+
+### 6.2 Parcours — sélection aléatoire & pagination
+
+**Fichiers :** `controllers/explore_controller.py`, `controllers/app_config_controller.py`, `views/public/views.py`, `static/js/explorer-curated.js`
+
+| Comportement | Détail |
+|--------------|--------|
+| **20 profils** au chargement initial | `curated_daily_limit` (défaut 20) |
+| Bouton **Voir plus** | +10 profils (`curated_load_more_step`), max **50/jour** |
+| **Nouvelle sélection aléatoire** | À chaque GET `/explorer/` (refresh ou retour sur la page) — seed aléatoire + shuffle |
+| « Voir plus » (même visite) | Conserve la liste en cours, ajoute sans remélanger |
+
+Route POST : `/explorer/curated-plus/` (`explorer_curated_more`).
+
+### 6.3 Parcours — filtres & scroll
+
+| Modification | Fichier(s) |
+|--------------|------------|
+| Bouton **Filtres** visible en haut à droite (mode curated) | `landing/explorer.html` |
+| Champ **Objectif recherché** dans la modale filtres | `explorer_filters_modal.html`, `profile_controller.py`, `explorer-filters.js` |
+| Fix scroll bloqué (dock fixe + overflow curated) | `timalove.css`, `explorer.html` |
+
+### 6.4 Modale profil — layout & galerie
+
+**Fichier principal :** `partials/visit_profil.html` + `static/css/timalove.css` + `explorer-chrome.js`
+
+| Avant | Après |
+|-------|-------|
+| Grande photo hero + onglet Galerie | Header compact **visit__ig** (avatar rond + nom + Message) |
+| Onglets À propos / Galerie / Affinités | **À propos** · **Ce qui l'anime** · **Ce qui compte** · **Vers l'autre** |
+| Cercle « X% Mise en relation » dans le header | **Supprimé** (compat reste sur cartes Parcours) |
+| Bouton « Retour » + logo centré | **Logo TimaLove à gauche** + bouton **✕** à droite |
+| — | Mini-galerie **80×80** scrollable sous l’identité → lightbox plein écran |
+
+Fix CSS : règle `.profile-modal .visit__gallery-open` limitée à `.visit__gallery-item` (ne casse plus les miniatures).
+
+### 6.5 API en ligne
+
+```
+GET /api/profiles/online/?ids=uuid1,uuid2,...
+→ { "online": { "uuid1": true, "uuid2": false } }
+```
+
+**Fichiers :** `views/api/views.py`, `views/api/urls.py`, `explore_controller.online_status_for_ids`
+
+---
+
+## 7. Renommage du vocabulaire UI
 
 Objectif : supprimer le framing « dating US » visible par le reviewer.
 
@@ -341,7 +410,7 @@ Objectif : supprimer le framing « dating US » visible par le reviewer.
 
 ---
 
-## 7. Compte démo Apple Review + production
+## 8. Compte démo Apple Review + production
 
 ### Commande Django
 
@@ -391,7 +460,8 @@ python scripts/_vps_create_apple_review.py
 | Action | Statut |
 |--------|--------|
 | Migration `0021` appliquée sur VPS | ✅ |
-| **Deploy complet Lots B + C** (`deploy.sh`, commit `cd13e3d`) | ✅ |
+| **Deploy Lots B + C** (`deploy.sh`, commit `cd13e3d`) | ✅ |
+| **Deploy Lot D** (Parcours UX + modale profil) | 🟡 Ce déploiement |
 | Compte review + compte test Lot C | ✅ |
 | `QUOTA_EXEMPT_EMAILS` mis à jour | ✅ |
 | Tests E2E prod `_vps_test_lot_c.py` | ✅ 17/17 |
@@ -401,7 +471,7 @@ python scripts/_vps_create_apple_review.py
 
 ---
 
-## 8. Permissions et conformité 5.1.1
+## 9. Permissions et conformité 5.1.1
 
 Résumé — détail complet dans **`JUSTIFICATIONS_PERMISSIONS.md`**.
 
@@ -418,7 +488,7 @@ Résumé — détail complet dans **`JUSTIFICATIONS_PERMISSIONS.md`**.
 
 ---
 
-## 9. Fichiers modifiés (inventaire)
+## 10. Fichiers modifiés (inventaire)
 
 ### Flutter — `timalove/apptima/`
 
@@ -448,13 +518,15 @@ Résumé — détail complet dans **`JUSTIFICATIONS_PERMISSIONS.md`**.
 | `controllers/onboarding_controller.py` | B+C | pending + preferred_religions |
 | `controllers/auth_controller.py` | B | pending |
 | `controllers/registration_controller.py` | B | **Nouveau** guards |
-| `controllers/explore_controller.py` | B | curated_daily_feed |
+| `controllers/explore_controller.py` | B+D | curated_daily_feed, aléatoire, online_status |
 | `controllers/message_controller.py` | B+C | messages guidés + prompts culture |
-| `controllers/app_config_controller.py` | B+C | flags curated + search off |
-| `controllers/profile_controller.py` | C | Religions filtres, retrait intérêts |
+| `controllers/app_config_controller.py` | B+C+D | flags curated, search off, limites voir plus |
+| `controllers/profile_controller.py` | C+D | Religions filtres, intention recherchée |
 | `middleware/auth_guards.py` | B | redirect validation |
-| `views/public/views.py` | B | validation_pending, curated |
-| `views/public/urls.py` | B | `/validation-en-attente/` |
+| `views/public/views.py` | B+D | validation_pending, curated, curated-plus |
+| `views/public/urls.py` | B+D | `/validation-en-attente/`, `/explorer/curated-plus/` |
+| `views/api/views.py` | D | `profiles_online_status` |
+| `views/api/urls.py` | D | `/api/profiles/online/` |
 | `views/app/views.py` | B | guided prompts thread |
 | `context_processors.py` | A+C | flags + tagline + search off |
 | `data/guided_prompts.py` | C | **Nouveau** — pool questions culture |
@@ -466,9 +538,15 @@ Résumé — détail complet dans **`JUSTIFICATIONS_PERMISSIONS.md`**.
 | Fichier | Lot | Modification |
 |---------|-----|--------------|
 | `app/validation_pending.html` | B | Écran attente validation |
-| `partials/explorer_curated_list.html` | B+C | Grille curated, sans pass |
-| `partials/explorer_dock.html` | A+B+C | Vocabulaire + Coaching + Objectif |
+| `partials/explorer_curated_list.html` | B+C+D | Grille curated, sans pass, partials cartes |
+| `partials/explorer_curated_card.html` | D | **Nouveau** — carte + en ligne + clic modale |
+| `partials/explorer_curated_cards.html` | D | **Nouveau** — fragment HTMX voir plus |
+| `partials/explorer_curated_more_btn.html` | D | **Nouveau** — bouton Voir plus |
+| `partials/explorer_dock.html` | A+B+C+D | Dock 4 onglets (Moi 🙂) |
 | `partials/matrimonial_objective_banner.html` | C | **Nouveau** bandeau objectif |
+| `partials/visit_profil.html` | D | Modale : onglets, galerie 80px, nav sans Retour |
+| `landing/explorer.html` | D | Filtres curated, scroll fix |
+| `partials/explorer_filters_modal.html` | D | Intention recherchée |
 | `app/message_thread.html` | B+C | Composer guidé + suggestion |
 | `app/likes.html` | A+C | Intérêts Reçus/Envoyés |
 | `auth/onboarding.html` | C | Religions, sans centres d’intérêt |
@@ -479,7 +557,10 @@ Résumé — détail complet dans **`JUSTIFICATIONS_PERMISSIONS.md`**.
 
 | Fichier | Lot | Modification |
 |---------|-----|--------------|
-| `css/timalove.css` | B | Styles curated + guided |
+| `css/timalove.css` | B+D | Curated grille, modale profil, dock, scroll |
+| `js/explorer-curated.js` | D | **Nouveau** — voir plus + poll en ligne |
+| `js/explorer-chrome.js` | D | Modale profil, clic carte curated |
+| `js/explorer-filters.js` | D | Filtre intention recherchée |
 | `js/explorer-match.js` | A | % Compatible |
 | `js/message-invite.js` | A | Mise en relation |
 | `js/realtime.js` | A | Notifications renommées |
@@ -496,7 +577,7 @@ Résumé — détail complet dans **`JUSTIFICATIONS_PERMISSIONS.md`**.
 
 ---
 
-## 10. Déploiement
+## 11. Déploiement
 
 ### Local (dev + test Flutter)
 
@@ -544,7 +625,7 @@ python manage.py migrate core 0021
 
 ---
 
-## 11. App Store Connect & Play Console
+## 12. App Store Connect & Play Console
 
 Textes **copy-paste** prêts : **`APP_STORE_RESUBMISSION.md`**
 
@@ -587,7 +668,7 @@ Régénérer : `python apptima/store-screenshots/render_screenshots.py`
 
 ---
 
-## 12. Parcours reviewer (3 minutes)
+## 13. Parcours reviewer (3 minutes)
 
 Script à suivre avec le compte `apple.review@timalove.local` :
 
@@ -604,7 +685,7 @@ Script à suivre avec le compte `apple.review@timalove.local` :
 
 ---
 
-## 13. Points restants et risques
+## 14. Points restants et risques
 
 ### À faire avant resoumission
 
@@ -627,7 +708,7 @@ Voir **`APP_STORE_GUIDELINE_4_3.md` §5** — PWA matrimoniale ou rendez-vous t�
 
 ---
 
-## 14. Documents connexes
+## 15. Documents connexes
 
 | Document | Contenu |
 |----------|---------|

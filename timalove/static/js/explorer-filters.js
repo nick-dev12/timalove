@@ -69,6 +69,7 @@
         country: fd.get("country"),
         verified_only: fd.get("verified_only") === "on",
         online_only: fd.get("online_only") === "on",
+        relationship_intent: fd.get("relationship_intent"),
       }),
     })
       .then(function (res) {

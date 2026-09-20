@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import secrets
 import uuid
 
 from django.db.models import Case, IntegerField, Q, Value, When
@@ -132,6 +133,7 @@ def serialize_card(
         "liked": liked,
         "super_liked": super_liked,
         "subscription_badge": subscription_controller.badge_for(profile),
+        "is_online": bool(profile.is_online),
     }
 
 
@@ -177,7 +179,7 @@ def reset_feed_session(session) -> None:
     session.pop(SESSION_QUEUE_KEY, None)
     session.pop(SESSION_SERVED_KEY, None)
     session.pop(SESSION_SEED_KEY, None)
-    session.modified = True
+    reset_curated_session(session)
 
 
 def sync_feed_session(session, viewer=None, *, deploy_revision: str = "") -> None:
@@ -456,19 +458,33 @@ def search_profiles(query: str, *, viewer=None, limit: int = 8) -> list[dict]:
 
 SESSION_CURATED_DATE_KEY = "curated_date"
 SESSION_CURATED_IDS_KEY = "curated_ids"
+SESSION_CURATED_TARGET_KEY = "curated_target"
+SESSION_CURATED_SEED_KEY = "curated_seed"
 
 
-def curated_daily_feed(viewer, session) -> tuple[list[dict], dict]:
+def reset_curated_session(session) -> None:
+    if session is None:
+        return
+    session.pop(SESSION_CURATED_DATE_KEY, None)
+    session.pop(SESSION_CURATED_IDS_KEY, None)
+    session.pop(SESSION_CURATED_TARGET_KEY, None)
+    session.pop(SESSION_CURATED_SEED_KEY, None)
+    session.modified = True
+
+
+def curated_daily_feed(viewer, session, *, expand_by: int = 0) -> tuple[list[dict], dict]:
     """
-    Sélection du jour — liste fixe (pas de swipe infini).
-    Réinitialisée chaque jour calendaire (timezone locale Django).
+    Sélection Parcours curated — ordre aléatoire à chaque visite de la page.
+    « Voir plus » conserve la sélection en cours et ajoute des profils sans réordonner.
     """
     from django.utils import timezone
 
     from core.controllers import app_config_controller
 
-    limit = app_config_controller.curated_daily_limit()
+    initial_limit = app_config_controller.curated_daily_limit()
+    daily_max = app_config_controller.curated_daily_max()
     today = timezone.localdate().isoformat()
+    fresh_visit = expand_by == 0
 
     if session is not None:
         stored_date = session.get(SESSION_CURATED_DATE_KEY)
@@ -477,9 +493,23 @@ def curated_daily_feed(viewer, session) -> tuple[list[dict], dict]:
             stored_ids = []
             session[SESSION_CURATED_DATE_KEY] = today
             session[SESSION_CURATED_IDS_KEY] = []
+            session[SESSION_CURATED_TARGET_KEY] = initial_limit
+            session.pop(SESSION_CURATED_SEED_KEY, None)
             session.modified = True
+        target = int(session.get(SESSION_CURATED_TARGET_KEY) or initial_limit)
+        if expand_by > 0:
+            target = min(target + expand_by, daily_max)
+            session[SESSION_CURATED_TARGET_KEY] = target
+            session.modified = True
+        limit = min(max(target, initial_limit), daily_max)
+        if fresh_visit or not session.get(SESSION_CURATED_SEED_KEY):
+            session[SESSION_CURATED_SEED_KEY] = secrets.token_hex(16)
+            session.modified = True
+        seed = session[SESSION_CURATED_SEED_KEY]
     else:
         stored_ids = []
+        limit = initial_limit
+        seed = secrets.token_hex(16)
 
     eligible = _eligible_ids(viewer)
     eligible_set = {str(pk) for pk in eligible}
@@ -497,21 +527,49 @@ def curated_daily_feed(viewer, session) -> tuple[list[dict], dict]:
         already = {str(pk) for pk in curated_ids}
         remaining = [pk for pk in eligible if str(pk) not in already]
         if remaining:
-            seed = f"curated:{today}:{viewer.pk if viewer else 'guest'}"
-            ordered = _order_feed_ids(remaining, viewer, seed=seed, served_count=0)
+            ordered = _order_feed_ids(remaining, viewer, seed=seed, served_count=len(curated_ids))
             need = limit - len(curated_ids)
             curated_ids.extend(ordered[:need])
 
+    if fresh_visit:
+        if len(curated_ids) > 1:
+            shuffle_rng = random.Random(secrets.token_hex(16))
+            shuffle_rng.shuffle(curated_ids)
         if session is not None:
             session[SESSION_CURATED_DATE_KEY] = today
+            session[SESSION_CURATED_TARGET_KEY] = target
             session[SESSION_CURATED_IDS_KEY] = [str(pk) for pk in curated_ids]
             session.modified = True
+    elif session is not None and len(curated_ids) > len(stored_ids):
+        session[SESSION_CURATED_DATE_KEY] = today
+        session[SESSION_CURATED_IDS_KEY] = [str(pk) for pk in curated_ids]
+        session.modified = True
 
     cards = _cards_for_ids(curated_ids, viewer)
+    eligible_total = len(eligible)
     meta = {
         "date_label": today,
         "limit": limit,
         "count": len(cards),
         "remaining": max(0, limit - len(cards)),
+        "has_more": len(curated_ids) < eligible_total and len(curated_ids) < daily_max,
+        "eligible_total": eligible_total,
     }
     return cards, meta
+
+
+def online_status_for_ids(profile_ids: list) -> dict[str, bool]:
+    """Statut en ligne pour une liste de profils (cartes Parcours)."""
+    ids: list[uuid.UUID] = []
+    for raw in profile_ids[:100]:
+        text = str(raw or "").strip()
+        if not text:
+            continue
+        try:
+            ids.append(uuid.UUID(text))
+        except ValueError:
+            continue
+    if not ids:
+        return {}
+    rows = Profile.objects.filter(pk__in=ids).values_list("pk", "is_online")
+    return {str(pk): bool(online) for pk, online in rows}

@@ -26,7 +26,7 @@ DEFAULT_APP_CONFIG: dict[str, Any] = {
     "force_update_message": "Une mise à jour de l'application est requise pour continuer.",
     "force_update_url_ios": "https://apps.apple.com/",
     "force_update_url_android": "https://play.google.com/store",
-    "curated_daily_limit": 8,
+    "curated_daily_limit": 20,
 }
 
 FEATURE_BOOL_KEYS = (
@@ -243,7 +243,15 @@ def explorer_curated_mode_enabled() -> bool:
 
 
 def curated_daily_limit() -> int:
-    return _as_int(get_app_config().get("curated_daily_limit"), 8, minimum=3, maximum=20)
+    return _as_int(get_app_config().get("curated_daily_limit"), 20, minimum=3, maximum=50)
+
+
+def curated_daily_max() -> int:
+    return 50
+
+
+def curated_load_more_step() -> int:
+    return 10
 
 
 def guided_messages_enabled() -> bool:

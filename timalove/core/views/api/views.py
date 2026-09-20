@@ -128,6 +128,16 @@ def likes_count(request):
 
 @login_required
 @require_GET
+def profiles_online_status(request):
+    from core.controllers import explore_controller
+
+    raw = request.GET.get("ids", "")
+    ids = [part.strip() for part in raw.split(",") if part.strip()]
+    return JsonResponse({"online": explore_controller.online_status_for_ids(ids)})
+
+
+@login_required
+@require_GET
 def matches(request):
     items = match_controller.list_for(request.user.profile)
     return JsonResponse(
@@ -1021,6 +1031,7 @@ def profile_filters(request):
             "country": data.get("country"),
             "verified_only": _truthy(data.get("verified_only")),
             "online_only": _truthy(data.get("online_only")),
+            "relationship_intent": data.get("relationship_intent"),
         },
     )
     from core.controllers.explore_controller import reset_feed_session, sync_feed_session

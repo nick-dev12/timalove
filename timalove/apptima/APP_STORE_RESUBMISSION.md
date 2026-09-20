@@ -42,14 +42,15 @@ Password: AppleReview2026!
 
 Recommended 3-minute review path:
 1. Fresh install → native onboarding (marriage mission + mandatory charter).
-2. Sign in → Parcours tab: curated daily list (8 profiles), objective banner "Mariage", no infinite swipe, no pass/reject button, no global search bar.
+2. Sign in → Parcours tab: curated daily list (20 profiles, random order on each visit), objective banner "Mariage", no infinite swipe, no pass/reject button, no global search bar. Tap any profile card → profile modal (compact header, photo thumbnails, tabs About / Interests / Values / Looking for). Green dot = online member.
 3. Messages → Awa: active thread with guided intro already sent.
 4. Messages → Fatou: empty thread — must pick one of 3 guided questions (marriage, family, culture) before free text.
-5. Coaching tab in bottom navigation.
-6. Objectif tab (formerly Profile): marriage intent + preferred religions filters.
-7. Intérêts tab: Received / Sent sub-tabs (History merged — no separate History tab).
+5. Moi tab (bottom nav): marriage intent + preferred religions filters.
+6. Intérêts tab: Received / Sent sub-tabs (History merged — no separate History tab).
 
-This is a marriage-oriented guided community (human validation, compatibility scores, coaching, cultural prompts), not a casual dating clone. iPhone-only build.
+Bottom navigation: Intérêts | Parcours | Messages | Moi (Coaching removed from dock).
+
+This is a marriage-oriented guided community (human validation, compatibility scores, cultural prompts), not a casual dating clone. iPhone-only build.
 ```
 
 ---
@@ -65,14 +66,15 @@ WHAT CHANGED SINCE THE PREVIOUS SUBMISSION
 
 1. Native first-launch onboarding (mission + matrimonial charter acceptance) before any web content.
 2. Human registration validation — new members are pending until our team approves their dossier (demo account is pre-approved for your review).
-3. Parcours (Discovery) is a curated daily list of compatible profiles (8/day), not an infinite swipe deck — no pass/reject cross button.
-4. Global profile search disabled in Parcours; discovery is compatibility-driven only.
-5. Guided conversations — first message must use one of our suggested marriage/family/culture prompts (12-question pool, 3 shown per thread).
-6. Coaching is a primary tab in bottom navigation.
-7. Objective banner visible on Parcours, Intérêts and Objectif screens (declared marriage intent).
-8. UI vocabulary: Parcours, Intérêts, Mise en relation, Priorité, Objectif, % Compatible.
-9. History merged into Intérêts (Received/Sent tabs); dock tab "Objectif" replaces generic "Profile".
-10. iPhone-only build for a focused matrimonial experience.
+3. Parcours (Discovery) is a curated daily list of compatible profiles (20 initial, up to 50/day via "See more"), randomly reshuffled on each visit — not an infinite swipe deck.
+4. Global profile search disabled in Parcours; discovery is compatibility-driven only. Filters include marriage intent.
+5. Profile modal: compact identity header, horizontal photo thumbnails (80px), tabs (About / What drives them / Values / What they seek) — no generic dating gallery tab.
+6. Guided conversations — first message must use one of our suggested marriage/family/culture prompts (12-question pool, 3 shown per thread).
+7. Objective banner visible on Parcours, Intérêts and Moi screens (declared marriage intent).
+8. UI vocabulary: Parcours, Intérêts, Mise en relation, Priorité, Moi, % Compatible.
+9. History merged into Intérêts (Received/Sent tabs); dock: Intérêts | Parcours | Messages | Moi.
+10. Online indicator (green dot) on Parcours profile cards when member is connected.
+11. iPhone-only build for a focused matrimonial experience.
 
 WHAT TIMA LOVE IS
 
@@ -94,11 +96,11 @@ Password: AppleReview2026!
 
 Steps:
 1. Complete native onboarding + charter.
-2. Sign in → Parcours: curated list, objective banner, compatibility scores.
+2. Sign in → Parcours: curated list (random on refresh), objective banner, tap card for profile modal with photo tabs.
 3. Messages → Awa (active conversation).
 4. Messages → Fatou (guided question picker).
-5. Coaching tab.
-6. Objectif tab + Intérêts (Received/Sent).
+5. Moi tab (marriage intent + religion filters).
+6. Intérêts (Received/Sent).
 
 We respectfully ask you to re-evaluate under 4.3 as a niche matrimonial community product.
 

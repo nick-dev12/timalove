@@ -1,0 +1,45 @@
+{% load static subscription_tags %}
+<article class="curated-card{% if card.subscription_badge == 'vip' %} is-vip{% elif card.subscription_badge == 'premium' %} is-premium{% endif %}" data-profile-id="{{ card.id }}" data-profile-modal="{{ card.id }}" data-online="{{ card.is_online|yesno:'1,0' }}">
+  <a class="curated-card__media" href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}" aria-label="Voir le profil de {{ card.first_name }}">
+    {% if card.photo_url %}
+    <img src="{{ card.photo_url }}" alt="{{ card.first_name }}" loading="lazy">
+    {% else %}
+    <span class="curated-card__placeholder">{{ card.first_name|first|upper }}</span>
+    {% endif %}
+    {% if card.is_online %}<i class="curated-card__online" aria-label="En ligne"></i>{% endif %}
+  </a>
+  <div class="curated-card__body">
+    <div class="curated-card__head">
+      <h2>
+        <span class="tl-name-line">
+          {% include "partials/subscription_mark.html" with badge=card.subscription_badge %}
+          <a href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}">{{ card.first_name }}{% if card.age %}, {{ card.age }}{% endif %}</a>
+        </span>
+      </h2>
+      <p class="curated-card__place">{{ card.city|default:card.location }}</p>
+    </div>
+    {% if card.relationship_intent %}
+    <p class="curated-card__intent">Intention : {{ card.relationship_intent }}</p>
+    {% endif %}
+    <button
+      type="button"
+      class="curated-card__compat"
+      data-match-score
+      data-profile-id="{{ card.id }}"
+      aria-label="Calculer la compatibilité"
+    >
+      <span data-match-label>{% if card.compatibility %}{{ card.compatibility }}% Compatible{% else %}Compatible ?{% endif %}</span>
+    </button>
+    {% if card.profession %}
+    <p class="curated-card__role">{{ card.profession }}</p>
+    {% endif %}
+    <div class="curated-card__actions" role="group" aria-label="Actions">
+      <button type="button" class="explorer__action explorer__action--like{% if card.liked %} is-on{% endif %}" data-swipe="like" aria-label="{% if card.liked %}Intérêt manifesté{% else %}Manifester mon intérêt{% endif %}">
+        <svg viewBox="0 0 24 22" width="24" height="22" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+      </button>
+      <button type="button" class="explorer__action explorer__action--star{% if card.super_liked %} is-on{% endif %}" data-swipe="super_like" aria-label="{% if card.super_liked %}Priorité envoyée{% else %}Priorité de mise en relation{% endif %}">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+      </button>
+    </div>
+  </div>
+</article>

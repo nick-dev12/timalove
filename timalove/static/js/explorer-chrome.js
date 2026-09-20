@@ -56,6 +56,7 @@
 
   function activateTab(root, key) {
     if (!key || !root) return;
+    if (key === "gallery") key = "about";
     const tab = root.querySelector('[data-visit-tabs] .visit__tab[data-tab="' + key + '"]');
     if (tab) tab.click();
   }
@@ -86,7 +87,9 @@
 
     document.addEventListener("click", function (event) {
       if (box.hidden) {
-        const openBtn = event.target.closest(".visit:not(.visit--own) .visit__gallery-open, .visit:not(.visit--own) .visit__gallery-item");
+        const openBtn = event.target.closest(
+          ".visit:not(.visit--own) .visit__gallery-open, .visit:not(.visit--own) .visit__thumb"
+        );
         if (!openBtn) return;
         const photo = openBtn.querySelector("img") || (openBtn.tagName === "IMG" ? openBtn : null);
         if (!photo || !photo.src) return;
@@ -177,7 +180,7 @@
       if (document.body.classList.contains("is-guest")) return;
       if (
         event.target.closest(
-          "[data-msg-open], [data-msg-like-required], [data-swipe], [data-likes-pass], [data-likes-super], [data-likes-back], .history__actions, .likes__card-actions, .likes__card-bar"
+          "[data-msg-open], [data-msg-like-required], [data-swipe], [data-match-score], [data-likes-pass], [data-likes-super], [data-likes-back], .history__actions, .likes__card-actions, .likes__card-bar, .curated-card__actions"
         )
       ) {
         return;
