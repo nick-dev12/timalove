@@ -1,4 +1,4 @@
-# TimaLove — Soumission App Store (Lots A + B + C)
+# TimaLove — Soumission App Store (Lots A + B + C + D)
 
 > **Document maître :** [`ACCEPTATION_STORES_MODIFICATIONS.md`](ACCEPTATION_STORES_MODIFICATIONS.md)  
 > **Captures PNG :** [`store-screenshots/README.md`](store-screenshots/README.md)
@@ -24,7 +24,8 @@ python manage.py create_apple_review_account --reset-partners
 Sur le VPS :
 
 ```bash
-python scripts/_vps_create_apple_review.py
+cd /home/jomas/timalove
+venv/bin/python timalove/manage.py create_apple_review_account --reset-partners
 ```
 
 `.env` production :
@@ -78,7 +79,7 @@ WHAT CHANGED SINCE THE PREVIOUS SUBMISSION
 
 WHAT TIMA LOVE IS
 
-TimaLove is a French-language matrimonial guidance platform for adults seeking serious union toward marriage. It serves a Francophone community (including West Africa and diaspora) with explicit relationship intent, life values, religion, life project fields, human moderation, and optional coaching.
+TimaLove is a French-language matrimonial guidance platform for adults seeking serious union toward marriage. It serves a Francophone community (including West Africa and diaspora) with explicit relationship intent, life values, religion, life project fields, human moderation, and optional coaching (accessible from the site menu, not a primary dating tab).
 
 NATIVE iOS VALUE
 
@@ -124,7 +125,7 @@ Parcours vers le mariage
 
 ### Texte promotionnel (170 car. max)
 ```
-Parcours matrimonial guidé : validation humaine, sélection compatible du jour, questions culture & famille, coaching — pas une app de rencontre casual.
+Parcours matrimonial guidé : validation humaine, sélection compatible du jour (20 profils), questions culture & famille — pas une app de rencontre casual.
 ```
 
 ### Description (FR)
@@ -133,11 +134,11 @@ Parcours matrimonial guidé : validation humaine, sélection compatible du jour,
 TimaLove accompagne les adultes sincères vers une union stable et le mariage — pas le dating casual.
 
 • Validation humaine de chaque inscription
-• Parcours avec sélection compatible du jour (8 profils, sans swipe infini)
+• Parcours avec sélection compatible du jour (20 profils, jusqu’à 50/jour — sans swipe infini)
 • Bandeau « Objectif recherché » visible (mariage, relation sérieuse)
+• Modale profil : onglets valeurs, projet de vie, intention mariage
 • Score de compatibilité basé sur valeurs, projet de vie et intention mariage
 • Premier message guidé par des questions respectueuses (famille, culture, projet d’union)
-• Coaching individuel pour préparer l’union
 • Charte matrimoniale et modération active
 • Religions recherchées et filtres compatibles
 • Connexion sécurisée (Sign in with Apple)
@@ -147,7 +148,7 @@ Communauté francophone orientée famille et long terme.
 
 ### Mots-clés (100 car. max — éviter dating, tinder, hookup)
 ```
-matrimonial,mariage,relation sérieuse,union,famille,coaching,compatibilité,culture
+matrimonial,mariage,relation sérieuse,union,famille,compatibilité,culture,parcours
 ```
 
 ### Catégorie principale
@@ -180,17 +181,19 @@ Voir `JUSTIFICATIONS_PERMISSIONS.md` — localisation **When In Use** uniquement
 | 1 | `01-onboarding-mission.png` | « Un parcours vers le mariage » |
 | 2 | `02-onboarding-parcours.png` | « Compatibilité avant le dialogue » |
 | 3 | `03-onboarding-charte.png` | « Charte matrimoniale obligatoire » |
-| 4 | `04-parcours-curated.png` | « Sélection du jour — pas de swipe infini » |
+| 4 | `04-parcours-curated.png` | « 20 profils compatibles — pas de swipe infini » |
 | 5 | `05-messages-guides.png` | « Échanges guidés, culture & famille » |
-| 6 | `06-coaching.png` | « Coaching relationnel intégré » |
-| 7 | `07-objectif-profil.png` | « Objectif Mariage visible » |
+| 6 | `06-coaching.png` | « Profil en profondeur — onglets valeurs » |
+| 7 | `07-objectif-profil.png` | « Moi : intention Mariage visible » |
 | 8 | `08-interets.png` | « Intérêts reçus & envoyés » |
+
+> **Note :** le fichier `06-coaching.png` affiche désormais la **modale profil** (Lot D). Le nom de fichier est conservé pour éviter un re-upload partiel sur App Store Connect.
 
 ### Régénérer les PNG
 
 ```powershell
 cd timalove\apptima\store-screenshots
-..\..\..\venv\Scripts\pip.exe install playwright
+..\..\..\venv\Scripts\pip.exe install playwright pillow
 ..\..\..\venv\Scripts\playwright.exe install chromium
 ..\..\..\venv\Scripts\python.exe render_screenshots.py
 ```
@@ -201,16 +204,24 @@ Les mockups source HTML sont dans `store-screenshots/html/`.
 
 ## 5. Checklist avant « Soumettre à nouveau »
 
-- [ ] `create_apple_review_account --reset-partners` sur **production**
-- [ ] `QUOTA_EXEMPT_EMAILS` inclut `apple.review@timalove.local` en prod
-- [ ] Build iOS **5+** (iPhone only) uploadé
-- [ ] Notes for Review + identifiants remplis
-- [ ] Réponse Resolution Center collée
-- [ ] Sous-titre + description + mots-clés mis à jour (Lot C)
-- [ ] **8 captures** uploadées depuis `iphone-6.7/`
-- [ ] Test manuel iPhone : connexion démo → Parcours → Messages (Awa + Fatou) → Coaching → Objectif → Intérêts
-- [ ] `python scripts/_vps_test_lot_c.py` OK en prod
+### Backend / prod
+- [x] Lots B + C + D déployés sur https://mytimalove.com
+- [x] `create_apple_review_account --reset-partners` sur **production**
+- [x] `QUOTA_EXEMPT_EMAILS` inclut `apple.review@timalove.local` en prod
+- [ ] `python scripts/_vps_test_lot_c.py` OK en prod (dernière vérif avant soumission)
+
+### Build iOS (Mac obligatoire)
+- [ ] `pubspec.yaml` build **5+** (`version: 1.0.0+5`)
+- [ ] Onboarding natif + charte inclus dans le binaire
+- [ ] Build **iPhone only** uploadé sur App Store Connect
+- [ ] Test manuel iPhone : connexion démo → Parcours → Messages (Awa + Fatou) → Moi → Intérêts
+
+### App Store Connect (manuel)
+- [ ] Identifiants review + Notes for Review (§1)
+- [ ] Réponse Resolution Center (§2)
+- [ ] Sous-titre + description + mots-clés mis à jour (§3)
+- [ ] **8 captures** uploadées depuis `iphone-6.7/` (régénérées Lot D)
 
 ---
 
-*Mis à jour le 20 sept. 2026 — Lots A + B + C — submission ID initial : c4213e77-8bb7-4cee-b885-57ddd9f3f88f*
+*Mis à jour le 20 sept. 2026 — Lots A + B + C + D — submission ID initial : c4213e77-8bb7-4cee-b885-57ddd9f3f88f*

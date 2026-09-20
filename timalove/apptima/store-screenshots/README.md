@@ -1,6 +1,6 @@
 # Captures App Store — TimaLove
 
-PNG prêts pour **App Store Connect** (Lots A onboarding natif + Lots B/C web).
+PNG prêts pour **App Store Connect** (Lots A onboarding natif + Lots B/C/D web).
 
 ## Dossiers
 
@@ -17,11 +17,13 @@ PNG prêts pour **App Store Connect** (Lots A onboarding natif + Lots B/C web).
 | 1 | `01-onboarding-mission.png` | Onboarding natif — mission matrimoniale |
 | 2 | `02-onboarding-parcours.png` | Onboarding — parcours guidé |
 | 3 | `03-onboarding-charte.png` | Charte matrimoniale |
-| 4 | `04-parcours-curated.png` | Parcours curated + bandeau Objectif |
+| 4 | `04-parcours-curated.png` | Parcours curated 20 profils + dock Moi |
 | 5 | `05-messages-guides.png` | Messages — questions guidées |
-| 6 | `06-coaching.png` | Coaching |
-| 7 | `07-objectif-profil.png` | Objectif / profil |
+| 6 | `06-coaching.png` | Modale profil (onglets valeurs) — nom fichier historique |
+| 7 | `07-objectif-profil.png` | Moi — intention Mariage + religions |
 | 8 | `08-interets.png` | Intérêts Reçus/Envoyés |
+
+Dock actuel sur toutes les captures web : **Intérêts | Parcours | Messages | Moi 🙂**
 
 ## Régénération
 
@@ -29,7 +31,7 @@ Depuis la racine du dépôt :
 
 ```powershell
 cd timalove\apptima\store-screenshots
-..\..\..\venv\Scripts\pip.exe install playwright
+..\..\..\venv\Scripts\pip.exe install playwright pillow
 ..\..\..\venv\Scripts\playwright.exe install chromium
 ..\..\..\venv\Scripts\python.exe render_screenshots.py
 ```
@@ -48,13 +50,7 @@ Le script :
 
 ## Upload App Store Connect
 
-1. **App Store** → votre app → **iOS App** → version en cours.
-2. **App Previews and Screenshots** → **iPhone 6.7" Display**.
-3. Glisser-déposer les 8 PNG **dans l’ordre** ci-dessus.
-4. (Optionnel) Répéter pour **6.5"** si Apple le demande.
-
-Textes marketing associés : voir [`APP_STORE_RESUBMISSION.md`](../APP_STORE_RESUBMISSION.md) §4.
-
----
-
-*Généré le 20 septembre 2026*
+1. **App Store → iOS App → App Previews and Screenshots**
+2. Choisir **6.7" Display** (1290 × 2796)
+3. Uploader les 8 PNG dans l’ordre ci-dessus
+4. Optionnel : dupliquer vers 6.5" depuis `iphone-6.5/`

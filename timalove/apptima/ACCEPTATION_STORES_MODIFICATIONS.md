@@ -62,11 +62,11 @@ Ne pas réécrire l’app, mais **rendre visible** ce qui existe déjà (intenti
 
 | Lot | Thème | Statut code | Statut prod (20/09/2026) |
 |-----|-------|-------------|--------------------------|
-| **A** | Onboarding natif, charte, splash, iPhone only, vocabulaire UI, permissions | ✅ Livré | ⚠️ Flutter à rebuild + upload build iOS 5+ |
+| **A** | Onboarding natif, charte, splash, iPhone only, vocabulaire UI, permissions | ✅ Livré | 🟡 Rebuild iOS **1.0.0+5** + upload App Store Connect |
 | **B** | Pending, validation, liste curated, messages guidés, coaching dock | ✅ Livré | ✅ Déployé (`deploy.sh`, migration 0021) |
 | **C** | Anti-swipe, recherche off, bandeau objectif, religions, questions culture, Intérêts unifiés, dock Objectif | ✅ Livré | ✅ Déployé (commit `cd13e3d`, tests E2E 17/17) |
 | **D** | Parcours UX (grille, aléatoire, voir plus), modale profil, dock Moi, en ligne, filtres | ✅ Livré | ✅ Déployé (commit `5fd50b0`) |
-| **Manuel** | Métadonnées store, captures, réponse Resolution Center | 🟡 En cours | Captures dans `store-screenshots/` |
+| **Manuel** | Métadonnées store, captures, réponse Resolution Center | 🟡 Presque prêt | Captures Lot D à régénérer + upload ASC |
 
 ---
 
@@ -652,10 +652,10 @@ Fichiers PNG : **`apptima/store-screenshots/iphone-6.7/`**
 | 1 | `01-onboarding-mission.png` | Onboarding natif — mission matrimoniale |
 | 2 | `02-onboarding-parcours.png` | Onboarding — parcours guidé |
 | 3 | `03-onboarding-charte.png` | Charte matrimoniale (case cochée) |
-| 4 | `04-parcours-curated.png` | Parcours curated + bandeau Objectif |
+| 4 | `04-parcours-curated.png` | Parcours curated 20 profils + dock Moi |
 | 5 | `05-messages-guides.png` | Messages — questions culture/famille |
-| 6 | `06-coaching.png` | Coaching — onglet principal |
-| 7 | `07-objectif-profil.png` | Objectif — intention Mariage |
+| 6 | `06-coaching.png` | Modale profil — onglets valeurs (Lot D) |
+| 7 | `07-objectif-profil.png` | Moi — intention Mariage + religions |
 | 8 | `08-interets.png` | Intérêts Reçus/Envoyés |
 
 Régénérer : `python apptima/store-screenshots/render_screenshots.py`
@@ -676,12 +676,11 @@ Script à suivre avec le compte `apple.review@timalove.local` :
 |-------|--------|------------------------------|
 | 1 | Installation fraîche | Onboarding natif 3 écrans + charte obligatoire |
 | 2 | Connexion démo | Accès direct (pas d’écran validation) |
-| 3 | Onglet **Parcours** | Liste curated 8 profils, bandeau **Objectif : Mariage**, % Compatible, pas de croix pass ni recherche |
+| 3 | Onglet **Parcours** | Liste curated 20 profils, bandeau **Objectif : Mariage**, % Compatible, pas de croix pass ni recherche, clic carte → modale profil |
 | 4 | **Messages → Awa** | Conversation active, intro guidée déjà envoyée |
 | 5 | **Messages → Fatou** | Fil vide → 3 questions culture/famille obligatoires |
-| 6 | Onglet **Coaching** | Page coaching accessible depuis le dock |
-| 7 | Onglet **Objectif** | Bandeau intention + religions recherchées + filtres |
-| 8 | Onglet **Intérêts** | Onglets Reçus / Envoyés (plus d’Historique séparé) |
+| 6 | Onglet **Moi 🙂** | Bandeau intention + religions recherchées + filtres |
+| 7 | Onglet **Intérêts** | Onglets Reçus / Envoyés (plus d’Historique séparé) |
 
 ---
 
@@ -691,12 +690,13 @@ Script à suivre avec le compte `apple.review@timalove.local` :
 
 | Item | Priorité |
 |------|----------|
-| Rebuild iOS avec onboarding natif + build number 5+ | 🔴 Haute |
-| Upload captures `store-screenshots/iphone-6.7/` | 🔴 Haute |
-| Métadonnées + Notes for Review (Lot C) | 🔴 Haute |
-| Nettoyer termes « Match » / « Explorer » restants | 🟡 Moyenne |
-| `pubspec.yaml` description encore « Rencontres sérieuses » | 🟡 Moyenne |
-| Vérifier absence Sugar Paper / GPS livreur dans le build review | 🔴 Haute |
+| Rebuild iOS **1.0.0+5** avec onboarding natif + upload App Store Connect | 🔴 Haute |
+| Régénérer captures `store-screenshots/iphone-6.7/` (dock Moi, modale profil) | 🔴 Haute |
+| Métadonnées + Notes for Review (`APP_STORE_RESUBMISSION.md` §3–5) | 🔴 Haute |
+| Test iPhone réel avec compte `apple.review@timalove.local` | 🔴 Haute |
+| Badge « Match » → « Mise en relation » | ✅ Fait |
+| Code livreur/Sugar Paper retiré du binaire Flutter | ✅ Fait |
+| `pubspec.yaml` description matrimoniale | ✅ Fait |
 
 ### Risque prod actuel
 
