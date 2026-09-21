@@ -79,7 +79,7 @@
       scope.querySelectorAll("[data-msg-like-required]").forEach(function (el) {
         el.removeAttribute("data-msg-like-required");
         el.setAttribute("data-msg-open", "");
-        el.classList.remove("visit__action--msg-muted");
+        el.classList.remove("visit__action--msg-muted", "curated-card__msg--muted");
       });
     }
     if (action === "pass") {
