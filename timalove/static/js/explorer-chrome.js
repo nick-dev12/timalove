@@ -64,22 +64,87 @@
   function bindLightbox() {
     const box = document.getElementById("photo-lightbox");
     if (!box) return;
+    const stage = box.querySelector("[data-lightbox-stage]");
     const img = box.querySelector(".photo-lightbox__img");
     const closeBtn = box.querySelector("[data-lightbox-close]");
+    const prevBtn = box.querySelector("[data-lightbox-prev]");
+    const nextBtn = box.querySelector("[data-lightbox-next]");
+    const counter = box.querySelector("[data-lightbox-counter]");
+    let gallery = [];
+    let index = 0;
+    let touchStartX = null;
+    const SWIPE_MIN = 48;
+
+    function photoFromTrigger(trigger) {
+      return trigger.querySelector("img") || (trigger.tagName === "IMG" ? trigger : null);
+    }
+
+    function collectGallery(trigger) {
+      const visit = trigger.closest(".visit");
+      const items = [];
+      if (visit) {
+        visit.querySelectorAll(".visit__thumbs .visit__gallery-open img").forEach(function (photo) {
+          if (!photo.src) return;
+          items.push({ src: photo.currentSrc || photo.src, alt: photo.alt || "" });
+        });
+      }
+      if (items.length) return items;
+      const photo = photoFromTrigger(trigger);
+      if (photo && photo.src) {
+        return [{ src: photo.currentSrc || photo.src, alt: photo.alt || "" }];
+      }
+      return [];
+    }
+
+    function findStartIndex(trigger) {
+      const visit = trigger.closest(".visit");
+      if (!visit) return 0;
+      const openBtn = trigger.closest(".visit__gallery-open, .visit__thumb") || trigger;
+      const buttons = visit.querySelectorAll(".visit__thumbs .visit__gallery-open");
+      for (let i = 0; i < buttons.length; i += 1) {
+        if (buttons[i] === openBtn || buttons[i].contains(trigger)) return i;
+      }
+      return 0;
+    }
+
+    function updateChrome() {
+      const multi = gallery.length > 1;
+      if (prevBtn) prevBtn.hidden = !multi;
+      if (nextBtn) nextBtn.hidden = !multi;
+      if (counter) {
+        counter.hidden = !multi;
+        counter.textContent = multi ? index + 1 + " / " + gallery.length : "";
+      }
+    }
+
+    function showAt(nextIndex) {
+      if (!gallery.length || !img) return;
+      index = ((nextIndex % gallery.length) + gallery.length) % gallery.length;
+      img.src = gallery[index].src;
+      img.alt = gallery[index].alt;
+      updateChrome();
+    }
 
     function closeBox() {
       box.hidden = true;
+      gallery = [];
+      index = 0;
+      touchStartX = null;
       if (img) {
         img.removeAttribute("src");
         img.alt = "";
       }
+      if (counter) counter.hidden = true;
+      if (prevBtn) prevBtn.hidden = true;
+      if (nextBtn) nextBtn.hidden = true;
       document.body.classList.remove("is-lightbox");
     }
 
-    function openBox(src, alt) {
-      if (!src || !img) return;
-      img.src = src;
-      img.alt = alt || "";
+    function openBox(trigger) {
+      gallery = collectGallery(trigger);
+      if (!gallery.length || !img) return;
+      index = findStartIndex(trigger);
+      showAt(index);
       box.hidden = false;
       document.body.classList.add("is-lightbox");
       if (closeBtn) closeBtn.focus();
@@ -91,11 +156,21 @@
           ".visit:not(.visit--own) .visit__gallery-open, .visit:not(.visit--own) .visit__thumb"
         );
         if (!openBtn) return;
-        const photo = openBtn.querySelector("img") || (openBtn.tagName === "IMG" ? openBtn : null);
+        const photo = photoFromTrigger(openBtn);
         if (!photo || !photo.src) return;
         event.preventDefault();
         event.stopPropagation();
-        openBox(photo.currentSrc || photo.src, photo.alt);
+        openBox(openBtn);
+        return;
+      }
+      if (event.target.closest("[data-lightbox-prev]")) {
+        event.preventDefault();
+        showAt(index - 1);
+        return;
+      }
+      if (event.target.closest("[data-lightbox-next]")) {
+        event.preventDefault();
+        showAt(index + 1);
         return;
       }
       if (event.target === box || event.target.closest("[data-lightbox-close]")) {
@@ -104,10 +179,42 @@
       }
     });
 
+    if (stage) {
+      stage.addEventListener(
+        "touchstart",
+        function (event) {
+          if (box.hidden || gallery.length < 2) return;
+          touchStartX = event.changedTouches[0].clientX;
+        },
+        { passive: true }
+      );
+      stage.addEventListener(
+        "touchend",
+        function (event) {
+          if (box.hidden || touchStartX === null || gallery.length < 2) return;
+          const dx = event.changedTouches[0].clientX - touchStartX;
+          touchStartX = null;
+          if (Math.abs(dx) < SWIPE_MIN) return;
+          showAt(dx < 0 ? index + 1 : index - 1);
+        },
+        { passive: true }
+      );
+    }
+
     document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape" && !box.hidden) {
+      if (box.hidden) return;
+      if (event.key === "Escape") {
         event.preventDefault();
         closeBox();
+        return;
+      }
+      if (gallery.length < 2) return;
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        showAt(index - 1);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        showAt(index + 1);
       }
     });
   }
