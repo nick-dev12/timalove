@@ -58,13 +58,21 @@
     <div class="msg-invite__hero">
       <span class="msg-invite__duo-heart" aria-hidden="true">♥</span>
     </div>
-    <h2 id="like-required-title" class="msg-invite__title" data-like-required-title>Intérêt requis pour écrire</h2>
+    <h2 id="like-required-title" class="msg-invite__title" data-like-required-title>D’abord, manifestez votre intérêt</h2>
     <p class="msg-invite__lead" data-like-required-lead>
-      Manifestez votre intérêt pour ce profil avant de démarrer une discussion.
+      Pour écrire à ce profil, appuyez d’abord sur le bouton ♥. Ensuite, le bouton Message s’ouvrira.
     </p>
-    <div class="msg-invite__actions">
+    <ol class="msg-invite__steps" data-like-required-steps aria-label="Étapes">
+      <li>Appuyez sur <strong>♥</strong> en bas de l’écran</li>
+      <li>Puis retouchez <strong>Message</strong></li>
+    </ol>
+    <div class="msg-invite__actions msg-invite__actions--stack">
+      <button type="button" class="msg-invite__message" data-like-required-go-like>
+        <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+        <span>Manifester mon intérêt</span>
+      </button>
       <button type="button" class="msg-invite__message msg-invite__message--ghost" data-like-required-close>
-        Compris
+        Plus tard
       </button>
     </div>
   </div>

@@ -504,6 +504,24 @@ class LikesMessagingFlowTests(TestCase):
         self.assertTrue(allowed.json()["ok"])
         self.assertIn("/discussions/", allowed.json()["thread_url"])
 
+    def test_open_conversation_after_super_like_only(self):
+        """Priorité seule : ouverture de conversation autorisée."""
+        from core.controllers import message_controller, swipe_controller
+
+        result = swipe_controller.record_swipe(self.p1, self.p2.id, "super_like")
+        self.assertTrue(result["ok"], result)
+        self.assertTrue(result["is_super_like"])
+        self.assertTrue(result["is_like"])
+
+        ok, msg, match = message_controller.ensure_conversation(self.p1, self.p2.id)
+        self.assertTrue(ok, msg)
+        self.assertIsNotNone(match)
+
+        from core.controllers import likes_controller
+
+        self.assertTrue(likes_controller.has_liked(self.p1, self.p2.id))
+        self.assertTrue(likes_controller.has_super_liked(self.p1, self.p2.id))
+
     def test_send_compressed_chat_image(self):
         from io import BytesIO
 

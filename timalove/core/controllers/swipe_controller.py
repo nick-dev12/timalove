@@ -190,6 +190,7 @@ def record_swipe(swiper: Profile, swiped_id, action: str) -> dict:
         is_super = prev_super
     else:
         is_super = True
-        is_like = prev_like
+        # Priorité = intérêt explicite (message autorisé même sans like classique avant).
+        is_like = True
 
     return set_flags(swiper, swiped_id, is_like=is_like, is_super_like=is_super)

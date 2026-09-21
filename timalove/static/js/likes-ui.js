@@ -204,6 +204,12 @@
               throw new Error((data && data.error) || "Impossible d'enregistrer.");
             }
             setPressed(back, true, "Intérêt confirmé", "Manifester mon intérêt");
+            if (window.timaloveSyncMessageAccess) window.timaloveSyncMessageAccess(id);
+            document.dispatchEvent(
+              new CustomEvent("timalove:swipe", {
+                detail: { profileId: id, action: "like", data: data },
+              })
+            );
             if (data.matched && data.match_id) {
               window.setTimeout(function () {
                 window.location.href = "/discussions/" + id + "/";
@@ -239,6 +245,12 @@
             setPressed(superBtn, true);
             const card = superBtn.closest("[data-filter-item]");
             if (card) card.setAttribute("data-super", "1");
+            if (window.timaloveSyncMessageAccess) window.timaloveSyncMessageAccess(id);
+            document.dispatchEvent(
+              new CustomEvent("timalove:swipe", {
+                detail: { profileId: id, action: "super_like", data: data },
+              })
+            );
             if (data.matched && data.match_id) {
               window.setTimeout(function () {
                 window.location.href = "/discussions/" + id + "/";

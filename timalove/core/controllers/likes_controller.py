@@ -296,7 +296,9 @@ def feed_context(profile: Profile, limit: int = INCOMING_PAGE_SIZE) -> dict:
 
 
 def has_liked(profile: Profile, other_id) -> bool:
-    return Swipe.objects.filter(swiper=profile, swiped_id=other_id, is_like=True).exists()
+    from core.controllers.swipe_controller import LIKE_Q
+
+    return Swipe.objects.filter(swiper=profile, swiped_id=other_id).filter(LIKE_Q).exists()
 
 
 def has_super_liked(profile: Profile, other_id) -> bool:

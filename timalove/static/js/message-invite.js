@@ -79,40 +79,108 @@
       });
   }
 
+  function syncMessageAccess(profileId) {
+    if (!profileId) return;
+    const id = String(profileId);
+    document
+      .querySelectorAll(
+        '[data-msg-like-required][data-profile-id="' +
+          id +
+          '"], [data-profile-id="' +
+          id +
+          '"] [data-msg-like-required]'
+      )
+      .forEach(function (el) {
+        el.removeAttribute("data-msg-like-required");
+        el.setAttribute("data-msg-open", "");
+        el.classList.remove("visit__action--msg-muted", "curated-card__msg--muted");
+      });
+  }
+
   window.timaloveOpenConversation = openConversation;
+  window.timaloveSyncMessageAccess = syncMessageAccess;
+
+  document.addEventListener("timalove:swipe", function (event) {
+    const detail = (event && event.detail) || {};
+    if (detail.action !== "like" && detail.action !== "super_like") return;
+    syncMessageAccess(detail.profileId);
+  });
 
   const likeRequiredModal = document.getElementById("message-like-required");
   const likeRequiredTitle = likeRequiredModal && likeRequiredModal.querySelector("[data-like-required-title]");
   const likeRequiredLead = likeRequiredModal && likeRequiredModal.querySelector("[data-like-required-lead]");
+  const likeRequiredSteps = likeRequiredModal && likeRequiredModal.querySelector("[data-like-required-steps]");
+  let likeRequiredProfileId = "";
 
   function closeLikeRequired() {
     if (!likeRequiredModal) return;
     likeRequiredModal.hidden = true;
     document.body.classList.remove("is-msg-like-required");
+    likeRequiredProfileId = "";
+  }
+
+  function findLikeScope(profileId) {
+    if (profileId) {
+      const scoped =
+        document.querySelector('.visit[data-profile-id="' + profileId + '"]') ||
+        document.querySelector('.curated-card[data-profile-id="' + profileId + '"]');
+      if (scoped) return scoped;
+    }
+    return document.querySelector("#profile-modal .visit") || document.querySelector(".curated-card");
+  }
+
+  function highlightLikeButton(profileId) {
+    const scope = findLikeScope(profileId);
+    if (!scope) return;
+    const likeBtn = scope.querySelector('[data-swipe="like"]');
+    if (!likeBtn) return;
+    likeBtn.classList.add("is-like-hint");
+    if (typeof likeBtn.focus === "function") {
+      likeBtn.focus({ preventScroll: true });
+    }
+    likeBtn.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    window.clearTimeout(highlightLikeButton._t);
+    highlightLikeButton._t = window.setTimeout(function () {
+      likeBtn.classList.remove("is-like-hint");
+    }, 4800);
   }
 
   function showLikeRequired(options) {
     const name = (options && options.name) || "ce profil";
+    likeRequiredProfileId = (options && options.profileId) || "";
+    const scope = findLikeScope(likeRequiredProfileId);
+    const onCuratedCard = Boolean(scope && scope.classList.contains("curated-card"));
     if (likeRequiredModal) {
       if (likeRequiredTitle) {
-        likeRequiredTitle.textContent = "Intérêt requis pour écrire";
+        likeRequiredTitle.textContent = "D’abord, manifestez votre intérêt";
       }
       if (likeRequiredLead) {
         likeRequiredLead.textContent =
-          "Manifestez votre intérêt pour " +
+          "Pour écrire à " +
           name +
-          " avant de démarrer une discussion. Votre intérêt doit être sincère et explicite.";
+          ", appuyez d’abord sur le bouton ♥. Ensuite, le bouton Message s’ouvrira.";
+      }
+      if (likeRequiredSteps) {
+        likeRequiredSteps.innerHTML = onCuratedCard
+          ? "<li>Appuyez sur <strong>♥</strong> sur la carte</li><li>Puis retouchez <strong>Message</strong></li>"
+          : "<li>Appuyez sur <strong>♥</strong> en bas de l’écran</li><li>Puis retouchez <strong>Message</strong></li>";
       }
       likeRequiredModal.hidden = false;
       document.body.classList.add("is-msg-like-required");
       return;
     }
-    toast("Manifestez votre intérêt pour " + name + " avant de démarrer une discussion.");
+    toast("Appuyez sur ♥ pour " + name + ", puis retouchez Message.");
   }
 
   window.timaloveShowLikeRequired = showLikeRequired;
 
   if (likeRequiredModal) {
+    const goLikeBtn = likeRequiredModal.querySelector("[data-like-required-go-like]");
+    goLikeBtn?.addEventListener("click", function () {
+      const profileId = likeRequiredProfileId;
+      closeLikeRequired();
+      highlightLikeButton(profileId);
+    });
     likeRequiredModal.querySelectorAll("[data-like-required-close]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         closeLikeRequired();
@@ -128,24 +196,16 @@
   }
 
   document.addEventListener("click", function (event) {
-    const likeRequired = event.target.closest("[data-msg-like-required]");
-    if (likeRequired) {
+    const msgBtn = event.target.closest("[data-msg-open], [data-msg-like-required]");
+    if (msgBtn) {
       event.preventDefault();
       event.stopPropagation();
-      showLikeRequired({
-        profileId: likeRequired.getAttribute("data-profile-id") || "",
-        name: likeRequired.getAttribute("data-profile-name") || "ce profil",
-      });
-      return;
-    }
-
-    const direct = event.target.closest("[data-msg-open]");
-    if (direct) {
-      event.preventDefault();
-      event.stopPropagation();
-      openConversation(direct.getAttribute("data-profile-id") || "", {
-        trigger: direct,
-        name: direct.getAttribute("data-profile-name") || direct.getAttribute("aria-label") || "",
+      openConversation(msgBtn.getAttribute("data-profile-id") || "", {
+        trigger: msgBtn,
+        name:
+          msgBtn.getAttribute("data-profile-name") ||
+          msgBtn.getAttribute("aria-label") ||
+          "ce profil",
       });
       return;
     }
