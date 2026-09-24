@@ -17,7 +17,7 @@ DEFAULT_APP_CONFIG: dict[str, Any] = {
     "explorer_search_enabled": False,
     "history_search_enabled": False,
     "messages_search_enabled": True,
-    "explorer_curated_mode": True,
+    "explorer_curated_mode": False,
     "guided_messages_enabled": True,
     "force_update_enabled": False,
     "force_update_ios": "1.0.0",

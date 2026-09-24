@@ -436,9 +436,19 @@ def toggle_outgoing(profile: Profile, other_id) -> dict:
     swipe = Swipe.objects.filter(swiper=profile, swiped_id=other_id).first()
     supered = bool(swipe and swipe.is_super_like)
     liked = bool(swipe and swipe.is_like)
-    swipe_controller.set_flags(profile, other_id, is_like=not liked, is_super_like=supered)
+    result = swipe_controller.set_flags(profile, other_id, is_like=not liked, is_super_like=supered)
+    if not result.get("ok"):
+        return {
+            "ok": False,
+            "error": result.get("error", ""),
+            "code": result.get("code", ""),
+            "liked": liked,
+            "is_super_like": supered,
+            "visible": liked or supered,
+        }
     now_liked = not liked
     return {
+        "ok": True,
         "liked": now_liked,
         "is_super_like": supered,
         "visible": now_liked or supered,
@@ -452,9 +462,19 @@ def toggle_outgoing_super(profile: Profile, other_id) -> dict:
     swipe = Swipe.objects.filter(swiper=profile, swiped_id=other_id).first()
     liked = bool(swipe and swipe.is_like)
     supered = bool(swipe and swipe.is_super_like)
-    swipe_controller.set_flags(profile, other_id, is_like=liked, is_super_like=not supered)
+    result = swipe_controller.set_flags(profile, other_id, is_like=liked, is_super_like=not supered)
+    if not result.get("ok"):
+        return {
+            "ok": False,
+            "error": result.get("error", ""),
+            "code": result.get("code", ""),
+            "liked": liked,
+            "is_super_like": supered,
+            "visible": liked or supered,
+        }
     now_super = not supered
     return {
+        "ok": True,
         "liked": liked,
         "is_super_like": now_super,
         "visible": liked or now_super,

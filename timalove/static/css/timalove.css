@@ -14823,16 +14823,16 @@ body.history-page .explorer__chrome {
 .likes {
   position: relative;
   z-index: 1;
-  width: min(100%, var(--explorer-col));
+  width: min(100%, 1120px);
   max-width: 100%;
   margin-inline: auto;
   margin-top: 0.45rem;
-  padding: 0.75rem 0.7rem
-    calc(var(--explorer-dock) + 1.15rem + env(safe-area-inset-bottom, 0px));
-  background: var(--glass-bg-solid);
-  border: 1px solid var(--glass-border);
-  border-radius: 1.25rem;
-  box-shadow: var(--glass-shadow);
+  padding: 1rem clamp(0.65rem, 2.5vw, 1.35rem)
+    calc(var(--explorer-dock) + 1.25rem + env(safe-area-inset-bottom, 0px));
+  background: var(--white);
+  border: 1px solid rgba(92, 58, 63, 0.08);
+  border-radius: 1.35rem;
+  box-shadow: 0 10px 32px rgba(45, 31, 34, 0.06);
   overflow-x: hidden;
 }
 
@@ -15175,17 +15175,18 @@ body.history-page .explorer__chrome {
 
 .likes__filter {
   appearance: none;
-  border: 1px solid rgba(232, 99, 122, 0.18);
-  background: var(--glass-bg);
+  border: 1px solid rgba(92, 58, 63, 0.12);
+  background: var(--cream);
   color: var(--text-secondary);
   border-radius: 999px;
-  min-height: 44px;
-  padding: 0.35rem 0.85rem;
+  min-height: 2.5rem;
+  padding: 0.4rem 1rem;
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .likes__filter.is-on {
@@ -15204,24 +15205,42 @@ body.history-page .explorer__chrome {
 
 .likes__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 300px));
-  justify-content: center;
-  gap: 0.85rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
   width: 100%;
-  max-width: min(100%, 940px);
+  max-width: min(100%, 1120px);
   margin-inline: auto;
-  padding-inline: 0.75rem;
+  padding-inline: clamp(0.25rem, 1.5vw, 0.5rem);
+}
+
+@media (min-width: 640px) {
+  .likes__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .likes__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .likes__card {
   position: relative;
   width: 100%;
-  max-width: 300px;
-  justify-self: center;
-  border-radius: 1rem;
+  max-width: none;
+  justify-self: stretch;
+  border-radius: 1.1rem;
   overflow: hidden;
-  background: var(--rose-pale);
-  box-shadow: var(--glass-shadow);
+  background: var(--white);
+  border: 1px solid rgba(92, 58, 63, 0.08);
+  box-shadow: 0 8px 22px rgba(45, 31, 34, 0.07);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.likes__card:hover {
+  box-shadow: 0 12px 28px rgba(45, 31, 34, 0.1);
+  transform: translateY(-2px);
 }
 
 .likes__card.is-gone,
@@ -17994,8 +18013,35 @@ body.explorer-page--curated .explorer__dock {
 .matrimonial-objective__kicker { margin: 0 0 .2rem; font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--rose-secondary, #C4858B); }
 .matrimonial-objective__value { margin: 0; font-family: "Playfair Display", serif; font-size: 1.15rem; color: var(--text-primary, #2D1F22); }
 .likes__panel.hidden { display: none; }
-.likes__filters--main { margin-bottom: .5rem; }
-.likes__history-grid { display: grid; gap: .85rem; padding: 0 0 6rem; }
+.likes__toolbar--sections { margin-bottom: 0.35rem; }
+.likes__filters--main { margin-bottom: 0.5rem; }
+.likes__history-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  width: 100%;
+  max-width: min(100%, 1120px);
+  margin-inline: auto;
+  padding: 0 clamp(0.25rem, 1.5vw, 0.5rem) 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .likes__history-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .likes__history-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.likes__history-grid .history__card {
+  width: 100%;
+  background: var(--white);
+  border: 1px solid rgba(92, 58, 63, 0.08);
+}
 .msg__daily-suggestion { margin: 0 1rem .65rem; padding: .65rem .85rem; border-radius: 14px; background: var(--rose-pale, #FFF0F3); color: var(--text-secondary, #6B5A5E); font-size: .86rem; line-height: 1.45; }
 .ob__chip-check { display: inline-flex; align-items: center; gap: .35rem; padding: .45rem .7rem; border-radius: 999px; background: #fff; border: 1px solid rgba(45,31,34,.1); cursor: pointer; }
 .ob__chip-check input { accent-color: var(--rose-primary, #E8637A); }

@@ -56,7 +56,7 @@ def app_features(request):
                 "explorer_search_enabled": False,
                 "history_search_enabled": False,
                 "messages_search_enabled": True,
-                "explorer_curated_mode": True,
+                "explorer_curated_mode": False,
                 "guided_messages_enabled": True,
             }
         }

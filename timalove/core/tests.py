@@ -3,6 +3,7 @@ from django.db.models import Q
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 from datetime import date
+import json
 from unittest.mock import patch
 
 from core.controllers import (
@@ -1360,6 +1361,56 @@ class FreemiumQuotaTests(TestCase):
         self.assertEqual(blocked.status_code, 400)
         self.assertFalse(blocked.json()["ok"])
         self.assertEqual(blocked.json()["code"], "like_limit")
+
+    def test_prod_aligned_two_messages_ten_likes_per_month(self):
+        """Aligné prod : 2 messages / 10 likes (like + super like) par mois."""
+        from core.controllers import app_config_controller
+
+        cfg = app_config_controller.get_app_config()
+        cfg["guided_messages_enabled"] = False
+        app_config_controller.save_app_config(cfg)
+        site_settings_controller.set_value("free_messages_limit", 2)
+        site_settings_controller.set_value("free_likes_per_day", 10)
+        site_settings_controller.set_value("quota_period", "month")
+        self._match(self.free, self.p2)
+        self._match(self.free, self.p3)
+        ok1, _, _ = message_controller.send_text(self.free, self.p2.id, "A")
+        ok2, _, _ = message_controller.send_text(self.free, self.p3.id, "B")
+        ok3, msg, _ = message_controller.send_text(self.free, self.p2.id, "C")
+        self.assertTrue(ok1 and ok2)
+        self.assertFalse(ok3)
+        self.assertIn("2 messages", msg)
+
+        targets = []
+        for i in range(11):
+            p = make_profile(f"likeprod{i}@test.com", Gender.FEMALE, f"L{i}")
+            p.photo_url = "https://example.com/photo.webp"
+            p.onboarding_completed = True
+            p.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+            targets.append(p)
+        for p in targets[:8]:
+            r = swipe_controller.record_swipe(self.free, p.id, "like")
+            self.assertTrue(r["ok"], r)
+        blocked = swipe_controller.record_swipe(self.free, targets[8].id, "super_like")
+        self.assertFalse(blocked["ok"])
+        self.assertEqual(blocked.get("code"), "like_limit")
+
+    def test_historique_like_blocked_at_quota_returns_htmx_trigger(self):
+        site_settings_controller.set_value("free_likes_per_day", 1)
+        p4 = make_profile("histblock@test.com", Gender.FEMALE, "Bloc")
+        p4.photo_url = "https://example.com/photo.webp"
+        p4.onboarding_completed = True
+        p4.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+        self.assertTrue(swipe_controller.record_swipe(self.free, self.p2.id, "like")["ok"])
+        self.client.force_login(self.free.user)
+        resp = self.client.post(
+            f"/historique/{p4.id}/like/",
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(resp.status_code, 403)
+        trigger = json.loads(resp["HX-Trigger"])
+        self.assertIn("timalove-quota", trigger)
+        self.assertEqual(trigger["timalove-quota"]["code"], "like_limit")
 
     def test_auto_ban_after_reports(self):
         from core.controllers import moderation_controller

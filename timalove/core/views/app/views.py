@@ -5,6 +5,7 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
+import json
 
 from core.controllers import (
     likes_controller,
@@ -20,6 +21,21 @@ from core.models.choices import Gender, RelationshipIntent, Religion, ReportReas
 
 def _profile(request):
     return request.user.profile
+
+
+def _htmx_quota_block(result: dict) -> HttpResponse | None:
+    if result.get("ok", True):
+        return None
+    response = HttpResponse(status=403)
+    response["HX-Trigger"] = json.dumps(
+        {
+            "timalove-quota": {
+                "code": result.get("code") or "like_limit",
+                "message": result.get("error") or "",
+            }
+        }
+    )
+    return response
 
 
 def decouvrir(request):
@@ -82,6 +98,9 @@ def historique_like(request, profile_id):
     if quota_controller.history_locked(_profile(request)):
         return HttpResponse("", status=403)
     result = likes_controller.toggle_outgoing(_profile(request), profile_id)
+    blocked = _htmx_quota_block(result)
+    if blocked:
+        return blocked
     if not result["visible"]:
         return HttpResponse("")
     item = likes_controller.outgoing_item(_profile(request), profile_id)
@@ -98,6 +117,9 @@ def historique_superlike(request, profile_id):
     if quota_controller.history_locked(_profile(request)):
         return HttpResponse("", status=403)
     result = likes_controller.toggle_outgoing_super(_profile(request), profile_id)
+    blocked = _htmx_quota_block(result)
+    if blocked:
+        return blocked
     if not result["visible"]:
         return HttpResponse("")
     item = likes_controller.outgoing_item(_profile(request), profile_id)

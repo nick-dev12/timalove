@@ -126,6 +126,10 @@
     if (el && !el.hidden) close();
   });
 
+  document.body.addEventListener("timalove-quota", function (event) {
+    handleLimitError((event && event.detail) || {});
+  });
+
   function init() {
     bindModal();
   }

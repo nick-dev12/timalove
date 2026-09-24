@@ -52,10 +52,10 @@
     <header class="likes__intro">
       <p class="likes__kicker">Vos échanges de sincérité</p>
       <h1 class="likes__title">Intérêts</h1>
-      <p class="likes__lead">Intérêts reçus et profils auxquels vous avez manifesté votre attention.</p>
+      <p class="likes__lead">Les regards portés sur vous et ceux que vous avez choisis avec intention.</p>
     </header>
 
-    <div class="likes__toolbar">
+    <div class="likes__toolbar likes__toolbar--sections">
       <div class="likes__filters likes__filters--main" role="tablist" aria-label="Sections intérêts">
         <button type="button" class="likes__filter{% if active_tab != 'sent' %} is-on{% endif %}" data-likes-section="received" aria-selected="{% if active_tab != 'sent' %}true{% else %}false{% endif %}">Reçus</button>
         <button type="button" class="likes__filter{% if active_tab == 'sent' %} is-on{% endif %}" data-likes-section="sent" aria-selected="{% if active_tab == 'sent' %}true{% else %}false{% endif %}">Envoyés</button>
