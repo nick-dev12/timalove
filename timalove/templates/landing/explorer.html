@@ -36,10 +36,9 @@
 {% if user.is_authenticated %}
 <script src="{% static 'js/message-invite.js' %}?v=20260921lr2" defer></script>
 <script src="{% static 'js/explorer-match.js' %}?v=20260910m2" defer></script>
+<script src="{% static 'js/explorer-swipe.js' %}?v=20260924c1" defer></script>
 {% if curated_mode %}
-<script src="{% static 'js/explorer-curated.js' %}?v=20260920c1" defer></script>
-{% else %}
-<script src="{% static 'js/explorer-swipe.js' %}?v=20260921lr2" defer></script>
+<script src="{% static 'js/explorer-curated.js' %}?v=20260924p1" defer></script>
 {% endif %}
 {% else %}
 <script src="{% static 'js/explorer-match.js' %}?v=20260910m2" defer></script>

@@ -114,4 +114,7 @@
 {% if user.is_authenticated %}
 {% include "partials/message_invite_modal.html" %}
 {% endif %}
+{% if show_subscription_modal %}
+{% include "partials/freemium_subscription_assets.html" %}
+{% endif %}
 {% endblock %}

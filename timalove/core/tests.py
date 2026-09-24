@@ -554,6 +554,110 @@ class LikesMessagingFlowTests(TestCase):
         )
 
 
+class CuratedExplorerTests(TestCase):
+    """Like / super like sur le Parcours curated : enregistrement + remplacement."""
+
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        self.client = Client(enforce_csrf_checks=False)
+        self.viewer = make_profile("curated.viewer@gmail.com", Gender.MALE, "Karim")
+        self.a = make_profile("curated.a@gmail.com", Gender.FEMALE, "Awa")
+        self.b = make_profile("curated.b@gmail.com", Gender.FEMALE, "Penda")
+        self.c = make_profile("curated.c@gmail.com", Gender.FEMALE, "Fatou")
+        for profile in (self.viewer, self.a, self.b, self.c):
+            profile.photo_url = "https://example.com/photo.webp"
+            profile.onboarding_completed = True
+            profile.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+        self.viewer.user.set_password("Ludvanne12")
+        self.viewer.user.save()
+
+    def test_explorer_loads_swipe_script_in_curated_mode(self):
+        self.assertTrue(self.client.login(username=self.viewer.user.username, password="Ludvanne12"))
+        page = self.client.get("/explorer/")
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        self.assertIn("explorer-swipe.js", html)
+        self.assertIn("explorer-curated.js", html)
+
+    def test_like_then_replace_removes_liked_profile(self):
+        from core.controllers import explore_controller, swipe_controller
+
+        session = self.client.session
+        session[explore_controller.SESSION_CURATED_IDS_KEY] = [str(self.a.id)]
+        session[explore_controller.SESSION_CURATED_TARGET_KEY] = 1
+        session.save()
+
+        result = swipe_controller.record_swipe(self.viewer, self.a.id, "like")
+        self.assertTrue(result["ok"], result)
+
+        replacements, meta = explore_controller.consume_curated_profile(
+            self.viewer, session, self.a.id
+        )
+        stored = [str(pk) for pk in session.get(explore_controller.SESSION_CURATED_IDS_KEY) or []]
+        self.assertNotIn(str(self.a.id), stored)
+        self.assertTrue(meta["replaced"])
+        self.assertEqual(len(replacements), 1)
+        self.assertIn(replacements[0]["id"], {str(self.b.id), str(self.c.id)})
+        self.assertNotIn(str(self.a.id), {card["id"] for card in replacements})
+
+    def test_curated_replace_endpoint_returns_new_card(self):
+        self.assertTrue(self.client.login(username=self.viewer.user.username, password="Ludvanne12"))
+        session = self.client.session
+        from core.controllers import explore_controller
+
+        session[explore_controller.SESSION_CURATED_IDS_KEY] = [str(self.a.id)]
+        session[explore_controller.SESSION_CURATED_TARGET_KEY] = 1
+        session.save()
+        swipe = self.client.post(
+            "/api/swipes/",
+            data='{"swiped_id": "%s", "action": "super_like"}' % self.a.id,
+            content_type="application/json",
+        )
+        self.assertEqual(swipe.status_code, 200)
+        self.assertTrue(swipe.json()["ok"])
+
+        replaced = self.client.post(
+            "/explorer/curated-replace/",
+            data='{"profile_id": "%s"}' % self.a.id,
+            content_type="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(replaced.status_code, 200)
+        html = replaced.content.decode()
+        self.assertNotIn(str(self.a.id), html)
+        self.assertTrue(str(self.b.id) in html or str(self.c.id) in html)
+
+    def test_online_dot_only_for_live_presence(self):
+        from datetime import timedelta
+
+        from core.controllers import explore_controller, presence_controller
+
+        self.a.is_online = True
+        self.a.last_active_at = timezone.now() - timedelta(days=2)
+        self.a.save(update_fields=["is_online", "last_active_at"])
+        self.assertFalse(presence_controller.is_present(self.a))
+        stale = explore_controller.online_status_for_ids([self.a.id])
+        self.assertFalse(stale[str(self.a.id)])
+
+        became = presence_controller.mark_socket_connected(self.a.id)
+        self.assertTrue(became)
+        self.a.refresh_from_db()
+        self.assertTrue(presence_controller.is_present(self.a))
+        live = explore_controller.online_status_for_ids([self.a.id])
+        self.assertTrue(live[str(self.a.id)])
+
+        left = presence_controller.mark_socket_disconnected(self.a.id)
+        self.assertTrue(left)
+        self.a.refresh_from_db()
+        self.assertFalse(self.a.is_online)
+        self.assertFalse(presence_controller.is_present(self.a))
+
+        self.assertTrue(self.client.login(username=self.viewer.user.username, password="Ludvanne12"))
+        api = self.client.get("/api/profiles/online/?ids=%s" % self.a.id)
+        self.assertEqual(api.status_code, 200)
+        self.assertFalse(api.json()["online"].get(str(self.a.id)))
+
+
 class NotificationFlowTests(TestCase):
     def setUp(self):
         site_settings_controller.seed_defaults()
@@ -1198,6 +1302,64 @@ class FreemiumQuotaTests(TestCase):
         self.assertIn("premium_1m", homme_ids)
         self.assertIn("vip_1m", homme_ids)
         self.assertNotIn("pass_femme", homme_ids)
+
+    def test_thread_shows_subscription_modal_when_message_limit_reached(self):
+        from core.controllers import app_config_controller
+
+        cfg = app_config_controller.get_app_config()
+        cfg["guided_messages_enabled"] = False
+        app_config_controller.save_app_config(cfg)
+        site_settings_controller.set_value("free_messages_limit", 1)
+        self._match(self.free, self.p2)
+        self._match(self.free, self.p3)
+        ok, msg, _ = message_controller.send_text(self.free, self.p2.id, "Premier")
+        self.assertTrue(ok, msg)
+        self.client.force_login(self.free.user)
+
+        inbox = self.client.get("/messages/")
+        self.assertEqual(inbox.status_code, 200)
+        self.assertContains(inbox, "settings-modal-subscription")
+
+        other = self.client.get(f"/discussions/{self.p3.id}/")
+        self.assertEqual(other.status_code, 200)
+        self.assertContains(other, "settings-modal-subscription")
+        self.assertContains(other, "subscription-modal.js")
+        self.assertContains(other, 'data-msg-input')
+        self.assertContains(other, "Écrire un message")
+        self.assertNotContains(other, "msg__composer--disabled")
+        self.assertNotContains(other, 'data-quota-locked="1"')
+
+        blocked = self.client.post(
+            "/api/messages/",
+            data='{"partner_id": "%s", "content": "Encore"}' % self.p3.id,
+            content_type="application/json",
+        )
+        self.assertEqual(blocked.status_code, 400)
+        self.assertFalse(blocked.json()["ok"])
+        self.assertEqual(blocked.json()["code"], "message_limit")
+
+    def test_api_like_limit_returns_code(self):
+        site_settings_controller.set_value("free_likes_per_day", 1)
+        self.client.force_login(self.free.user)
+        first = self.client.post(
+            "/api/swipes/",
+            data='{"swiped_id": "%s", "action": "like"}' % self.p2.id,
+            content_type="application/json",
+        )
+        self.assertEqual(first.status_code, 200)
+        self.assertTrue(first.json()["ok"])
+        extra = make_profile("likeapi@test.com", Gender.FEMALE, "Khadija")
+        extra.photo_url = "https://example.com/photo.webp"
+        extra.onboarding_completed = True
+        extra.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+        blocked = self.client.post(
+            "/api/swipes/",
+            data='{"swiped_id": "%s", "action": "super_like"}' % extra.id,
+            content_type="application/json",
+        )
+        self.assertEqual(blocked.status_code, 400)
+        self.assertFalse(blocked.json()["ok"])
+        self.assertEqual(blocked.json()["code"], "like_limit")
 
     def test_auto_ban_after_reports(self):
         from core.controllers import moderation_controller

@@ -426,8 +426,9 @@ def logout_user(request) -> None:
     if user.is_authenticated:
         profile = getattr(user, "profile", None)
         if profile:
-            profile.is_online = False
-            profile.save(update_fields=["is_online"])
+            from core.controllers import presence_controller
+
+            presence_controller.mark_offline(profile)
     logout(request)
 
 

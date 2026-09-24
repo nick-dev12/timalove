@@ -259,6 +259,44 @@ def explorer_curated_more(request):
     return redirect("public:explorer")
 
 
+@require_POST
+def explorer_curated_replace(request):
+    blocked = _explorer_access(request)
+    if blocked:
+        return blocked
+    from core.controllers import app_config_controller, explore_controller
+
+    profile = getattr(request.user, "profile", None)
+    if profile is None or not app_config_controller.explorer_curated_mode_enabled():
+        return HttpResponse(status=404)
+
+    partner_id = (request.POST.get("profile_id") or "").strip()
+    if not partner_id and request.content_type and "json" in (request.content_type or ""):
+        import json
+
+        try:
+            partner_id = str((json.loads(request.body or b"{}") or {}).get("profile_id") or "").strip()
+        except (json.JSONDecodeError, TypeError, ValueError):
+            partner_id = ""
+    if not partner_id:
+        return HttpResponse(status=400)
+
+    cards, curated_meta = explore_controller.consume_curated_profile(
+        profile, request.session, partner_id
+    )
+    context = {
+        "cards": cards,
+        "curated_meta": curated_meta,
+    }
+    if request.headers.get("HX-Request") == "true" or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        parts = []
+        if cards:
+            parts.append(render(request, "partials/explorer_curated_cards.html", context).content.decode())
+        parts.append(render(request, "partials/explorer_curated_more_btn.html", context).content.decode())
+        return HttpResponse("".join(parts))
+    return redirect("public:explorer")
+
+
 @require_GET
 def explorer_search(request):
     from core.controllers import explore_controller
@@ -294,16 +332,19 @@ def messages(request):
 
     conversations = message_controller.list_conversations(profile)
     notification_controller.mark_read_for_context(profile, "messages")
-    return render(
-        request,
-        "app/messages.html",
-        {
-            "title": "Messages",
-            "conversations": conversations,
-            "me": profile,
-            "is_preview": False,
-        },
-    )
+    from core.controllers import profile_controller, quota_controller
+
+    remaining = quota_controller.messages_remaining(profile)
+    ctx = {
+        "title": "Messages",
+        "conversations": conversations,
+        "me": profile,
+        "is_preview": False,
+        "quota_locked": remaining == 0,
+        "messages_remaining": remaining,
+    }
+    ctx.update(profile_controller.freemium_subscription_context(profile))
+    return render(request, "app/messages.html", ctx)
 
 
 @require_GET

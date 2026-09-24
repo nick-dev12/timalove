@@ -124,10 +124,7 @@ def discussion_detail(request, partner_id):
     if request.method == "POST":
         ok, msg, _ = message_controller.send_text(profile, partner_id, request.POST.get("content", ""))
         if not ok:
-            from core.controllers import quota_controller
-
-            if not quota_controller.limit_code_for(profile):
-                messages.error(request, msg)
+            messages.error(request, msg)
         else:
             message_controller.mark_read(profile, partner_id)
         return redirect("app:discussion_detail", partner_id=partner_id)
@@ -160,6 +157,7 @@ def discussion_detail(request, partner_id):
         "blocked_me": thread.get("blocked_me", False),
         "can_send": thread.get("can_send", True),
         "quota_message": thread.get("quota_message", ""),
+        "quota_locked": bool(thread.get("quota_locked")),
         "messages_remaining": thread.get("messages_remaining"),
         "conversation_pending": thread.get("conversation_pending", False),
         "can_accept": thread.get("can_accept", False),
@@ -169,10 +167,7 @@ def discussion_detail(request, partner_id):
         "daily_suggestion": thread.get("daily_suggestion", ""),
         "report_reasons": ReportReason.choices,
     }
-    if thread.get("messages_remaining") is not None:
-        ctx.update(profile_controller.freemium_subscription_context(profile))
-    else:
-        ctx["show_subscription_modal"] = False
+    ctx.update(profile_controller.freemium_subscription_context(profile))
     return render(request, "app/message_thread.html", ctx)
 
 

@@ -477,6 +477,10 @@
       try {
         const payload = JSON.parse(event.data);
         if (payload && (payload.event === "connected" || payload.event === "pong")) return;
+        if (payload && payload.event === "presence") {
+          document.dispatchEvent(new CustomEvent("timalove:presence", { detail: payload }));
+          return;
+        }
         handleNotification(payload);
       } catch (_err) {
         /* ignore */

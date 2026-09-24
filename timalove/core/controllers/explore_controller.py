@@ -133,7 +133,7 @@ def serialize_card(
         "liked": liked,
         "super_liked": super_liked,
         "subscription_badge": subscription_controller.badge_for(profile),
-        "is_online": bool(profile.is_online),
+        "is_online": _is_present(profile),
     }
 
 
@@ -364,7 +364,7 @@ def get_public_profile(profile_id, viewer=None) -> dict | None:
         "relationship_intent": profile.relationship_intent or "",
         "relationship_intent_label": intent_label,
         "life_project": (profile.life_project or "").strip(),
-        "is_online": bool(profile.is_online),
+        "is_online": _is_present(profile),
         "is_boosted": bool(profile.is_boosted),
         "member_since": profile.created_at.year if profile.created_at else None,
         "followers": int(profile.likes_received_count or 0),
@@ -558,18 +558,54 @@ def curated_daily_feed(viewer, session, *, expand_by: int = 0) -> tuple[list[dic
     return cards, meta
 
 
+def consume_curated_profile(viewer, session, profile_id) -> tuple[list[dict], dict]:
+    """Retire un profil liké de la sélection et le remplace par un nouveau si possible."""
+    from core.controllers import app_config_controller
+
+    consumed = str(profile_id or "").strip()
+    stored = []
+    if session is not None:
+        stored = [str(raw) for raw in (session.get(SESSION_CURATED_IDS_KEY) or []) if str(raw).strip()]
+    kept = [pk for pk in stored if pk != consumed]
+    daily_max = app_config_controller.curated_daily_max()
+    eligible = _eligible_ids(viewer)
+    already = set(kept)
+    already.add(consumed)
+    remaining = [pk for pk in eligible if str(pk) not in already]
+
+    replacement_ids: list = []
+    if remaining and len(kept) < daily_max:
+        pick = remaining[random.randrange(len(remaining))]
+        replacement_ids.append(pick)
+        kept.append(str(pick))
+
+    if session is not None:
+        session[SESSION_CURATED_IDS_KEY] = kept
+        session[SESSION_CURATED_TARGET_KEY] = max(
+            int(session.get(SESSION_CURATED_TARGET_KEY) or len(kept)),
+            len(kept),
+        )
+        session.modified = True
+
+    cards = _cards_for_ids(replacement_ids, viewer)
+    eligible_total = len(eligible)
+    meta = {
+        "count": len(kept),
+        "has_more": len(kept) < eligible_total and len(kept) < daily_max,
+        "eligible_total": eligible_total,
+        "replaced": bool(cards),
+    }
+    return cards, meta
+
+
+def _is_present(profile: Profile) -> bool:
+    from core.controllers import presence_controller
+
+    return presence_controller.is_present(profile)
+
+
 def online_status_for_ids(profile_ids: list) -> dict[str, bool]:
-    """Statut en ligne pour une liste de profils (cartes Parcours)."""
-    ids: list[uuid.UUID] = []
-    for raw in profile_ids[:100]:
-        text = str(raw or "").strip()
-        if not text:
-            continue
-        try:
-            ids.append(uuid.UUID(text))
-        except ValueError:
-            continue
-    if not ids:
-        return {}
-    rows = Profile.objects.filter(pk__in=ids).values_list("pk", "is_online")
-    return {str(pk): bool(online) for pk, online in rows}
+    """Statut en ligne réel (socket ouvert ou activité très récente)."""
+    from core.controllers import presence_controller
+
+    return presence_controller.status_for_ids(profile_ids)

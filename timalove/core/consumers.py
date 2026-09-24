@@ -85,6 +85,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         if not profile_id:
             await self.close(code=4401)
             return
+        self.profile_id = profile_id
         self.group = f"notif_{profile_id}"
         # Accepter et répondre tout de suite pour que Nginx envoie le 101
         # avant tout appel Redis (sinon le navigateur voit un 1006).
@@ -92,23 +93,73 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({"event": "connected", "ok": True}))
         if self.channel_layer is None:
             logger.warning("[ws] channel layer absent")
+            await self._mark_connected()
             return
         try:
             await self.channel_layer.group_add(self.group, self.channel_name)
+            await self.channel_layer.group_add("presence", self.channel_name)
         except Exception:
             logger.exception("[ws] notification group_add a échoué")
+        became_online = await self._mark_connected()
+        if became_online:
+            await self._broadcast_presence(True)
 
     async def disconnect(self, code):
+        became_offline = False
+        if hasattr(self, "profile_id"):
+            became_offline = await self._mark_disconnected()
         if hasattr(self, "group"):
             try:
                 await self.channel_layer.group_discard(self.group, self.channel_name)
             except Exception:
                 pass
+        try:
+            await self.channel_layer.group_discard("presence", self.channel_name)
+        except Exception:
+            pass
+        if became_offline:
+            await self._broadcast_presence(False)
 
     async def receive(self, text_data=None, bytes_data=None):
         data = json.loads(text_data or "{}")
         if data.get("type") == "ping" or data.get("event") == "ping":
+            if hasattr(self, "profile_id"):
+                await self._heartbeat()
             await self.send(text_data=json.dumps({"event": "pong"}))
 
     async def notify(self, event):
         await self.send(text_data=json.dumps(event.get("payload", {})))
+
+    async def presence_event(self, event):
+        await self.send(text_data=json.dumps(event.get("payload", {})))
+
+    async def _broadcast_presence(self, online: bool):
+        if self.channel_layer is None or not hasattr(self, "profile_id"):
+            return
+        from core.controllers.presence_controller import presence_payload
+
+        try:
+            await self.channel_layer.group_send(
+                "presence",
+                {"type": "presence_event", "payload": presence_payload(self.profile_id, online)},
+            )
+        except Exception:
+            logger.exception("[ws] broadcast présence a échoué")
+
+    @database_sync_to_async
+    def _mark_connected(self) -> bool:
+        from core.controllers import presence_controller
+
+        return presence_controller.mark_socket_connected(self.profile_id)
+
+    @database_sync_to_async
+    def _mark_disconnected(self) -> bool:
+        from core.controllers import presence_controller
+
+        return presence_controller.mark_socket_disconnected(self.profile_id)
+
+    @database_sync_to_async
+    def _heartbeat(self) -> None:
+        from core.controllers import presence_controller
+
+        presence_controller.heartbeat(self.profile_id)

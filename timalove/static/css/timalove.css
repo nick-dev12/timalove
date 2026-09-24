@@ -15784,6 +15784,25 @@ body.messages-page .msg__thread {
   color: var(--text-secondary);
 }
 
+.msg__upgrade {
+  display: block;
+  width: 100%;
+  max-width: 16rem;
+  margin: 0.75rem auto 0;
+  padding: 0.7rem 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rose-primary);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.msg__upgrade:hover {
+  background: #d4556c;
+}
+
 body.is-msg-report {
   overflow: hidden;
 }

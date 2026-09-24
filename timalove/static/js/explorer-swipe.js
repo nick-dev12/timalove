@@ -103,16 +103,17 @@
     if (!window.timaloveMessageInvite || typeof window.timaloveMessageInvite.open !== "function") return;
 
     const slide = btn.closest(".explorer__slide");
-    const scope = btn.closest(".visit, #profile-modal") || slide;
+    const curated = btn.closest(".curated-card");
+    const scope = btn.closest(".visit, #profile-modal") || slide || curated;
     let name = data.partner_name || "";
     let photo = data.partner_photo || "";
     if (scope) {
       if (!name) {
-        const heading = scope.querySelector(".explorer__meta h2 a, .visit__name");
+        const heading = scope.querySelector(".explorer__meta h2 a, .visit__name, .curated-card__head a");
         if (heading) name = (heading.textContent || "").split(",")[0].trim();
       }
       if (!photo) {
-        const img = scope.querySelector(".explorer__photo.is-active, .visit__hero-photo img, .visit__gallery-item img");
+        const img = scope.querySelector(".explorer__photo.is-active, .visit__hero-photo img, .visit__gallery-item img, .curated-card__media img");
         if (img && img.src) photo = img.currentSrc || img.src;
       }
     }

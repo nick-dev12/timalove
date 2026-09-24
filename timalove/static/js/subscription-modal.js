@@ -126,10 +126,14 @@
     if (el && !el.hidden) close();
   });
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bindModal);
-  } else {
+  function init() {
     bindModal();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
   }
 
   window.timaloveSubscriptionModal = {

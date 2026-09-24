@@ -11,6 +11,7 @@ urlpatterns = [
     path("validation-en-attente/", views.validation_pending, name="validation_pending"),
     path("explorer/", views.explorer, name="explorer"),
     path("explorer/curated-plus/", views.explorer_curated_more, name="explorer_curated_more"),
+    path("explorer/curated-replace/", views.explorer_curated_replace, name="explorer_curated_replace"),
     path("explorer/recherche/", views.explorer_search, name="explorer_search"),
     path("messages/", views.messages, name="messages"),
     path("messages/apercu/<str:partner_key>/", views.messages_preview, name="messages_preview"),
