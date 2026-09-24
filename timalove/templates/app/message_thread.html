@@ -6,7 +6,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="{% static 'js/explorer-chrome.js' %}?v=20260921lb1" defer></script>
 <script src="{% static 'js/message-datetime.js' %}?v=20260913tz1" defer></script>
-<script src="{% static 'js/messages-thread.js' %}?v=20260913tz1" defer></script>
+<script src="{% static 'js/messages-thread.js' %}?v=20260924msg1" defer></script>
 {% if not is_preview %}
 <script src="{% static 'js/message-invite.js' %}?v=20260921lr2" defer></script>
 {% endif %}
@@ -164,9 +164,10 @@
     </form>
     {% elif blocked_by_me or blocked_me or not can_send %}
     <div class="msg__composer msg__composer--disabled" aria-disabled="true">
-      <p class="msg__composer-lock">{{ quota_message|default:"Messagerie désactivée pour cette conversation." }}</p>
+      <p class="msg__composer-lock">{{ composer_lock_message|default:"Messagerie désactivée pour cette conversation." }}</p>
     </div>
-    {% elif guided_intro_required and guided_prompts %}
+    {% else %}
+    {% if guided_intro_required and guided_prompts %}
     {% if daily_suggestion %}
     <p class="msg__daily-suggestion" role="note">{{ daily_suggestion }}</p>
     {% endif %}
@@ -179,10 +180,11 @@
           <button type="submit" name="content" value="{{ prompt }}" class="msg__guided-btn">{{ prompt }}</button>
           {% endfor %}
         </div>
+        <button type="button" class="msg__guided-skip" data-guided-skip>Ignorer et écrire librement</button>
       </div>
     </form>
-    {% else %}
-    <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}" data-partner-id="{{ partner_id }}" data-media-url="{% url 'app:discussion_media' partner_id %}" data-text-enabled="{% if app_features.text_messages_enabled %}1{% else %}0{% endif %}">
+    {% endif %}
+    <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}" data-partner-id="{{ partner_id }}" data-skip-intro-url="{% url 'app:discussion_skip_guided' partner_id %}" data-media-url="{% url 'app:discussion_media' partner_id %}" data-text-enabled="{% if app_features.text_messages_enabled %}1{% else %}0{% endif %}">
       {% csrf_token %}
       <div class="msg__record" data-msg-record hidden>
         <button class="msg__tool-ico" type="button" data-msg-record-cancel aria-label="Annuler">

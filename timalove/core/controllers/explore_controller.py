@@ -261,38 +261,22 @@ def public_feed(
             sync_feed_session(session, viewer, deploy_revision=get_deploy_revision())
 
         eligible = _eligible_ids(viewer)
-        eligible_set = set(eligible)
         served = {str(pk) for pk in session.get(SESSION_SERVED_KEY, [])}
+        remaining = [pk for pk in eligible if str(pk) not in served]
+        if not remaining:
+            session[SESSION_QUEUE_KEY] = []
+            session.modified = True
+            return [], False
 
-        raw_queue = session.get(SESSION_QUEUE_KEY, [])
-        queue: list = []
-        seen_in_queue: set = set()
-        for raw in raw_queue:
-            try:
-                pk = uuid.UUID(str(raw))
-            except (TypeError, ValueError):
-                continue
-            key = str(pk)
-            if key in served or key in seen_in_queue or pk not in eligible_set:
-                continue
-            queue.append(pk)
-            seen_in_queue.add(key)
-
-        in_queue = set(queue)
-        remaining = [pk for pk in eligible if str(pk) not in served and pk not in in_queue]
-        if len(queue) < limit and remaining:
-            remaining = _order_feed_ids(remaining, viewer, seed=seed, served_count=len(served))
-            queue.extend(remaining)
-
-        page_ids = queue[:limit]
-        tail = queue[limit:]
-        session[SESSION_QUEUE_KEY] = [str(pk) for pk in tail]
+        order_seed = secrets.token_hex(16)
+        ordered = _order_feed_ids(remaining, viewer, seed=order_seed, served_count=len(served))
+        page_ids = ordered[:limit]
         served.update(str(pk) for pk in page_ids)
         session[SESSION_SERVED_KEY] = list(served)
+        session[SESSION_QUEUE_KEY] = []
         session.modified = True
 
-        unserved = sum(1 for pk in eligible if str(pk) not in served)
-        has_more = bool(tail) or unserved > 0
+        has_more = len(remaining) > len(page_ids)
         return _cards_for_ids(page_ids, viewer), has_more
 
     ids = _eligible_ids(viewer)

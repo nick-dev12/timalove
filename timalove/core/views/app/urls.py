@@ -15,6 +15,7 @@ urlpatterns = [
     path("rencontres/", views.rencontres, name="rencontres"),
     path("discussions/", views.discussions, name="discussions"),
     path("discussions/<uuid:partner_id>/", views.discussion_detail, name="discussion_detail"),
+    path("discussions/<uuid:partner_id>/skip-intro/", views.discussion_skip_guided, name="discussion_skip_guided"),
     path("discussions/<uuid:partner_id>/media/", views.discussion_media, name="discussion_media"),
     path("profil/", views.profil, name="profil"),
     path("profil/parametres/", views.parametres, name="parametres"),

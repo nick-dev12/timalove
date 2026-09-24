@@ -4,8 +4,8 @@
 (function () {
   const MAX_VOICE_MS = 60000;
   const thread = document.querySelector("[data-msg-thread]");
-  const form = document.querySelector(".msg__composer");
-  const input = document.querySelector("[data-msg-input]");
+  const form = document.querySelector(".msg__composer[data-partner-id]");
+  const input = form && form.querySelector("[data-msg-input]");
   const compose = document.querySelector("[data-msg-compose]");
   const recordBar = document.querySelector("[data-msg-record]");
   const photoInput = document.querySelector("[data-msg-photo-input]");
@@ -657,6 +657,41 @@
         .finally(function () {
           if (sendBtn) sendBtn.disabled = false;
           input.focus();
+        });
+    });
+  }
+
+  const skipBtn = document.querySelector("[data-guided-skip]");
+  if (skipBtn && form) {
+    const skipUrl = form.getAttribute("data-skip-intro-url");
+    skipBtn.addEventListener("click", function () {
+      if (!skipUrl) return;
+      skipBtn.disabled = true;
+      fetch(skipUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "X-CSRFToken": csrf(),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      })
+        .then(function (res) {
+          return res.json().then(function (payload) {
+            if (!res.ok || !payload.ok) throw new Error(payload.message || "Action impossible.");
+            return payload;
+          });
+        })
+        .then(function () {
+          document.querySelectorAll(".msg__composer--guided, .msg__daily-suggestion").forEach(function (el) {
+            el.remove();
+          });
+          if (input) input.focus();
+        })
+        .catch(function (err) {
+          toast(err.message || "Action impossible.");
+        })
+        .finally(function () {
+          skipBtn.disabled = false;
         });
     });
   }

@@ -178,6 +178,7 @@ def discussion_detail(request, partner_id):
         "blocked_by_me": thread.get("blocked_by_me", False),
         "blocked_me": thread.get("blocked_me", False),
         "can_send": thread.get("can_send", True),
+        "composer_lock_message": thread.get("composer_lock_message", ""),
         "quota_message": thread.get("quota_message", ""),
         "quota_locked": bool(thread.get("quota_locked")),
         "messages_remaining": thread.get("messages_remaining"),
@@ -191,6 +192,17 @@ def discussion_detail(request, partner_id):
     }
     ctx.update(profile_controller.freemium_subscription_context(profile))
     return render(request, "app/message_thread.html", ctx)
+
+
+@login_required
+@require_POST
+def discussion_skip_guided(request, partner_id):
+    ok, msg = message_controller.skip_guided_intro(_profile(request), partner_id)
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"ok": ok, "message": msg}, status=200 if ok else 400)
+    if not ok:
+        messages.error(request, msg)
+    return redirect("app:discussion_detail", partner_id=partner_id)
 
 
 @login_required

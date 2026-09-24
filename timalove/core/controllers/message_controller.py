@@ -161,6 +161,20 @@ def needs_guided_intro(match: Match) -> bool:
     return bool(guided_intro_prompts(match))
 
 
+@transaction.atomic
+def skip_guided_intro(profile: Profile, partner_id) -> tuple[bool, str]:
+    match = get_active_match(profile, partner_id)
+    if not match:
+        return False, "Conversation introuvable."
+    if match.guided_intro_completed or match.messages.exists():
+        return True, ""
+    if not guided_intro_prompts(match):
+        return True, ""
+    match.guided_intro_completed = True
+    match.save(update_fields=["guided_intro_completed", "updated_at"])
+    return True, ""
+
+
 def has_outgoing_like(profile: Profile, partner_id) -> bool:
     from core.controllers.swipe_controller import LIKE_Q
     from core.models import Swipe
@@ -692,9 +706,14 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
     flags = _block_flags(profile, partner)
     items = [_serialize_message(msg, profile) for msg in messages_for(profile, partner_id)]
     denied = _messaging_denied(profile, partner)
+    denied_msg = denied or ""
     quota_ok, quota_err = quota_controller.check_message(profile)
     pending_block, pending_msg = _pending_blocks_send(match, profile)
     blocked = bool(flags["is_blocked"])
+    can_send = not blocked and not denied and not pending_block
+    composer_lock = ""
+    if not can_send:
+        composer_lock = pending_msg or denied_msg or "Messagerie désactivée pour cette conversation."
     can_accept = (
         match.conversation_status == ConversationStatus.PENDING and _is_conversation_recipient(match, profile)
     )
@@ -705,9 +724,10 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
         "thread_items": items,
         "match": match,
         **flags,
-        "can_send": not blocked and not denied and not pending_block,
+        "can_send": can_send,
+        "composer_lock_message": composer_lock,
         "quota_locked": (not blocked) and not pending_block and not quota_ok,
-        "quota_message": pending_msg or (quota_err if (not blocked and not quota_ok) else ""),
+        "quota_message": quota_err if ((not blocked) and not pending_block and not quota_ok) else "",
         "messages_remaining": quota_controller.messages_remaining(profile),
         "conversation_pending": match.conversation_status == ConversationStatus.PENDING,
         "can_accept": can_accept,
