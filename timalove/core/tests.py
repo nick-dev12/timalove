@@ -1779,6 +1779,22 @@ class StrictGenderDiscoveryTests(TestCase):
         self.assertIn(self.woman.pk, ids)
         self.assertNotIn(self.man2.pk, ids)
 
+    def test_feed_session_avoids_immediate_repeat_on_refresh(self):
+        from django.contrib.sessions.backends.db import SessionStore
+        from core.controllers import explore_controller
+
+        w2 = make_profile("w2-gender@test.com", Gender.FEMALE, "W2")
+        w2.photo_url = "https://example.com/w2.jpg"
+        w2.onboarding_completed = True
+        w2.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+
+        session = SessionStore()
+        session.save()
+        first, _ = explore_controller.public_feed(limit=1, viewer=self.man, session=session, seed="seed-a")
+        second, _ = explore_controller.public_feed(limit=1, viewer=self.man, session=session, seed="seed-b")
+        self.assertTrue(first and second)
+        self.assertNotEqual(first[0]["id"], second[0]["id"])
+
     def test_sync_feed_session_resets_on_gender_change(self):
         from django.contrib.sessions.backends.db import SessionStore
         from core.controllers.explore_controller import SESSION_ELIGIBILITY_KEY, SESSION_QUEUE_KEY, sync_feed_session

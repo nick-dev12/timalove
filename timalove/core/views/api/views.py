@@ -92,6 +92,11 @@ def swipes(request):
     result = swipe_controller.record_swipe(
         profile, data.get("swiped_id") or data.get("swipedId"), data.get("action", "pass")
     )
+    if result.get("ok"):
+        from core.controllers import explore_controller
+
+        swiped_id = data.get("swiped_id") or data.get("swipedId")
+        explore_controller.mark_profiles_seen_in_feed(request.session, [swiped_id])
     status = 200 if result.get("ok") else 400
     return JsonResponse(result, status=status)
 

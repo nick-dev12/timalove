@@ -161,9 +161,6 @@ def explorer(request):
 
     if not is_hx:
         request.session["explorer_seed"] = secrets.token_hex(8)
-        from core.controllers.explore_controller import reset_feed_session
-
-        reset_feed_session(request.session)
     elif "explorer_seed" not in request.session:
         request.session["explorer_seed"] = secrets.token_hex(8)
 
@@ -180,7 +177,7 @@ def explorer(request):
         limit=page_limit,
         viewer=getattr(request.user, "profile", None) if request.user.is_authenticated else None,
         session=request.session,
-        reset=not is_hx and direction != "back",
+        reset=False,
     )
     served = len(request.session.get("explorer_served", []))
     next_offset = served

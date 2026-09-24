@@ -255,7 +255,13 @@ def deconnexion(request):
     profile = getattr(getattr(request, "user", None), "profile", None)
     was_staff = bool(profile and getattr(profile, "is_admin", False))
     auth_controller.logout_user(request)
-    for key in ("explorer_seed", "explorer_served", "explorer_queue", "admin_2fa_verified"):
+    for key in (
+        "explorer_seed",
+        "explorer_served",
+        "explorer_recent_shown",
+        "explorer_queue",
+        "admin_2fa_verified",
+    ):
         request.session.pop(key, None)
     nxt = _safe_next(request)
     if nxt:

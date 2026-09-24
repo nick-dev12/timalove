@@ -19,9 +19,13 @@ PHOTOS_PER_CARD = 8
 
 SESSION_QUEUE_KEY = "explorer_queue"
 SESSION_SERVED_KEY = "explorer_served"
+SESSION_RECENT_SHOWN_KEY = "explorer_recent_shown"
 SESSION_SEED_KEY = "explorer_feed_seed"
 SESSION_ELIGIBILITY_KEY = "explorer_eligibility"
 SESSION_DEPLOY_REV_KEY = "explorer_deploy_rev"
+
+RECENT_SHOWN_CAP = 50
+RECENT_RECYCLE_BLOCK = 30
 
 
 def _chip_catalog(catalog: list[dict], selected_raw) -> list[dict]:
@@ -178,8 +182,54 @@ def reset_feed_session(session) -> None:
         return
     session.pop(SESSION_QUEUE_KEY, None)
     session.pop(SESSION_SERVED_KEY, None)
+    session.pop(SESSION_RECENT_SHOWN_KEY, None)
     session.pop(SESSION_SEED_KEY, None)
     reset_curated_session(session)
+
+
+def mark_profiles_seen_in_feed(session, profile_ids) -> None:
+    """Profils déjà montrés ou swipés — ne pas les reproposer tout de suite au retour sur Parcours."""
+    if session is None:
+        return
+    served = {str(x) for x in session.get(SESSION_SERVED_KEY, []) if str(x).strip()}
+    recent = [str(x) for x in session.get(SESSION_RECENT_SHOWN_KEY, []) if str(x).strip()]
+    for raw in profile_ids or []:
+        key = str(raw).strip()
+        if not key:
+            continue
+        served.add(key)
+        recent.append(key)
+    session[SESSION_SERVED_KEY] = list(served)
+    session[SESSION_RECENT_SHOWN_KEY] = recent[-RECENT_SHOWN_CAP:]
+    session.modified = True
+
+
+def _remaining_for_feed(eligible: list, session) -> list:
+    """Exclut les profils déjà servis ; recycle le pool en gardant un cooldown anti-répétition."""
+    served = {str(pk) for pk in session.get(SESSION_SERVED_KEY, [])}
+    recent = [str(x) for x in session.get(SESSION_RECENT_SHOWN_KEY, [])]
+    recent_block = set(recent[-RECENT_RECYCLE_BLOCK:])
+
+    remaining = [pk for pk in eligible if str(pk) not in served]
+    if remaining:
+        return remaining
+
+    remaining = [pk for pk in eligible if str(pk) not in recent_block]
+    if remaining:
+        session[SESSION_SERVED_KEY] = []
+        session.modified = True
+        return remaining
+
+    soft_block = set(recent[-10:])
+    remaining = [pk for pk in eligible if str(pk) not in soft_block]
+    if remaining:
+        session[SESSION_SERVED_KEY] = []
+        session.modified = True
+        return remaining
+
+    session[SESSION_SERVED_KEY] = []
+    session.modified = True
+    return list(eligible)
 
 
 def sync_feed_session(session, viewer=None, *, deploy_revision: str = "") -> None:
@@ -255,24 +305,22 @@ def public_feed(
         from core.deploy_revision import get_deploy_revision
 
         sync_feed_session(session, viewer, deploy_revision=get_deploy_revision())
-        if reset or session.get(SESSION_SEED_KEY) != seed:
-            reset_feed_session(session)
+        if session.get(SESSION_SEED_KEY) != seed:
             session[SESSION_SEED_KEY] = seed
-            sync_feed_session(session, viewer, deploy_revision=get_deploy_revision())
+            session.modified = True
 
         eligible = _eligible_ids(viewer)
-        served = {str(pk) for pk in session.get(SESSION_SERVED_KEY, [])}
-        remaining = [pk for pk in eligible if str(pk) not in served]
+        remaining = _remaining_for_feed(eligible, session)
         if not remaining:
             session[SESSION_QUEUE_KEY] = []
             session.modified = True
             return [], False
 
         order_seed = secrets.token_hex(16)
-        ordered = _order_feed_ids(remaining, viewer, seed=order_seed, served_count=len(served))
+        served_count = len(session.get(SESSION_SERVED_KEY, []) or [])
+        ordered = _order_feed_ids(remaining, viewer, seed=order_seed, served_count=served_count)
         page_ids = ordered[:limit]
-        served.update(str(pk) for pk in page_ids)
-        session[SESSION_SERVED_KEY] = list(served)
+        mark_profiles_seen_in_feed(session, page_ids)
         session[SESSION_QUEUE_KEY] = []
         session.modified = True
 
