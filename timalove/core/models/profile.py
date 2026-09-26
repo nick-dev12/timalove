@@ -63,7 +63,7 @@ class Profile(models.Model):
     registration_status = models.CharField(
         max_length=20,
         choices=RegistrationStatus.choices,
-        default=RegistrationStatus.PENDING,
+        default=RegistrationStatus.APPROVED,
     )
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.MEMBER)
     is_verified = models.BooleanField(default=False)
@@ -148,8 +148,6 @@ class Profile(models.Model):
         if self.onboarding_completed:
             return True
         if (self.onboarding_step or 1) > 1:
-            return False
-        if self.registration_status == RegistrationStatus.PENDING:
             return False
         return bool(
             self.date_of_birth

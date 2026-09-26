@@ -84,22 +84,23 @@ def pending_context(profile: Profile | None) -> dict:
 
 
 def redirect_if_not_approved(request: HttpRequest, profile: Profile | None) -> HttpResponse | None:
-    """Redirige les membres non approuvés hors des parcours réservés."""
-    if profile is None or profile.is_admin or is_approved(profile):
+    """Accès libre après inscription. Seuls les profils rejetés restent hors Parcours."""
+    if profile is None or profile.is_admin or is_approved(profile) or is_pending(profile):
         return None
     path = request.path or ""
     if path.startswith("/validation-en-attente"):
         return None
     if any(path.startswith(prefix) for prefix in PENDING_ALLOWED_PREFIXES):
         return None
-    if is_rejected(profile) or is_pending(profile):
+    if is_rejected(profile):
         return redirect(reverse("public:validation_pending"))
     return None
 
 
 def block_if_pending_explorer(profile: Profile | None) -> HttpResponse | None:
-    if profile is None or profile.is_admin or is_approved(profile):
+    """Plus de blocage pour dossier en attente : accès immédiat au Parcours."""
+    if profile is None or profile.is_admin or is_approved(profile) or is_pending(profile):
         return None
-    if is_pending(profile) or is_rejected(profile):
+    if is_rejected(profile):
         return redirect(reverse("public:validation_pending"))
     return None

@@ -234,9 +234,9 @@ def save_step_4(profile: Profile, data: dict) -> tuple[bool, str]:
         profile.is_verified = False
     profile.onboarding_step = 4
     profile.onboarding_completed = True
-    profile.registration_status = RegistrationStatus.PENDING
+    profile.registration_status = RegistrationStatus.APPROVED
     profile.save()
-    return True, "Profil enregistré. Votre dossier sera validé sous 24 à 48 h."
+    return True, "Profil enregistré. Bienvenue sur TimaLove."
 
 
 def save_image(profile: Profile, *, kind: str, upload: UploadedFile | None = None, data_url: str = "") -> str:

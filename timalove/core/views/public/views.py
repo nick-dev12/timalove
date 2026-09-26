@@ -96,19 +96,16 @@ def commencer(request):
 
 @require_GET
 def validation_pending(request):
+    """Ancienne page d'attente — redirige vers le Parcours (accès immédiat après inscription)."""
     if not request.user.is_authenticated:
         return redirect("auth:connexion")
-    profile = getattr(request.user, "profile", None)
-    if profile is None or profile.is_admin:
-        return redirect("public:explorer")
-    from core.controllers import registration_controller
     from core.models.choices import RegistrationStatus
 
-    if profile.registration_status == RegistrationStatus.APPROVED:
-        return redirect("public:explorer")
-    ctx = registration_controller.pending_context(profile)
-    ctx["title"] = "Validation en cours"
-    return render(request, "app/validation_pending.html", ctx)
+    profile = getattr(request.user, "profile", None)
+    if profile is not None and not profile.is_admin and profile.registration_status == RegistrationStatus.PENDING:
+        profile.registration_status = RegistrationStatus.APPROVED
+        profile.save(update_fields=["registration_status", "updated_at"])
+    return redirect("public:explorer")
 
 
 @ensure_csrf_cookie

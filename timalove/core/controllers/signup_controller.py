@@ -203,9 +203,9 @@ def register_from_draft(data: dict) -> tuple[bool, str, Profile | None, dict[str
     onboarding_controller.save_location(profile, data, persist=True)
     profile.onboarding_completed = True
     profile.onboarding_step = 4
-    profile.registration_status = RegistrationStatus.PENDING
+    profile.registration_status = RegistrationStatus.APPROVED
     profile.save()
-    return True, "Compte créé. Votre dossier sera validé sous 24 à 48 h.", profile, {}, None
+    return True, "Compte créé. Bienvenue sur TimaLove.", profile, {}, None
 
 
 @transaction.atomic
@@ -245,12 +245,12 @@ def complete_oauth_profile(profile: Profile, data: dict) -> tuple[bool, str, dic
     onboarding_controller.save_location(profile, data, persist=True)
     profile.onboarding_completed = True
     profile.onboarding_step = 4
-    profile.registration_status = RegistrationStatus.PENDING
+    profile.registration_status = RegistrationStatus.APPROVED
     profile.save()
     profile.user.first_name = first_name
     profile.user.last_name = last_name
     profile.user.save(update_fields=["first_name", "last_name"])
-    return True, "Profil complété. Votre dossier sera validé sous 24 à 48 h.", {}, None
+    return True, "Profil complété. Bienvenue sur TimaLove.", {}, None
 
 
 def reverse_geocode(latitude, longitude) -> dict:

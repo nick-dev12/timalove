@@ -342,7 +342,7 @@ def login_or_register_oauth(
             gender="",
             city="",
             country="Sénégal",
-            registration_status=RegistrationStatus.PENDING,
+            registration_status=RegistrationStatus.APPROVED,
             role=UserRole.MEMBER,
             onboarding_completed=False,
             onboarding_step=1,
@@ -416,9 +416,9 @@ def complete_member_profile(profile: Profile, data: dict) -> tuple[bool, str]:
         profile.first_name = data["first_name"].strip()
     if data.get("last_name"):
         profile.last_name = data["last_name"].strip()
-    profile.registration_status = RegistrationStatus.PENDING
+    profile.registration_status = RegistrationStatus.APPROVED
     profile.save()
-    return True, "Profil complété. Votre dossier sera validé sous 24 à 48 h."
+    return True, "Profil complété. Bienvenue sur TimaLove."
 
 
 def logout_user(request) -> None:
@@ -498,12 +498,12 @@ def register_member(data: dict) -> tuple[bool, str, Profile | None]:
         bio=data.get("bio"),
         looking_for=data.get("looking_for"),
         photo_url=data.get("photo_url"),
-        registration_status=RegistrationStatus.PENDING,
+        registration_status=RegistrationStatus.APPROVED,
         role=UserRole.MEMBER,
         onboarding_completed=True,
         onboarding_step=4,
     )
-    return True, "Compte créé. Votre dossier sera validé sous 24 à 48 h.", profile
+    return True, "Compte créé. Bienvenue sur TimaLove.", profile
 
 
 def request_password_reset(email: str) -> tuple[bool, str, str | None]:
