@@ -33,9 +33,17 @@ def fetch(ua: str) -> str:
 web = fetch("Mozilla/5.0 Chrome/120.0.0.0")
 app = fetch("Mozilla/5.0 TimaLoveApp")
 
-print("web_status_ok", "Sélection du jour" not in web and "explorer-page--curated" not in web)
-print("web_has_swipe_class", "explorer-page" in web and "explorer-page--curated" not in web)
-print("app_curated", "explorer-page--curated" in app or "Sélection du jour" in app)
+def is_curated_body(html: str) -> bool:
+    start = html.find("<body")
+    end = html.find(">", start + 1) if start >= 0 else -1
+    tag = html[start : end + 1] if start >= 0 and end > start else ""
+    return "explorer-page--curated" in tag
+
+
+web_curated = is_curated_body(web)
+app_curated = is_curated_body(app)
+print("web_swipe", (not web_curated) and "explorer__action--pass" in web)
+print("app_curated", app_curated or "Sélection du jour" in app)
 print("cfg_curated", cfg.explorer_curated_mode_enabled())
 print("cfg_native", cfg.explorer_curated_mode_active(user_agent="TimaLoveApp"))
 print("cfg_chrome", cfg.explorer_curated_mode_active(user_agent="Chrome"))
