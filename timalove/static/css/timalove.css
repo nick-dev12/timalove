@@ -18584,61 +18584,66 @@ body.explorer-page .cdc-reasons__ico img {
   height: 100%;
   object-fit: cover;
 }
+/* Boutons pass / like / star — deck swipe uniquement (pas les cartes curated) */
 body.explorer-page .explorer__actions {
   margin: 0.85rem 0 0.35rem;
   gap: 1.4rem;
 }
-body.explorer-page .explorer__action--pass,
-body.explorer-page .explorer__action--like,
-body.explorer-page .explorer__action--star {
+body.explorer-page .explorer__actions .explorer__action--pass,
+body.explorer-page .explorer__actions .explorer__action--like,
+body.explorer-page .explorer__actions .explorer__action--star {
   width: 71px;
   height: 71px;
   border: 0;
   flex-shrink: 0;
 }
-body.explorer-page .explorer__action svg {
+body.explorer-page .explorer__actions .explorer__action svg {
   display: block;
   width: 34px;
   height: 34px;
 }
-body.explorer-page .explorer__action--pass,
-body.explorer-page .explorer__action--like {
+body.explorer-page .explorer__actions .explorer__action--pass,
+body.explorer-page .explorer__actions .explorer__action--like {
   background: #e11d48;
   color: #fff;
   box-shadow: 0 8px 16px rgba(225, 29, 72, 0.28);
 }
-body.explorer-page .explorer__action--star {
+body.explorer-page .explorer__actions .explorer__action--star {
   background: #fff;
   color: #3b82f6;
   box-shadow: 0 6px 14px rgba(45, 31, 34, 0.12);
 }
 @media (max-width: 767px) {
-  body.explorer-page .explorer__action--pass,
-  body.explorer-page .explorer__action--like,
-  body.explorer-page .explorer__action--star {
+  body.explorer-page .explorer__actions .explorer__action--pass,
+  body.explorer-page .explorer__actions .explorer__action--like,
+  body.explorer-page .explorer__actions .explorer__action--star {
     width: 62px;
     height: 62px;
   }
-  body.explorer-page .explorer__action svg {
+  body.explorer-page .explorer__actions .explorer__action svg {
     width: 30px;
     height: 30px;
   }
 }
 @media (max-width: 480px) {
-  body.explorer-page .explorer__action--pass,
-  body.explorer-page .explorer__action--like,
-  body.explorer-page .explorer__action--star {
+  body.explorer-page .explorer__actions .explorer__action--pass,
+  body.explorer-page .explorer__actions .explorer__action--like,
+  body.explorer-page .explorer__actions .explorer__action--star {
     width: 56px;
     height: 56px;
   }
-  body.explorer-page .explorer__action svg {
+  body.explorer-page .explorer__actions .explorer__action svg {
     width: 28px;
     height: 28px;
   }
 }
-body.explorer-page .explorer__action--star.is-on {
+body.explorer-page .explorer__actions .explorer__action--star.is-on {
   background: #fff;
   color: #3b82f6;
+}
+body.explorer-page--curated .curated-card__actions .explorer__action svg {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 body.explorer-page .explorer__bottom {
   background: #fff;
