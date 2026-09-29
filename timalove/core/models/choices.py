@@ -14,6 +14,38 @@ class Religion(models.TextChoices):
     AUTRE = "autre", "Autre"
 
 
+class MarriageTimeline(models.TextChoices):
+    UNDER_1Y = "under_1y", "Moins d'un an"
+    ONE_TWO = "1_2y", "1-2 ans"
+    OVER_2Y = "over_2y", "Plus de 2 ans"
+
+
+class UnionType(models.TextChoices):
+    MONOGAME = "monogame", "Monogame"
+    POLYGAME = "polygame", "Polygame"
+    OPEN = "open", "Ouvert(e) aux deux"
+
+
+class ChildrenWish(models.TextChoices):
+    YES = "yes", "Oui"
+    NO = "no", "Non"
+    MAYBE = "maybe", "Peut-être"
+    ALREADY = "already", "J'en ai déjà"
+
+
+class PartnerReligionImportance(models.TextChoices):
+    SAME = "same", "Même religion"
+    SOME = "some", "Certaines religions"
+    ANY = "any", "Peu importe"
+
+
+class MeetPlace(models.TextChoices):
+    NEAR = "near", "Près de moi"
+    COUNTRY = "country", "Dans mon pays"
+    DIASPORA = "diaspora", "Afrique & diaspora"
+    ANYWHERE = "anywhere", "Partout"
+
+
 class RelationshipIntent(models.TextChoices):
     MARIAGE = "mariage", "Mariage"
     RELATION_SERIEUSE = "relation_serieuse", "Relation sérieuse"
@@ -77,6 +109,7 @@ class ConversationStatus(models.TextChoices):
     PENDING = "pending", "En attente"
     ACCEPTED = "accepted", "Acceptée"
     DECLINED = "declined", "Refusée"
+    CLOSED = "closed", "Clôturée"
     BLOCKED = "blocked", "Bloquée"
 
 

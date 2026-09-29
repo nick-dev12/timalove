@@ -44,7 +44,7 @@ class Match(models.Model):
     conversation_status = models.CharField(
         max_length=20,
         choices=ConversationStatus.choices,
-        default=ConversationStatus.ACCEPTED,
+        default=ConversationStatus.PENDING,
     )
     conversation_initiator = models.ForeignKey(
         Profile,
@@ -61,6 +61,9 @@ class Match(models.Model):
         default=False,
         help_text="Premier message guidé envoyé dans la conversation.",
     )
+    close_reason = models.CharField(max_length=40, blank=True, default="")
+    user_1_ready = models.BooleanField(default=False)
+    user_2_ready = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

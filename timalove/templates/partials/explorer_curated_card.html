@@ -21,15 +21,14 @@
     {% if card.relationship_intent %}
     <p class="curated-card__intent">Intention : {{ card.relationship_intent }}</p>
     {% endif %}
-    <button
-      type="button"
-      class="curated-card__compat"
-      data-match-score
-      data-profile-id="{{ card.id }}"
-      aria-label="Calculer la compatibilité"
-    >
-      <span data-match-label>{% if card.compatibility %}{{ card.compatibility }}% Compatible{% else %}Compatible ?{% endif %}</span>
-    </button>
+    {% if card.marriage_label or card.union_label or card.children_label %}
+    <p class="curated-card__intent">
+      {{ card.marriage_label }}{% if card.union_label %} · {{ card.union_label }}{% endif %}{% if card.children_label %} · {{ card.children_label }}{% endif %}
+    </p>
+    {% endif %}
+    {% if card.why %}
+    <p class="curated-card__role"><strong>Pourquoi ce profil ?</strong> {{ card.why }}</p>
+    {% endif %}
     {% if card.profession %}
     <p class="curated-card__role">{{ card.profession }}</p>
     {% endif %}

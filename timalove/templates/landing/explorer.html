@@ -6,7 +6,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   html:has(body.explorer-page), body.explorer-page { height: 100dvh; overflow: hidden; }
-  body.explorer-page { display: flex; flex-direction: column; background: #FDF5F0; color: #2D1F22; }
+  body.explorer-page { display: flex; flex-direction: column; background: #fff; color: #2D1F22; }
+  body.explorer-page .explorer-hearts,
+  body.explorer-page .explorer-rise,
+  body.explorer-page .explorer-wing { display: none; }
   body.explorer-page .explorer { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   body.explorer-page .explorer__chrome, body.explorer-page .explorer__bottom { opacity: 1 !important; visibility: visible !important; }
   html:has(body.explorer-page--curated),
@@ -34,7 +37,7 @@
 <script src="{% static 'js/explorer-search.js' %}?v=20260826s1" defer></script>
 {% endif %}
 {% if user.is_authenticated %}
-<script src="{% static 'js/message-invite.js' %}?v=20260921lr2" defer></script>
+<script src="{% static 'js/message-invite.js' %}?v=20260927req1" defer></script>
 <script src="{% static 'js/explorer-match.js' %}?v=20260910m2" defer></script>
 {% if curated_mode %}
 <script src="{% static 'js/explorer-curated.js' %}?v=20260924p1" defer></script>
@@ -88,35 +91,32 @@
 <div class="explorer">
   <div class="explorer__chrome">
   <header class="explorer__top">
+    <span class="explorer__top-spacer" aria-hidden="true"></span>
+    <a class="explorer__logo brand-script brand-mark" href="{% url 'public:explorer' %}">
+      <span>TimaLove</span>
+    </a>
     <div class="explorer__menu-anchor">
       <button type="button" class="explorer__icon-btn" aria-label="Menu" aria-expanded="false" aria-controls="explorer-menu" data-explorer-menu-btn>
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 7h16v2H4V7zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/></svg>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/></svg>
       </button>
       <nav id="explorer-menu" class="explorer__menu" hidden>
         {% if user.is_authenticated %}
+        <button type="button" data-explorer-filters-open>Filtres</button>
         <a href="{% url 'public:accueil' %}">En savoir plus</a>
         <a href="{% url 'public:contact' %}">Contact</a>
         <a href="{% url 'auth:deconnexion' %}">Déconnexion</a>
         {% else %}
-        <a href="{% url 'public:explorer' %}">Explorer</a>
         <a href="{% url 'auth:connexion' %}">Se connecter</a>
         <a href="{% url 'public:accueil' %}">En savoir plus</a>
         <a href="{% url 'public:contact' %}">Contact</a>
         {% endif %}
       </nav>
     </div>
-    <a class="explorer__logo brand-script brand-mark" href="{% url 'public:explorer' %}">
-      <span>TimaLove</span>
-      <img src="{% static 'images/logo.webp' %}" alt="" width="36" height="36">
-    </a>
-    <div class="explorer__top-actions">
-      {% if user.is_authenticated %}
-      <button type="button" class="explorer__icon-btn explorer__filters-btn" data-explorer-filters-open aria-label="Filtres de découverte">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4V6zm3 5h10v2H7v-2zm4 5h2v2h-2v-2z"/></svg>
-      </button>
-      {% endif %}
-    </div>
   </header>
+  <nav class="cdc-switch" aria-label="Découverte">
+    <a class="{% if discover_tab != 'pour-vous' %}is-on{% endif %}" href="{% url 'public:explorer' %}">Découvrir</a>
+    <a class="{% if discover_tab == 'pour-vous' %}is-on{% endif %}" href="{% url 'public:explorer' %}?vue=pour-vous">Pour vous</a>
+  </nav>
 
   {% if app_features.explorer_search_enabled %}
   {% url 'public:explorer_search' as explorer_search_url %}

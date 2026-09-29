@@ -1,24 +1,36 @@
 {% extends "layouts/base.html" %}
 {% load static %}
 {% block title %}Mon profil{% endblock %}
-{% block body_class %}visit-profil-page{% endblock %}
+{% block body_class %}visit-profil-page cdc-app moi-page{% endblock %}
 {% block head %}
 {% include "partials/member_page_scroll.html" %}
+<link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260921lb1" defer></script>
 <script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
-<script src="{% static 'js/own-profile.js' %}?v=20260827promo1" defer></script>
+<script src="{% static 'js/moi-page.js' %}?v=20260927moi3" defer></script>
+<script src="{% static 'js/own-profile.js' %}?v=20260927moi2" defer></script>
 {% endblock %}
 {% block body %}
+<div class="explorer">
+  <div class="explorer__chrome cdc-moi-chrome">
+    <header class="explorer__top">
+      <span class="explorer__top-spacer" aria-hidden="true"></span>
+      <a class="explorer__logo brand-script brand-mark" href="{% url 'public:explorer' %}"><span>TimaLove</span></a>
+      <div class="explorer__top-actions">
+        <button type="button" class="explorer__icon-btn" aria-label="Menu du profil" aria-expanded="false" aria-controls="moi-quick-menu" data-moi-menu-toggle>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="6" cy="6" r="1.6" fill="currentColor"/><circle cx="12" cy="6" r="1.6" fill="currentColor"/><circle cx="18" cy="6" r="1.6" fill="currentColor"/><circle cx="6" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="18" cy="12" r="1.6" fill="currentColor"/><circle cx="6" cy="18" r="1.6" fill="currentColor"/><circle cx="12" cy="18" r="1.6" fill="currentColor"/><circle cx="18" cy="18" r="1.6" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="cdc-moi-quick" id="moi-quick-menu" hidden data-moi-quick-menu>
+      <a href="{% url 'public:explorer' %}">Découvrir</a>
+      <button type="button" data-moi-open="edit">Modifier mon profil</button>
+      <button type="button" data-moi-open="notifications">Notifications</button>
+      <a href="{% url 'public:suppression_compte' %}">Suppression du compte</a>
+    </div>
+  </div>
 <div class="visit visit--own{% if member.subscription_badge == 'vip' %} is-vip{% elif member.subscription_badge == 'premium' %} is-premium{% endif %}" data-own-profile data-max-photos="{{ max_photos }}">
-  <header class="visit__nav">
-    {% include "partials/btn_back.html" with href="/explorer/" extra_class="visit__nav-back" %}
-    <p class="visit__nav-brand brand-mark">
-      <span>TimaLove</span>
-      <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
-    </p>
-    <span class="visit__nav-spacer" aria-hidden="true"></span>
-  </header>
-
-  <div class="visit__intro">
+  <div class="visit__intro" hidden aria-hidden="true">
     {% include "partials/matrimonial_objective_banner.html" with profile=member %}
     <header class="visit__ig{% if member.subscription_badge == 'vip' %} is-vip{% elif member.subscription_badge == 'premium' %} is-premium{% endif %}">
       <div class="visit__ig-top">
@@ -26,10 +38,10 @@
           <div class="visit__photo-stage">
             <section class="visit__hero" aria-label="Photo de profil">
               {% if member.photo_url %}
-              <img class="visit__hero-img" src="{{ member.photo_url }}" alt="{{ member.first_name }}" width="160" height="160" data-hero-img>
+              <img class="visit__hero-img" src="{{ member.photo_url }}" alt="{{ member.first_name }}" width="160" height="160">
               {% else %}
-              <div class="visit__hero-fallback" data-hero-fallback>{{ member.first_name|first|upper }}</div>
-              <img class="visit__hero-img" alt="{{ member.first_name }}" width="160" height="160" data-hero-img hidden>
+              <div class="visit__hero-fallback">{{ member.first_name|first|upper }}</div>
+              <img class="visit__hero-img" alt="{{ member.first_name }}" width="160" height="160" hidden>
               {% endif %}
             </section>
           </div>
@@ -69,25 +81,221 @@
       <p class="visit__ig-bio" data-display-role hidden></p>
       {% endif %}
       <div class="visit__ig-actions">
-        <button type="button" class="visit__photo-action" data-avatar-pick>Changer la photo</button>
-        <button type="button" class="visit__photo-action visit__photo-action--primary" data-settings-modal-open="subscription">Abonnements</button>
+        <button type="button" class="visit__photo-action">Changer la photo</button>
+        <button type="button" class="visit__photo-action visit__photo-action--primary">Abonnements</button>
       </div>
-      <input type="file" accept="image/*" hidden data-avatar-file>
-      <p class="visit__save-msg" data-save-msg="photo" hidden></p>
+      <p class="visit__save-msg" hidden></p>
     </header>
   </div>
 
-  <main class="visit__sheet">
+  <main class="visit__sheet visit__sheet--moi">
     <form aria-hidden="true" style="display:none">{% csrf_token %}</form>
 
-    <div class="visit__tabs" role="tablist" aria-label="Sections du profil">
+    <header class="cdc-moi__hero">
+      <button type="button" class="cdc-moi__avatar-btn" data-avatar-pick aria-label="Changer la photo de profil">
+        <span class="cdc-moi__avatar">
+          {% if member.photo_url %}<img src="{{ member.photo_url }}" alt="" data-hero-img>{% else %}<span data-hero-fallback>{{ member.first_name|first|upper }}</span>{% endif %}
+        </span>
+      </button>
+      <input type="file" accept="image/*" hidden data-avatar-file>
+      <p class="visit__save-msg" data-save-msg="photo" hidden></p>
+      <p class="cdc-moi__name-row">
+        <span class="cdc-moi__name">{{ member.first_name }}{% if member.age %}, {{ member.age }}{% endif %}</span>
+        <button type="button" class="cdc-moi__edit" data-moi-open="edit" aria-label="Modifier mon profil">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 20h4.5L19 9.5 14.5 5 4 15.5V20z"/></svg>
+        </button>
+      </p>
+      <div class="cdc-moi__progress">
+        <p class="cdc-moi__complete">Profil complété à <span data-display-completion>{{ member.completion }}</span>&nbsp;%</p>
+        <div class="cdc-moi__bar-wrap">
+          <div class="cdc-moi__bar" role="progressbar" aria-valuenow="{{ member.completion }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ member.completion }}%"></span></div>
+          <span class="cdc-moi__check{% if member.completion >= 100 %} is-done{% endif %}" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10" fill="{% if member.completion >= 100 %}#22c55e{% else %}#e8f5e9{% endif %}"/><path fill="#fff" d="M9.2 16.6 5 12.4l1.4-1.4 2.8 2.8 8-8L18.6 7z"/></svg>
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <nav class="cdc-moi" aria-label="Mon espace">
+      <div class="cdc-moi__group">
+        <div class="cdc-moi__item" data-moi-item="mariage">
+          <button type="button" class="cdc-moi__row" data-moi-open="mariage" aria-expanded="false" aria-controls="moi-drawer-mariage">
+            <span class="cdc-moi__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="13.2" r="6.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M12 10.2v3.2l2.1 1.2M9.6 5.2 12 3.4l2.4 1.8"/></svg></span>
+            <span class="cdc-moi__label">Mon projet de mariage</span>
+            <span class="cdc-moi__chev" aria-hidden="true">›</span>
+          </button>
+          <div class="cdc-moi__drawer" id="moi-drawer-mariage" data-moi-drawer="mariage" hidden></div>
+        </div>
+        <div class="cdc-moi__item" data-moi-item="preferences">
+          <button type="button" class="cdc-moi__row" data-moi-open="preferences" aria-expanded="false" aria-controls="moi-drawer-preferences">
+            <span class="cdc-moi__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M12 3.4 13.6 9l5.6 1.6-4 4.1.9 5.8L12 17.8 5.9 20.5l.9-5.8-4-4.1L8.4 9z"/></svg></span>
+            <span class="cdc-moi__label">Mes préférences</span>
+            <span class="cdc-moi__chev" aria-hidden="true">›</span>
+          </button>
+          <div class="cdc-moi__drawer" id="moi-drawer-preferences" data-moi-drawer="preferences" hidden></div>
+        </div>
+        <div class="cdc-moi__item" data-moi-item="photos">
+          <button type="button" class="cdc-moi__row" data-moi-open="photos" aria-expanded="false" aria-controls="moi-photos-modal">
+            <span class="cdc-moi__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3.5" y="5.5" width="17" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="8.6" cy="10.2" r="1.5" fill="currentColor"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="m3.8 16.2 4.6-4.2 3.2 3 3.1-2.8 5.3 4"/></svg></span>
+            <span class="cdc-moi__label">Mes photos</span>
+            <span class="cdc-moi__chev" aria-hidden="true">›</span>
+          </button>
+          <div class="cdc-moi__drawer" id="moi-drawer-photos" data-moi-drawer="photos" hidden data-moi-photos-inline></div>
+        </div>
+        <div class="cdc-moi__item" data-moi-item="edit">
+          <button type="button" class="cdc-moi__row" data-moi-open="edit" aria-expanded="false" aria-controls="moi-drawer-edit">
+            <span class="cdc-moi__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="5" y="4" width="14" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M8.5 16.2 16 8.7M14.2 7l1.8 1.8"/></svg></span>
+            <span class="cdc-moi__label">Modifier mon profil</span>
+            <span class="cdc-moi__chev" aria-hidden="true">›</span>
+          </button>
+          <div class="cdc-moi__drawer" id="moi-drawer-edit" data-moi-drawer="edit" hidden></div>
+        </div>
+      </div>
+      <div class="cdc-moi__divider" role="presentation"></div>
+      <div class="cdc-moi__group">
+        <div class="cdc-moi__item" data-moi-item="subscription">
+          <button type="button" class="cdc-moi__row" data-moi-open="subscription" aria-expanded="false" aria-controls="moi-drawer-subscription">
+            <span class="cdc-moi__icon cdc-moi__icon--gold" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M5 16.8 7.4 8.6 12 12.2l4.6-3.6L19 16.8H5zm1.6 1.6h10.8c.5 0 .9.4.9.9v.3H5.7v-.3c0-.5.4-.9.9-.9z"/></svg></span>
+            <span class="cdc-moi__label">Mon abonnement</span>
+            <span class="cdc-moi__chev" aria-hidden="true">›</span>
+          </button>
+          <div class="cdc-moi__drawer" id="moi-drawer-subscription" data-moi-drawer="subscription" hidden></div>
+        </div>
+        <div class="cdc-moi__item" data-moi-item="security">
+          <button type="button" class="cdc-moi__row" data-moi-open="security" aria-expanded="false" aria-controls="moi-drawer-security">
+            <span class="cdc-moi__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="6" y="10.2" width="12" height="9.3" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" d="M8.6 10.2V8.2a3.4 3.4 0 0 1 6.8 0v2"/></svg></span>
+            <span class="cdc-moi__label">Sécurité &amp; confidentialité</span>
+            <span class="cdc-moi__chev" aria-hidden="true">›</span>
+          </button>
+          <div class="cdc-moi__drawer" id="moi-drawer-security" data-moi-drawer="security" hidden></div>
+        </div>
+        <div class="cdc-moi__item" data-moi-item="help">
+          <button type="button" class="cdc-moi__row" data-moi-open="help" aria-expanded="false" aria-controls="moi-drawer-help">
+            <span class="cdc-moi__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M9.6 9.4a2.5 2.5 0 0 1 4.6 1.3c0 1.7-2.2 2.1-2.2 3.6"/><circle cx="12" cy="16.8" r=".85" fill="currentColor"/></svg></span>
+            <span class="cdc-moi__label">Centre d'aide</span>
+            <span class="cdc-moi__chev" aria-hidden="true">›</span>
+          </button>
+          <div class="cdc-moi__drawer" id="moi-drawer-help" data-moi-drawer="help" hidden></div>
+        </div>
+        <div class="cdc-moi__item cdc-moi__item--mount" data-moi-item="notifications">
+          <div class="cdc-moi__drawer" data-moi-drawer="notifications" hidden></div>
+        </div>
+        <div class="cdc-moi__item cdc-moi__item--logout">
+          <a class="cdc-moi__row" href="{% url 'auth:deconnexion' %}">
+            <span class="cdc-moi__icon cdc-moi__icon--danger" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="M10 5H6.2A2.2 2.2 0 0 0 4 7.2v9.6A2.2 2.2 0 0 0 6.2 19H10"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M14 12h7M18.2 8.8 21.4 12l-3.2 3.2"/></svg></span>
+            <span class="cdc-moi__label">Déconnexion</span>
+            <span class="cdc-moi__chev" aria-hidden="true">›</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="visit__tabs visit__tabs--sr" role="tablist" aria-label="Sections du profil" hidden>
       <button type="button" class="visit__tab is-active" role="tab" id="tab-about" aria-selected="true" aria-controls="panel-about" data-tab="about">À propos</button>
       <button type="button" class="visit__tab" role="tab" id="tab-gallery" aria-selected="false" aria-controls="panel-gallery" data-tab="gallery">Galerie</button>
       <button type="button" class="visit__tab" role="tab" id="tab-filters" aria-selected="false" aria-controls="panel-filters" data-tab="filters">Filtres</button>
       <button type="button" class="visit__tab" role="tab" id="tab-settings" aria-selected="false" aria-controls="panel-settings" data-tab="settings">Paramètres</button>
     </div>
 
-    <section class="visit__panel" id="panel-about" role="tabpanel" aria-labelledby="tab-about">
+    <section class="visit__panel visit__panel--moi" id="panel-moi-subscription" data-moi-panel="subscription" hidden>
+      <article class="visit-glass visit__card">
+        <h2 class="visit__card-title">Mon abonnement</h2>
+        <p class="visit__card-lead">{% if member.subscription_badge == 'vip' %}Vous profitez de l’offre VIP.{% elif member.subscription_badge == 'premium' %}Vous profitez de l’offre Premium.{% else %}Passez à Premium ou VIP pour plus de visibilité et de sérénité.{% endif %}</p>
+        <button type="button" class="cdc-topic__cta" data-settings-modal-open="subscription">Gérer mon abonnement</button>
+        {% if boost_price_label %}
+        <p class="visit-form-hint" style="margin-top:0.75rem">Boost disponible — visible dans l’offre.</p>
+        {% endif %}
+      </article>
+    </section>
+
+    <section class="visit__panel visit__panel--moi" id="panel-moi-security" data-moi-panel="security" hidden>
+      <article class="visit-glass visit__card" data-block="privacy">
+        <div class="visit__card-head">
+          <h2 class="visit__card-title">Visibilité &amp; confidentialité</h2>
+          <p class="visit__card-lead">Contrôlez ce que les autres membres peuvent voir de vous.</p>
+        </div>
+        <form class="visit-form" data-privacy-form>
+          <label class="visit-form__check"><input type="checkbox" name="hide_age"{% if profile.hide_age %} checked{% endif %}> Masquer mon âge</label>
+          <label class="visit-form__check"><input type="checkbox" name="is_hidden"{% if profile.is_hidden %} checked{% endif %}> Masquer mon profil dans l’explorer</label>
+          <label class="visit-form__field">
+            <span>Dernière connexion visible pour</span>
+            <select name="last_seen_visibility">
+              {% for value, label in visibilities %}
+              <option value="{{ value }}"{% if profile.last_seen_visibility == value %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </form>
+        <div class="visit__card-foot">
+          <p class="visit__save-msg" data-save-msg="privacy" hidden></p>
+          <button type="button" class="visit__save" data-save="privacy">Enregistrer</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="visit__panel visit__panel--moi" id="panel-moi-help" data-moi-panel="help" hidden>
+      <article class="visit-glass visit__card">
+        <h2 class="visit__card-title">Centre d'aide</h2>
+        <ul class="cdc-moi-help-links">
+          <li><a href="{% url 'public:contact' %}">Nous contacter</a></li>
+          <li><a href="{% url 'public:conditions' %}">Conditions d'utilisation</a></li>
+          <li><a href="{% url 'public:confidentialite' %}">Politique de confidentialité</a></li>
+          <li><a href="{% url 'public:suppression_compte' %}">Suppression du compte</a></li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="visit__panel visit__panel--moi" id="panel-mariage" data-moi-panel="mariage" hidden>
+        <form class="cx-card visit__card visit-glass" id="projet-mariage" method="post" action="{% url 'app:profil' %}">
+          {% csrf_token %}
+          <input type="hidden" name="form" value="projet">
+          <h2 class="visit__card-title">Projet de mariage</h2>
+          <p class="visit__card-lead">Précisez votre horizon pour des rencontres alignées avec votre projet.</p>
+          <label>Délai
+            <select name="marriage_timeline">
+              <option value="">—</option>
+              {% for value, label in marriage_timelines %}
+              <option value="{{ value }}"{% if profile.marriage_timeline == value %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Union
+            <select name="union_type">
+              <option value="">—</option>
+              {% for value, label in union_types %}
+              <option value="{{ value }}"{% if profile.union_type == value %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Enfants
+            <select name="children_wish">
+              <option value="">—</option>
+              {% for value, label in children_wishes %}
+              <option value="{{ value }}"{% if profile.children_wish == value %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Religion du partenaire
+            <select name="partner_religion_importance">
+              <option value="">—</option>
+              {% for value, label in religion_importances %}
+              <option value="{{ value }}"{% if profile.partner_religion_importance == value %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Lieu de rencontre
+            <select name="meet_place">
+              <option value="">—</option>
+              {% for value, label in meet_places %}
+              <option value="{{ value }}"{% if profile.meet_place == value %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button type="submit" class="btn btn-primary">Enregistrer le projet</button>
+        </form>
+    </section>
+
+    <section class="visit__panel visit__panel--moi" id="panel-about" role="tabpanel" aria-labelledby="tab-about" data-moi-panel="about" hidden>
       <article class="visit-glass visit__card visit__preview">
         <div class="visit__card-head">
           <p class="visit__kicker">Aperçu visiteur</p>
@@ -165,7 +373,7 @@
       </article>
     </section>
 
-    <section class="visit__panel" id="panel-gallery" role="tabpanel" aria-labelledby="tab-gallery" hidden>
+    <section class="visit__panel visit__panel--moi" id="panel-gallery" role="tabpanel" aria-labelledby="tab-gallery" data-moi-panel="photos" hidden>
       <div class="visit__gallery-toolbar">
         <button type="button" class="visit__gallery-add" data-gallery-add{% if member.photos|length >= max_photos %} hidden{% endif %}>Ajouter une photo</button>
       </div>
@@ -188,7 +396,7 @@
       <p class="visit__save-msg" data-save-msg="gallery" hidden></p>
     </section>
 
-    <section class="visit__panel" id="panel-filters" role="tabpanel" aria-labelledby="tab-filters" hidden>
+    <section class="visit__panel visit__panel--moi" id="panel-filters" role="tabpanel" aria-labelledby="tab-filters" data-moi-panel="preferences" hidden>
       <article class="visit-glass visit__card" data-block="filters">
         <h2 class="visit__card-title">Profils proposés</h2>
         <p class="visit__card-lead">Ces filtres s’appliquent à l’explorer et à la découverte.</p>
@@ -227,7 +435,7 @@
       </article>
     </section>
 
-    <section class="visit__panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <section class="visit__panel visit__panel--moi" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" data-moi-panel="settings-root" hidden>
       {% if messages %}
       <div class="visit-flash">
         {% for message in messages %}
@@ -242,7 +450,7 @@
         <button type="button" class="visit__subtab visit__subtab--modal" data-settings-modal-open="privacy">Visibilité</button>
       </div>
 
-      <div class="visit__settings-panel" id="settings-panel-profile" role="tabpanel" aria-labelledby="settings-tab-profile" data-settings-panel="profile">
+      <div class="visit__settings-panel visit__panel--moi" id="settings-panel-profile" role="tabpanel" aria-labelledby="settings-tab-profile" data-settings-panel="profile" data-moi-panel="edit">
         <article class="visit-glass visit__card" data-block="traits">
           <div class="visit__card-head">
             <p class="visit__kicker">Ce qui vous guide</p>
@@ -581,6 +789,22 @@
         </article>
         {% endif %}
 
+        <article class="visit-glass visit__card visit__card--account" id="bloques" data-block="blocked" data-moi-security-part>
+          <div class="visit__card-head">
+            <p class="visit__kicker">Limites</p>
+            <h2 class="visit__card-title">Utilisateurs bloqués</h2>
+          </div>
+          {% if blocked_users %}
+          <ul class="visit__facts">
+            {% for row in blocked_users %}
+            <li><span>Bloqué</span><strong>{{ row.blocked.first_name|default:"Membre" }}</strong></li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="visit__card-lead">Personne n'est bloqué.</p>
+          {% endif %}
+        </article>
+
         <article class="visit-glass visit__card visit__card--account" data-block="session">
           <div class="visit__card-head">
             <p class="visit__kicker">Session</p>
@@ -592,7 +816,7 @@
           </div>
         </article>
 
-        <article class="visit-glass visit__card visit__card--danger" data-block="danger">
+        <article class="visit-glass visit__card visit__card--danger" data-block="danger" data-moi-security-part>
           <div class="visit__card-head">
             <p class="visit__kicker">Zone sensible</p>
             <h2 class="visit__card-title">Supprimer mon compte</h2>
@@ -605,7 +829,7 @@
         </article>
       </div>
 
-      <div class="visit__settings-panel" id="settings-panel-notifications" role="tabpanel" aria-labelledby="settings-tab-notifications" data-settings-panel="notifications" hidden>
+      <div class="visit__settings-panel visit__panel--moi" id="settings-panel-notifications" role="tabpanel" aria-labelledby="settings-tab-notifications" data-settings-panel="notifications" data-moi-panel="notifications" hidden>
         {% if show_dev_tools %}
         <article class="visit-glass visit__card visit-ws-test" data-block="ws-diagnostic">
           <div class="visit__card-head">
@@ -675,27 +899,11 @@
         </button>
       </header>
       <div class="visit-settings-modal__body">
-        <article class="visit-glass visit__card" data-block="privacy">
+        <article class="visit-glass visit__card">
           <div class="visit__card-head">
             <p class="visit__kicker">Confidentialité</p>
             <h2 class="visit__card-title">Visibilité du profil</h2>
-            <p class="visit__card-lead">Choisissez ce que les autres membres peuvent voir de vous.</p>
-          </div>
-          <form class="visit-form" data-privacy-form>
-            <label class="visit-form__check"><input type="checkbox" name="hide_age"{% if profile.hide_age %} checked{% endif %}> Masquer mon âge</label>
-            <label class="visit-form__check"><input type="checkbox" name="is_hidden"{% if profile.is_hidden %} checked{% endif %}> Masquer mon profil dans l’explorer</label>
-            <label class="visit-form__field">
-              <span>Dernière connexion visible pour</span>
-              <select name="last_seen_visibility">
-                {% for value, label in visibilities %}
-                <option value="{{ value }}"{% if profile.last_seen_visibility == value %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-            </label>
-          </form>
-          <div class="visit__card-foot">
-            <p class="visit__save-msg" data-save-msg="privacy" hidden></p>
-            <button type="button" class="visit__save" data-save="privacy">Enregistrer</button>
+            <p class="visit__card-lead">Ces réglages se gèrent aussi depuis Sécurité &amp; confidentialité.</p>
           </div>
         </article>
       </div>
@@ -703,4 +911,24 @@
   </div>
 
   {% include "partials/subscription_settings_modal.html" %}
+  {% include "partials/explorer_dock.html" with dock_active="profil" %}
+</div>
+
+<div class="moi-photos-modal" id="moi-photos-modal" hidden>
+  <div class="moi-photos-modal__sheet" role="dialog" aria-modal="true" aria-labelledby="moi-photos-title">
+    <header class="moi-photos-modal__top">
+      <button type="button" class="moi-photos-modal__back" data-moi-photos-close aria-label="Fermer">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M15 5 8 12l7 7"/></svg>
+      </button>
+      <h2 class="moi-photos-modal__title" id="moi-photos-title">Mes photos</h2>
+      <button type="button" class="moi-photos-modal__close" data-moi-photos-close aria-label="Fermer">×</button>
+    </header>
+    <div class="moi-photos-modal__body" data-moi-photos-mount></div>
+  </div>
+</div>
+
+<div class="moi-photo-view" id="moi-photo-view" hidden>
+  <button type="button" class="moi-photo-view__close" data-moi-photo-view-close aria-label="Fermer la photo">×</button>
+  <img src="" alt="" data-moi-photo-view-img>
+</div>
 {% endblock %}

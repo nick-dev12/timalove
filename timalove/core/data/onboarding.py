@@ -144,9 +144,15 @@ STEP_COPY = {
     },
 }
 
-MIN_INTERESTS = 0
+MIN_INTERESTS = 1
+MAX_INTERESTS = 4
 MIN_TRAITS = 1
+MAX_TRAITS = 3
+MIN_LIFE_VALUES = 1
+MAX_LIFE_VALUES = 3
 MAX_VALUES = 12
+MIN_LOOKING_FOR_IDS = 1
+MAX_LOOKING_FOR_IDS = 3
 MIN_BIO = 40
 MIN_LOOKING_FOR = 20
 FACE_MATCH_THRESHOLD = 0.52
@@ -195,9 +201,9 @@ SIGNUP_COPY = {
         "cta": "Continuer",
     },
     "projet": {
-        "kicker": "Projet",
-        "title": "Ce que vous construisez.",
-        "lead": "Famille, foi, installation : dites-le si vous le sentez. Cette étape reste libre.",
+        "kicker": "Projet de mariage",
+        "title": "Cinq questions, pour avancer juste.",
+        "lead": "Ces réponses sont obligatoires. Elles servent à vous proposer des personnes dont le projet se rapproche du vôtre.",
         "cta": "Continuer",
     },
     "photos": {

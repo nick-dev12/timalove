@@ -1,0 +1,112 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}Conseils Tima{% endblock %}
+{% block body_class %}likes-page cdc-app conseils-page{% endblock %}
+{% block head %}
+{% include "partials/member_page_scroll.html" %}
+<link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260921lb1" defer></script>
+<script src="{% static 'js/conseils.js' %}?v=20260927conseils2" defer></script>
+{% endblock %}
+{% block body %}
+<div class="explorer">
+  <main class="cdc-page cdc-conseils">
+    <header class="cdc-conseils__head">
+      <p class="cdc-conseils__shield" aria-hidden="true">
+        <svg viewBox="0 0 32 36" width="28" height="32"><path fill="#C2185B" d="M16 2 28 6.5v10.2c0 9.2-5.2 15.8-12 18.3C9.2 32.5 4 25.9 4 16.7V6.5L16 2z"/><path fill="#fff" d="M16 10.5c-2.8 0-5 2-5 4.5 0 2 1.5 3.7 3.5 4.2V24h3v-4.8c2-.5 3.5-2.2 3.5-4.2 0-2.5-2.2-4.5-5-4.5z"/></svg>
+      </p>
+      <h1 class="cdc-conseils__brand">Conseils Tima</h1>
+      <p class="cdc-conseils__lead">Des conseils pour vous accompagner vers une relation sérieuse</p>
+      <nav class="cdc-filters" aria-label="Thèmes">
+        <button type="button" class="is-on" data-conseil-filter="tous">Tous</button>
+        <button type="button" data-conseil-filter="rencontre">Rencontre</button>
+        <button type="button" data-conseil-filter="relation">Relation</button>
+        <button type="button" data-conseil-filter="mariage">Mariage</button>
+      </nav>
+    </header>
+    <section class="cdc-topics" aria-label="Conseils">
+      {% for item in topics %}
+      <article class="cdc-topic" id="{{ item.id }}" data-cat="{{ item.cat }}">
+        <button type="button" class="cdc-topic__hit" data-conseil-open data-conseil-id="{{ item.id }}" aria-expanded="false">
+          <span class="cdc-topic__thumb{% if item.image|slice:'-4:' == '.svg' %} cdc-topic__thumb--icon{% endif %}">
+            <img src="{% static item.image %}" alt="" width="72" height="72" loading="lazy" decoding="async">
+          </span>
+          <span class="cdc-topic__copy">
+            <span class="cdc-topic__title">{{ item.title }}</span>
+            <span class="cdc-topic__summary">{{ item.summary }}</span>
+          </span>
+          <span class="cdc-topic__chev" aria-hidden="true">›</span>
+        </button>
+      </article>
+      {% endfor %}
+      <article class="cdc-topic cdc-topic--coach" data-cat="coach" data-conseil-coach>
+        <div class="cdc-topic__row">
+          <span class="cdc-topic__thumb cdc-topic__thumb--icon cdc-topic__thumb--assistant">
+            <img src="{% static coaching.image %}" alt="" width="72" height="72" loading="lazy" decoding="async">
+          </span>
+          <div class="cdc-topic__copy cdc-topic__copy--coach">
+            <h2 class="cdc-topic__title">{{ coaching.title }}</h2>
+            <p class="cdc-topic__summary">{{ coaching.summary }}</p>
+            <a class="cdc-topic__cta" href="{{ coaching.cta_href }}">{{ coaching.cta_label }}</a>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+  {% include "partials/explorer_dock.html" with dock_active="conseils" %}
+</div>
+
+{{ topics_payload|json_script:"conseils-data" }}
+
+<div class="conseil-detail" id="conseil-detail-modal" hidden>
+  <div class="conseil-detail__backdrop" data-conseil-detail-dismiss tabindex="-1"></div>
+  <div class="conseil-detail__sheet" role="dialog" aria-modal="true" aria-labelledby="conseil-detail-title">
+    <button type="button" class="conseil-detail__close" data-conseil-detail-close aria-label="Fermer">×</button>
+    <div class="conseil-detail__hero">
+      <img src="" alt="" width="320" height="180" data-conseil-detail-img>
+    </div>
+    <div class="conseil-detail__body">
+      <h2 class="conseil-detail__title" id="conseil-detail-title" tabindex="-1" data-conseil-detail-title></h2>
+      <p class="conseil-detail__intro" data-conseil-detail-intro></p>
+      <ul class="conseil-detail__list" data-conseil-detail-list></ul>
+      <p class="conseil-detail__actions" data-conseil-detail-cta hidden>
+        <a class="cdc-topic__cta" href="#" data-conseil-detail-cta-link></a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const dataEl = document.getElementById("conseils-data");
+  const byId = {};
+  if (dataEl) {
+    try {
+      JSON.parse(dataEl.textContent).forEach((entry) => {
+        byId[entry.id] = entry;
+      });
+    } catch (_) {}
+  }
+  document.querySelectorAll("[data-conseil-open]").forEach((btn) => {
+    const id = btn.getAttribute("data-conseil-id");
+    if (id && byId[id]) {
+      btn.setAttribute("data-conseil-payload", JSON.stringify(byId[id]));
+    }
+  });
+
+  const buttons = document.querySelectorAll("[data-conseil-filter]");
+  const cards = document.querySelectorAll(".cdc-topic[data-cat]:not([data-conseil-coach])");
+  const coach = document.querySelector("[data-conseil-coach]");
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const cat = btn.getAttribute("data-conseil-filter");
+      buttons.forEach((other) => other.classList.toggle("is-on", other === btn));
+      cards.forEach((card) => {
+        card.hidden = cat !== "tous" && card.getAttribute("data-cat") !== cat;
+      });
+      if (coach) coach.hidden = false;
+    });
+  });
+})();
+</script>
+{% endblock %}

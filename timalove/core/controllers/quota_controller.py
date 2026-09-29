@@ -272,15 +272,7 @@ def likes_visible_cap(profile: Profile | None) -> int | None:
 
 
 def check_message(profile: Profile) -> tuple[bool, str]:
-    cfg = quota_settings()
-    if not is_freemium(profile) or not cfg["messages_enabled"]:
-        return True, ""
-    limit = cfg["messages_limit"]
-    if messages_sent_count(profile) >= limit:
-        return False, (
-            f"Limite de {limit} messages gratuits atteinte {cfg['period_label']}. "
-            "Passez au plan supérieur pour continuer."
-        )
+    """Le cahier des charges plafonne les conversations, pas le nombre de messages."""
     return True, ""
 
 
@@ -290,7 +282,20 @@ def limit_code_for(profile: Profile) -> str:
 
 
 def check_swipe(swiper: Profile, swiped_id, action: str) -> tuple[bool, str, str]:
-    """Retourne (ok, message, code)."""
+    """Retourne (ok, message, code). 10 likes par jour pour tout le monde."""
+    action = action if action in SwipeAction.values else SwipeAction.PASS
+    existing = Swipe.objects.filter(swiper=swiper, swiped_id=swiped_id).first()
+    already_like = bool(existing and (existing.is_like or existing.is_super_like))
+    wants_like = action in {SwipeAction.LIKE, SwipeAction.SUPER_LIKE}
+    if wants_like and not already_like:
+        start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = Swipe.objects.filter(swiper=swiper, created_at__gte=start).filter(LIKE_Q).count()
+        if today >= 10:
+            return (
+                False,
+                "Tes 10 likes du jour sont utilisés. De nouveaux likes seront disponibles demain.",
+                "like_limit",
+            )
     if not is_freemium(swiper):
         return True, "", ""
 
@@ -309,18 +314,6 @@ def check_swipe(swiper: Profile, swiped_id, action: str) -> tuple[bool, str, str
     if action == SwipeAction.PASS and counted_in_period:
         return True, "", ""
 
-    if (
-        cfg["likes_enabled"]
-        and wants_like
-        and not already_like
-        and period_like_count(swiper) >= cfg["likes_limit"]
-    ):
-        return (
-            False,
-            f"Limite de {cfg['likes_limit']} likes {cfg['period_window']} atteinte. Passez au plan supérieur pour continuer.",
-            "like_limit",
-        )
-
     counts_as_new_swipe = not existing or not counted_in_period
     if (
         cfg["swipes_enabled"]
@@ -335,9 +328,15 @@ def check_swipe(swiper: Profile, swiped_id, action: str) -> tuple[bool, str, str
     return True, "", ""
 
 
+def likes_left_today(profile: Profile) -> int:
+    start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+    used = Swipe.objects.filter(swiper=profile, created_at__gte=start).filter(LIKE_Q).count()
+    return max(0, 10 - used)
+
+
 def snapshot(profile: Profile | None) -> dict:
     cfg = quota_settings()
-    if not profile or not is_freemium(profile):
+    if not profile:
         return {
             "is_freemium": False,
             "swipes_left": None,
@@ -351,22 +350,34 @@ def snapshot(profile: Profile | None) -> dict:
             "show_explorer_quota": False,
             "upgrade_path": UPGRADE_PATH,
         }
+    likes_left = likes_left_today(profile)
+    if not is_freemium(profile):
+        return {
+            "is_freemium": False,
+            "swipes_left": None,
+            "likes_left": likes_left,
+            "messages_left": None,
+            "history_locked": False,
+            "history_visible": None,
+            "likes_visible": None,
+            "period": "day",
+            "period_label": "aujourd'hui",
+            "show_explorer_quota": False,
+            "upgrade_path": UPGRADE_PATH,
+        }
     swipes_left = (
         max(0, cfg["swipes_limit"] - period_swipe_count(profile)) if cfg["swipes_enabled"] else None
-    )
-    likes_left = (
-        max(0, cfg["likes_limit"] - period_like_count(profile)) if cfg["likes_enabled"] else None
     )
     return {
         "is_freemium": True,
         "swipes_left": swipes_left,
         "likes_left": likes_left,
-        "messages_left": messages_remaining(profile),
+        "messages_left": None,
         "history_locked": False,
         "history_visible": history_limit_for(profile),
         "likes_visible": likes_visible_cap(profile),
-        "period": cfg["period"],
-        "period_label": cfg["period_label"],
+        "period": "day",
+        "period_label": "aujourd'hui",
         "show_explorer_quota": False,
         "upgrade_path": UPGRADE_PATH,
     }

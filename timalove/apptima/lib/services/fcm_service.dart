@@ -18,7 +18,7 @@ import '../firebase_options.dart';
 const String kTimaLoveNotifyChannelId = 'timalove_alerts';
 const String kTimaLoveNotifyChannelName = 'Alertes TimaLove';
 const String kTimaLoveNotifyChannelDesc =
-    'Likes, matchs et nouveaux messages TimaLove';
+    'Connexions, demandes reçues et nouveaux messages TimaLove';
 
 /// Service pour gérer Firebase Cloud Messaging
 class FCMService {

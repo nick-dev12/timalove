@@ -9,14 +9,19 @@ from django.db import models
 from django.utils import timezone
 
 from .choices import (
+    ChildrenWish,
     Gender,
     LastSeenVisibility,
+    MarriageTimeline,
+    MeetPlace,
+    PartnerReligionImportance,
     RegistrationStatus,
     RelationshipIntent,
     Religion,
     STAFF_ROLES,
     SubscriptionStatus,
     SubscriptionTier,
+    UnionType,
     UserRole,
 )
 
@@ -51,6 +56,13 @@ class Profile(models.Model):
     profession = models.CharField(max_length=180, blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     looking_for = models.TextField(blank=True, null=True)
+    marriage_timeline = models.CharField(max_length=20, choices=MarriageTimeline.choices, blank=True, default="")
+    union_type = models.CharField(max_length=20, choices=UnionType.choices, blank=True, default="")
+    children_wish = models.CharField(max_length=20, choices=ChildrenWish.choices, blank=True, default="")
+    partner_religion_importance = models.CharField(
+        max_length=20, choices=PartnerReligionImportance.choices, blank=True, default=""
+    )
+    meet_place = models.CharField(max_length=20, choices=MeetPlace.choices, blank=True, default="")
     photo_url = models.TextField(blank=True, null=True)
     photo_url_2 = models.TextField(blank=True, null=True)
     photo_url_3 = models.TextField(blank=True, null=True)

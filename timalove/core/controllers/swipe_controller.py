@@ -126,7 +126,7 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
         reciprocal = Swipe.objects.filter(swiper=swiped, swiped=swiper).filter(like_q).first()
         if reciprocal:
             u1, u2 = _ordered_pair(swiper, swiped)
-            match, _ = Match.objects.get_or_create(
+            match, created = Match.objects.get_or_create(
                 user_1=u1,
                 user_2=u2,
                 defaults={"status": MatchStatus.ACTIVE, "is_one_sided": False},
@@ -135,17 +135,6 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
                 match.status = MatchStatus.ACTIVE
                 match.is_one_sided = False
                 match.save(update_fields=["status", "is_one_sided", "updated_at"])
-            from core.controllers import message_controller, subscription_controller
-
-            initiator = swiper
-            recipient = swiped
-            first_swipe = Swipe.objects.filter(swiper=swiper, swiped=swiped).filter(like_q).first()
-            reciprocal_swipe = Swipe.objects.filter(swiper=swiped, swiped=swiper).filter(like_q).first()
-            if first_swipe and reciprocal_swipe and reciprocal_swipe.created_at < first_swipe.created_at:
-                initiator = swiped
-                recipient = swiper
-            if subscription_controller.conversation_requires_acceptance(recipient):
-                message_controller._apply_conversation_gate(match, initiator=initiator, recipient=recipient)
             matched = True
             for p in (swiper, swiped):
                 p.matches_count = Match.objects.filter(
@@ -155,6 +144,16 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
                 partner = swiped if p.pk == swiper.pk else swiper
                 notification_controller.notify_match(profile=p, partner=partner, match=match)
         else:
+            u1, u2 = _ordered_pair(swiper, swiped)
+            match, created = Match.objects.get_or_create(
+                user_1=u1,
+                user_2=u2,
+                defaults={"status": MatchStatus.ACTIVE, "is_one_sided": True},
+            )
+            if match.status != MatchStatus.ACTIVE:
+                match.status = MatchStatus.ACTIVE
+                match.is_one_sided = True
+                match.save(update_fields=["status", "is_one_sided", "updated_at"])
             if is_super_like and not was_super:
                 notification_controller.notify_like(recipient=swiped, sender=swiper, is_super_like=True)
             elif is_like and not was_like:

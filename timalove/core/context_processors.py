@@ -18,7 +18,7 @@ def deploy_revision(request):
 
 
 def app_nav_badges(request):
-    badges = {"likes_count": 0, "unread_messages": 0, "unread_notifications": 0}
+    badges = {"likes_count": 0, "unread_messages": 0, "unread_notifications": 0, "connections_count": 0}
     membership = {"is_freemium": False, "has_premium": False}
     user = getattr(request, "user", None)
     if not user or not user.is_authenticated:
@@ -33,6 +33,7 @@ def app_nav_badges(request):
         membership["has_premium"] = not membership["is_freemium"]
         badges["likes_count"] = likes_controller.count_unread_incoming(profile)
         badges["unread_messages"] = message_controller.unread_count(profile)
+        badges["connections_count"] = len(message_controller.list_incoming_requests(profile))
         badges["unread_notifications"] = notification_controller.unread_count(profile)
     except Exception:
         pass
@@ -43,7 +44,14 @@ def app_features(request):
     try:
         from core.controllers import app_config_controller
 
-        return {"app_features": app_config_controller.feature_flags()}
+        flags = app_config_controller.feature_flags()
+        ua = request.META.get("HTTP_USER_AGENT", "")
+        if app_config_controller.explorer_curated_mode_active(user_agent=ua):
+            flags = dict(flags)
+            flags["explorer_curated_mode"] = True
+            flags["explorer_search_enabled"] = False
+            flags["history_search_enabled"] = False
+        return {"app_features": flags}
     except Exception:
         return {
             "app_features": {
@@ -56,7 +64,7 @@ def app_features(request):
                 "explorer_search_enabled": False,
                 "history_search_enabled": False,
                 "messages_search_enabled": True,
-                "explorer_curated_mode": False,
+                "explorer_curated_mode": True,
                 "guided_messages_enabled": True,
             }
         }

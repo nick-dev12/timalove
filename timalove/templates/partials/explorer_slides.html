@@ -29,73 +29,19 @@
         <button type="button" class="explorer__photo-hit explorer__photo-hit--next" data-photo-step="1" aria-label="Photo suivante"></button>
         {% endif %}
 
-        <div
-          class="explorer__match is-idle"
-          role="button"
-          tabindex="0"
-          data-match-score
-          data-profile-id="{{ card.id }}"
-          aria-label="Calculer la compatibilité"
-        >
-          <svg viewBox="0 0 24 22" width="13" height="12" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
-          <span data-match-label>Compatible ?</span>
-          <span class="explorer__match-bar" aria-hidden="true"><span></span></span>
-        </div>
-
-        <a class="explorer__go-profile" href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}" aria-label="Voir le profil de {{ card.first_name }}">
-          <span>Profil</span>
-          <span class="explorer__go-profile-avatar{% if card.subscription_badge == 'vip' %} is-vip{% endif %}">
-            {% if card.photo_url %}
-            <img src="{{ card.photo_url }}" alt="" width="44" height="44">
-            {% else %}
-            <em>{{ card.first_name|first|upper }}</em>
-            {% endif %}
-          </span>
-        </a>
-
         <div class="explorer__meta">
-          <div class="explorer__meta-copy">
-            <span class="explorer__place" role="button" tabindex="0">
-              <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path fill="currentColor" d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
-              {{ card.city|default:card.location }}
+          <h2>
+            <a href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}">
+              {{ card.first_name }}{% if card.age %}, {{ card.age }}{% endif %}
+            </a>
+          </h2>
+          <div class="cdc-loc">
+            <span class="explorer__place">
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+              {{ card.location }}
             </span>
-            <h2>
-              <span class="tl-name-line">
-                {% include "partials/subscription_mark.html" with badge=card.subscription_badge %}
-                <a href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}">
-                  {{ card.first_name }}{% if card.age %}, {{ card.age }}{% endif %}
-                </a>
-              </span>
-              {% if card.is_verified %}
-              <span class="explorer__verified" title="Profil vérifié" aria-label="Profil vérifié">★</span>
-              {% endif %}
-            </h2>
-            {% if card.profession %}
-            <p class="explorer__role">{{ card.profession }}</p>
-            {% endif %}
-          </div>
-
-          <div class="explorer__actions" role="group" aria-label="Actions">
-            {% if user.is_authenticated %}
-            <button type="button" class="explorer__action explorer__action--pass" data-swipe="pass" aria-label="Passer ce profil">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
-            </button>
-            <button type="button" class="explorer__action explorer__action--like{% if card.liked %} is-on{% endif %}" data-swipe="like" aria-label="{% if card.liked %}Intérêt manifesté{% else %}Manifester mon intérêt{% endif %}">
-              <svg viewBox="0 0 24 22" width="26" height="24" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
-            </button>
-            <button type="button" class="explorer__action explorer__action--star{% if card.super_liked %} is-on{% endif %}" data-swipe="super_like" aria-label="{% if card.super_liked %}Priorité envoyée{% else %}Priorité de mise en relation{% endif %}">
-              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
-            </button>
-            {% else %}
-            <a class="explorer__action explorer__action--pass" href="{% url 'auth:inscription' %}" aria-label="Passer ce profil">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
-            </a>
-            <a class="explorer__action explorer__action--like" href="{% url 'auth:inscription' %}" aria-label="Manifester mon intérêt">
-              <svg viewBox="0 0 24 22" width="26" height="24" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
-            </a>
-            <a class="explorer__action explorer__action--star" href="{% url 'auth:inscription' %}" aria-label="Priorité de mise en relation">
-              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
-            </a>
+            {% if card.is_online %}
+            <span class="cdc-online">En ligne</span>
             {% endif %}
           </div>
         </div>
@@ -115,6 +61,48 @@
           <p class="explorer__veil-text">Révélation du profil…</p>
           <div class="explorer__veil-bar"><span></span></div>
         </div>
+      </div>
+    </div>
+    <div class="cdc-sheet">
+      <ul class="cdc-reasons">
+        {% for line in card.alignments %}
+        <li>
+          <span class="cdc-reasons__ico" aria-hidden="true">
+            {% if card.photo_url %}<img src="{{ card.photo_url }}" alt="">{% else %}{{ card.first_name|first|upper }}{% endif %}
+          </span>
+          {{ line }}
+        </li>
+        {% empty %}
+        <li>
+          <span class="cdc-reasons__ico" aria-hidden="true">
+            {% if card.photo_url %}<img src="{{ card.photo_url }}" alt="">{% else %}{{ card.first_name|first|upper }}{% endif %}
+          </span>
+          Profil proposé selon vos préférences et votre parcours.
+        </li>
+        {% endfor %}
+      </ul>
+      <div class="explorer__actions" role="group" aria-label="Actions">
+        {% if user.is_authenticated %}
+        <button type="button" class="explorer__action explorer__action--pass" data-swipe="pass" aria-label="Passer ce profil">
+          <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+        <button type="button" class="explorer__action explorer__action--star{% if card.super_liked %} is-on{% endif %}" data-swipe="super_like" aria-label="{% if card.super_liked %}Priorité envoyée{% else %}Priorité de mise en relation{% endif %}">
+          <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+        </button>
+        <button type="button" class="explorer__action explorer__action--like{% if card.liked %} is-on{% endif %}" data-swipe="like" aria-label="{% if card.liked %}Intérêt manifesté{% else %}Manifester mon intérêt{% endif %}">
+          <svg viewBox="0 0 24 22" width="32" height="30" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+        </button>
+        {% else %}
+        <a class="explorer__action explorer__action--pass" href="{% url 'auth:inscription' %}" aria-label="Passer ce profil">
+          <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></svg>
+        </a>
+        <a class="explorer__action explorer__action--star" href="{% url 'auth:inscription' %}" aria-label="Priorité de mise en relation">
+          <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path fill="currentColor" d="M12 17.3 18.2 21l-1.6-7.1L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.7L5.8 21z"/></svg>
+        </a>
+        <a class="explorer__action explorer__action--like" href="{% url 'auth:inscription' %}" aria-label="Manifester mon intérêt">
+          <svg viewBox="0 0 24 22" width="32" height="30" aria-hidden="true"><path fill="currentColor" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg>
+        </a>
+        {% endif %}
       </div>
     </div>
   </div>

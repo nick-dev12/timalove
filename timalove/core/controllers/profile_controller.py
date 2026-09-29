@@ -80,6 +80,11 @@ ALLOWED_PROFILE_FIELDS = {
     "interests",
     "personality_traits",
     "life_values",
+    "marriage_timeline",
+    "union_type",
+    "children_wish",
+    "partner_religion_importance",
+    "meet_place",
 }
 
 
@@ -367,6 +372,24 @@ def update_profile(profile: Profile, data: dict) -> Profile:
     if "looking_for" in payload:
         encoded = encode_looking_for(payload.get("looking_for"))
         payload["looking_for"] = encoded or None
+    from core.models.choices import (
+        ChildrenWish,
+        MarriageTimeline,
+        MeetPlace,
+        PartnerReligionImportance,
+        UnionType,
+    )
+
+    for key, enum in (
+        ("marriage_timeline", MarriageTimeline),
+        ("union_type", UnionType),
+        ("children_wish", ChildrenWish),
+        ("partner_religion_importance", PartnerReligionImportance),
+        ("meet_place", MeetPlace),
+    ):
+        if key in payload:
+            value = str(payload.get(key) or "").strip()
+            payload[key] = value if value in enum.values else ""
     if "gender" in payload:
         gender = (payload.get("gender") or "").strip()
         if gender not in VALID_GENDERS:

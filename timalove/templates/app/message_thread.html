@@ -1,14 +1,14 @@
 {% extends "layouts/base.html" %}
 {% load static %}
 {% block title %}{% if partner %}{{ partner.first_name }}{% else %}Messages{% endif %}{% endblock %}
-{% block body_class %}messages-page{% if is_preview %} is-guest{% endif %}{% endblock %}
+{% block body_class %}messages-page cdc-app{% if is_preview %} is-guest{% endif %}{% endblock %}
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="{% static 'js/explorer-chrome.js' %}?v=20260921lb1" defer></script>
 <script src="{% static 'js/message-datetime.js' %}?v=20260913tz1" defer></script>
-<script src="{% static 'js/messages-thread.js' %}?v=20260924msg1" defer></script>
+<script src="{% static 'js/messages-thread.js' %}?v=20260927th2" defer></script>
 {% if not is_preview %}
-<script src="{% static 'js/message-invite.js' %}?v=20260921lr2" defer></script>
+<script src="{% static 'js/message-invite.js' %}?v=20260927req1" defer></script>
 {% endif %}
 {% endblock %}
 {% block body %}
@@ -21,7 +21,6 @@
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M15 6 9 12l6 6"/></svg>
       </a>
       <a class="msg__brand brand-script brand-mark" href="{% url 'public:explorer' %}">
-        <img src="{% static 'images/logo.webp' %}" alt="" width="28" height="28">
         <span>TimaLove</span>
       </a>
       <div class="msg__more-wrap">
@@ -29,6 +28,9 @@
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 12.75a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5zm6 0a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5zm6 0a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5z"/></svg>
         </button>
         <div class="msg__more-menu" data-msg-more-menu hidden role="menu">
+          {% if conversation_accepted and not blocked_by_me and not blocked_me %}
+          <button type="button" class="msg__more-item" role="menuitem" data-msg-close-open>Clôturer la connexion</button>
+          {% endif %}
           {% if not blocked_by_me %}
           <button type="button" class="msg__more-item" role="menuitem" data-msg-block>Bloquer le profil</button>
           {% else %}
@@ -38,22 +40,6 @@
         </div>
       </div>
     </header>
-
-    {% if blocked_by_me %}
-    <p class="msg__blocked-banner" role="status">Vous avez bloqué ce profil. Vous ne recevrez plus ses messages.</p>
-    {% elif blocked_me %}
-    <p class="msg__blocked-banner" role="status">Cette conversation n'est plus disponible.</p>
-    {% elif can_accept %}
-    <div class="msg__pending-banner" data-conversation-pending role="region" aria-label="Demande de discussion">
-      <p>Cette personne souhaite échanger avec vous. Acceptez ou refusez la discussion.</p>
-      <div class="msg__pending-actions">
-        <button type="button" class="btn btn-primary btn-sm" data-conversation-accept>Accepter</button>
-        <button type="button" class="btn btn-outline btn-sm" data-conversation-decline>Bloquer</button>
-      </div>
-    </div>
-    {% elif conversation_pending %}
-    <p class="msg__blocked-banner" role="status">Demande envoyée — en attente d’acceptation.</p>
-    {% endif %}
 
     <div class="msg__pair">
       <div class="msg__person">
@@ -89,6 +75,54 @@
         <em>{% if me.is_online %}En ligne{% else %}Hors ligne{% endif %}</em>
       </div>
     </div>
+
+    {% if blocked_by_me %}
+    <p class="msg__status" role="status">Vous avez bloqué ce profil. Vous ne recevrez plus ses messages.</p>
+    {% elif blocked_me %}
+    <p class="msg__status" role="status">Cette conversation n'est plus disponible.</p>
+    {% elif can_accept %}
+    <section class="msg__card msg__card--request" data-conversation-pending aria-label="Demande de connexion">
+      <p class="msg__card-kicker">Nouvelle demande</p>
+      <p class="msg__card-title">Cette personne souhaite faire connaissance avec toi.</p>
+      {% if partner_marriage or partner_union or partner_children %}
+      <p class="msg__card-meta">{{ partner_marriage }}{% if partner_union %} · {{ partner_union }}{% endif %}{% if partner_children %} · {{ partner_children }}{% endif %}</p>
+      {% endif %}
+      {% if project_why %}<p class="msg__card-why">{{ project_why }}</p>{% endif %}
+      <div class="msg__card-actions">
+        <button type="button" class="msg__ghost" data-profile-modal="{{ partner_profile_id }}">Explorer</button>
+        <form method="post" action="{% url 'app:discussion_detail' partner_id %}">
+          {% csrf_token %}
+          <input type="hidden" name="intent" value="accept">
+          <button type="submit" class="msg__cta">Accepter</button>
+        </form>
+        <form method="post" action="{% url 'app:discussion_detail' partner_id %}">
+          {% csrf_token %}
+          <input type="hidden" name="intent" value="decline">
+          <button type="submit" class="msg__ghost">Décliner</button>
+        </form>
+      </div>
+    </section>
+    {% elif conversation_pending %}
+    <p class="msg__status" role="status">Demande envoyée — en attente d’acceptation.</p>
+    {% elif conversation_accepted and not blocked_by_me and not blocked_me %}
+    <section class="msg__card msg__card--meet{% if ready_me and not ready_both %} is-quiet{% endif %}" aria-label="Rencontre">
+      {% if ready_both %}
+      <p class="msg__card-kicker">Premier rendez-vous</p>
+      <p class="msg__card-title">Vous êtes tous les deux prêts à vous rencontrer.</p>
+      <a class="msg__cta" href="{% url 'public:conseils' %}#premier-rendez-vous">Lire les conseils Tima</a>
+      {% elif ready_me %}
+      <p class="msg__card-title" title="Votre choix reste privé jusqu’à confirmation de l’autre personne.">En attente de confirmation</p>
+      {% else %}
+      <p class="msg__card-kicker">Et si vous vous rencontriez ?</p>
+      <p class="msg__card-title">Dites-le seulement si vous vous sentez prêt(e).</p>
+      <form method="post" action="{% url 'app:discussion_detail' partner_id %}">
+        {% csrf_token %}
+        <input type="hidden" name="intent" value="ready">
+        <button type="submit" class="msg__cta">Je suis prêt(e) à rencontrer cette personne</button>
+      </form>
+      {% endif %}
+    </section>
+    {% endif %}
 
     <div class="msg__thread" data-msg-thread data-me-id="{{ me.id }}" data-me-photo="{{ me.photo_url }}" data-me-initial="{{ me.initial }}" data-partner-photo="{{ partner.photo_url }}" data-partner-initial="{{ partner.initial }}">
       {% for item in thread_items %}
@@ -142,7 +176,9 @@
 
     {% if messages %}
     {% for message in messages %}
+    {% if "reste privé" not in message %}
     <p class="msg__limit" role="status">{{ message }}</p>
+    {% endif %}
     {% endfor %}
     {% endif %}
 
@@ -235,6 +271,35 @@
 </div>
 {% include "partials/message_report_modal.html" %}
 {% include "partials/message_delete_modal.html" %}
+{% if conversation_accepted and not blocked_by_me and not blocked_me %}
+<div class="msg-report" id="msg-close-modal" hidden>
+  <div class="msg-report__backdrop" data-msg-close-dismiss tabindex="-1"></div>
+  <div class="msg-report__card" role="dialog" aria-modal="true" aria-labelledby="msg-close-title">
+    <header class="msg-report__head">
+      <p class="msg-report__kicker">Connexion</p>
+      <h2 class="msg-report__title" id="msg-close-title" tabindex="-1">Clôturer cette connexion</h2>
+      <p class="msg-report__lead">Le motif reste privé. L’autre personne ne le verra pas. Cette conversation libère un emplacement.</p>
+    </header>
+    <form class="msg-report__form" method="post" action="{% url 'app:discussion_detail' partner_id %}">
+      {% csrf_token %}
+      <input type="hidden" name="intent" value="close">
+      <fieldset class="msg-close__reasons">
+        <legend>Motif privé</legend>
+        {% for code, label in close_reasons %}
+        <label class="msg-close__choice">
+          <input type="radio" name="reason" value="{{ code }}" required>
+          <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+      </fieldset>
+      <div class="msg-report__actions">
+        <button type="button" class="msg-report__btn msg-report__btn--ghost" data-msg-close-dismiss>Annuler</button>
+        <button type="submit" class="msg-report__btn">Clôturer</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
 {% include "partials/profile_modal.html" %}
 {% if not is_preview %}
 {% include "partials/message_invite_modal.html" %}

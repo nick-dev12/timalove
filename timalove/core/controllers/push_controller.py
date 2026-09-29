@@ -199,15 +199,22 @@ def _notification_link(notification: Notification) -> str:
 
 def notification_link(notification: Notification) -> str:
     """Chemin relatif — le navigateur complète avec son origin (évite SITE_URL mal configuré)."""
+    title = (notification.title or "").strip()
     if notification.type == "new_message" and notification.related_match_id:
         partner_id = notification.related_user_id
         if partner_id:
             return f"/discussions/{partner_id}/"
     if notification.type == "new_match":
-        partner_id = notification.related_user_id
-        if partner_id:
-            return f"/discussions/{partner_id}/"
-        return "/likes/"
+        if title == "Nouvelle demande":
+            return "/connexions/?onglet=recues"
+        if title == "Demande envoyée":
+            return "/connexions/?onglet=envoyees"
+        if title == "Demande acceptée":
+            partner_id = notification.related_user_id
+            if partner_id:
+                return f"/discussions/{partner_id}/"
+            return "/connexions/?onglet=recues"
+        return "/connexions/?onglet=recues"
     if notification.type == "new_like":
         return "/likes/"
     return "/profil/?tab=settings"

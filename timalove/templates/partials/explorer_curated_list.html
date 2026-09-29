@@ -1,11 +1,11 @@
 {% load static subscription_tags %}
-<section class="curated-list" aria-label="Sélection compatible du jour">
+<section class="curated-list" aria-label="Sélection du jour">
   {% if user.is_authenticated %}
   {% include "partials/matrimonial_objective_banner.html" with profile=user.profile %}
   {% endif %}
   <header class="curated-list__intro">
     <p class="curated-list__kicker">Sélection du jour</p>
-    <h1 class="curated-list__title">Profils compatibles</h1>
+    <h1 class="curated-list__title">Sélection du jour</h1>
   </header>
 
   {% if cards %}
@@ -17,7 +17,7 @@
   {% include "partials/explorer_curated_more_btn.html" %}
   {% else %}
   <div class="curated-list__empty">
-    <h2>Aucun profil compatible aujourd'hui</h2>
+    <h2>Aucun profil pour aujourd'hui</h2>
     <p>Revenez demain ou ajustez vos filtres de découverte.</p>
   </div>
   {% endif %}

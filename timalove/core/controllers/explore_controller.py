@@ -10,7 +10,15 @@ from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import Http404
 
 from core.controllers import matching_controller, swipe_controller
-from core.data.onboarding import INTERESTS, TRAITS, looking_for_free_text, looking_for_ids, looking_for_labels, life_value_labels
+from core.data.onboarding import (
+    INTERESTS,
+    LOOKING_FOR,
+    TRAITS,
+    looking_for_free_text,
+    looking_for_ids,
+    looking_for_labels,
+    life_value_labels,
+)
 from core.models import Profile, Swipe
 from core.models.choices import RegistrationStatus, UserRole
 
@@ -106,6 +114,97 @@ def _search_queryset():
     )
 
 
+def _catalog_labels(catalog: list[dict], ids: list[str]) -> list[str]:
+    by_id = {item["id"]: item["label"] for item in catalog}
+    labels: list[str] = []
+    for raw in ids:
+        key = str(raw).strip().lower()
+        if not key:
+            continue
+        label = by_id.get(key) or by_id.get(key.replace(" ", "_"))
+        labels.append(label or str(raw))
+    return labels
+
+
+def _norm_id_set(raw) -> set[str]:
+    return {str(item).strip().lower() for item in (raw or []) if str(item).strip()}
+
+
+def _shared_catalog_ids(viewer_raw, profile_raw) -> list[str]:
+    shared = sorted(_norm_id_set(viewer_raw) & _norm_id_set(profile_raw))
+    return shared
+
+
+def _alignment_rows(viewer, profile: Profile) -> list[str]:
+    rows: list[str] = []
+    if viewer is None:
+        return rows
+
+    shared_interests = _shared_catalog_ids(viewer.interests, profile.interests)
+    if shared_interests:
+        labels = _catalog_labels(INTERESTS, shared_interests)
+        rows.append("Centres d’intérêt communs : " + ", ".join(labels))
+
+    shared_traits = _shared_catalog_ids(viewer.personality_traits, profile.personality_traits)
+    if shared_traits:
+        labels = _catalog_labels(TRAITS, shared_traits)
+        rows.append("Caractère compatible : " + ", ".join(labels))
+
+    viewer_values = _norm_id_set(viewer.life_values)
+    profile_values = _norm_id_set(profile.life_values)
+    shared_values = sorted(viewer_values & profile_values)
+    if shared_values:
+        rows.append("Valeurs partagées : " + ", ".join(life_value_labels(shared_values)))
+
+    if viewer.religion and viewer.religion == profile.religion:
+        rows.append("Même religion")
+
+    if viewer.relationship_intent and viewer.relationship_intent == profile.relationship_intent:
+        intent = profile.get_relationship_intent_display()
+        if intent:
+            rows.append(f"Même intention : {intent}")
+
+    viewer_looking = set(looking_for_ids(viewer.looking_for))
+    profile_traits = _norm_id_set(profile.personality_traits)
+    profile_values_ids = _norm_id_set(profile.life_values)
+    looking_hits: list[str] = []
+    for lf_id in sorted(viewer_looking):
+        if lf_id in profile_traits or lf_id in profile_values_ids:
+            looking_hits.append(lf_id)
+        elif lf_id == "croyant" and profile.religion:
+            looking_hits.append(lf_id)
+        elif lf_id == "familial" and ("famille" in profile_values_ids or "projet_famille" == lf_id):
+            looking_hits.append(lf_id)
+    if looking_hits:
+        labels = _catalog_labels(LOOKING_FOR, looking_hits)
+        rows.append("Correspond à votre recherche : " + ", ".join(labels))
+
+    if viewer.marriage_timeline and viewer.marriage_timeline == profile.marriage_timeline:
+        label = profile.get_marriage_timeline_display()
+        rows.append(f"Même horizon de mariage : {label}" if label else "Même projet de mariage")
+    if viewer.union_type and viewer.union_type == profile.union_type:
+        if profile.union_type == "monogame":
+            rows.append("Même vision : monogamie")
+        elif profile.union_type == "polygame":
+            rows.append("Même vision : polygamie")
+        else:
+            rows.append("Même vision : ouvert aux deux")
+    if viewer.children_wish and viewer.children_wish == profile.children_wish:
+        rows.append("Même projet concernant les enfants")
+
+    if viewer.country and profile.country and viewer.country.strip().casefold() == profile.country.strip().casefold():
+        rows.append("Même pays d’origine")
+
+    return rows
+
+
+def _why_this_profile(viewer, profile: Profile) -> str:
+    rows = _alignment_rows(viewer, profile)
+    if not rows:
+        return "Ce profil est proposé dans votre découverte."
+    return "Vous partagez " + ", ".join(row[0].lower() + row[1:] for row in rows) + "."
+
+
 def serialize_card(
     profile: Profile,
     *,
@@ -132,6 +231,11 @@ def serialize_card(
         "bio": (profile.bio or "")[:140],
         "profession": (profile.profession or "").strip(),
         "relationship_intent": profile.get_relationship_intent_display() if profile.relationship_intent else "",
+        "marriage_label": profile.get_marriage_timeline_display() if profile.marriage_timeline else "",
+        "union_label": profile.get_union_type_display() if profile.union_type else "",
+        "children_label": profile.get_children_wish_display() if profile.children_wish else "",
+        "why": _why_this_profile(viewer, profile),
+        "alignments": _alignment_rows(viewer, profile),
         "compatibility": compatibility_score(profile, viewer),
         "profile_url": f"/explorer/profil/{profile.pk}/",
         "liked": liked,
@@ -282,6 +386,11 @@ def _order_feed_ids(remaining: list, viewer=None, *, seed: str = "", served_coun
         if profile.is_boosted:
             mult *= 2
         score = rng.random() * mult
+        if viewer is not None:
+            if viewer.marriage_timeline and viewer.marriage_timeline == profile.marriage_timeline:
+                score += 3
+            if viewer.union_type and viewer.union_type == profile.union_type:
+                score += 1.5
         completion = profile_controller.completion_score(profile)
         scored.append((score, completion, pk))
     scored.sort(key=lambda row: (-(1 if row[1] > 60 else 0), -row[0]))

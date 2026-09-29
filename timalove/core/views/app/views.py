@@ -16,7 +16,17 @@ from core.controllers import (
 )
 from core.data.countries import COUNTRIES_FR
 from core.data.onboarding import INTERESTS, TRAITS, LIFE_VALUES, LOOKING_FOR
-from core.models.choices import Gender, RelationshipIntent, Religion, ReportReason
+from core.models.choices import (
+    ChildrenWish,
+    Gender,
+    MarriageTimeline,
+    MeetPlace,
+    PartnerReligionImportance,
+    RelationshipIntent,
+    Religion,
+    ReportReason,
+    UnionType,
+)
 
 
 def _profile(request):
@@ -144,26 +154,41 @@ def discussions(request):
 def discussion_detail(request, partner_id):
     profile = _profile(request)
     if request.method == "POST":
-        ok, msg, _ = message_controller.send_text(profile, partner_id, request.POST.get("content", ""))
+        intent = request.POST.get("intent") or "message"
+        if intent == "accept":
+            ok, msg = message_controller.accept_conversation(profile, partner_id)
+        elif intent == "decline":
+            ok, msg = message_controller.decline_request(profile, partner_id)
+            if ok:
+                messages.success(request, msg)
+                return redirect("public:connexions")
+        elif intent == "close":
+            ok, msg = message_controller.close_conversation(profile, partner_id, request.POST.get("reason", ""))
+            if ok:
+                messages.success(request, msg)
+                return redirect("public:messages")
+        elif intent == "ready":
+            ok, msg, _both = message_controller.mark_ready_to_meet(profile, partner_id)
+            if not ok:
+                messages.error(request, msg)
+            return redirect("app:discussion_detail", partner_id=partner_id)
+        else:
+            ok, msg, _ = message_controller.send_text(profile, partner_id, request.POST.get("content", ""))
+            if ok:
+                message_controller.mark_read(profile, partner_id)
+                return redirect("app:discussion_detail", partner_id=partner_id)
         if not ok:
             messages.error(request, msg)
         else:
-            message_controller.mark_read(profile, partner_id)
+            messages.success(request, msg)
         return redirect("app:discussion_detail", partner_id=partner_id)
     from core.controllers import notification_controller
+    from django.urls import reverse
 
     thread = message_controller.thread_for(profile, partner_id)
-    if not thread:
-        ok, msg, _match = message_controller.ensure_conversation(profile, partner_id)
-        if not ok:
-            messages.error(request, msg)
-            referer = request.META.get("HTTP_REFERER") or ""
-            if referer and referer.startswith(request.build_absolute_uri("/")):
-                return redirect(referer)
-            return redirect("public:messages")
-        thread = message_controller.thread_for(profile, partner_id)
-        if not thread:
-            raise Http404("Conversation introuvable.")
+    if not thread or not thread.get("conversation_accepted"):
+        onglet = "recues" if thread and thread.get("can_accept") else "envoyees"
+        return redirect(f"{reverse('public:connexions')}?onglet={onglet}")
     message_controller.mark_read(profile, partner_id)
     notification_controller.mark_read_for_context(profile, "messages", partner_id=partner_id)
     inbox_back = len(message_controller.list_conversations(profile)) > 1
@@ -184,6 +209,14 @@ def discussion_detail(request, partner_id):
         "messages_remaining": thread.get("messages_remaining"),
         "conversation_pending": thread.get("conversation_pending", False),
         "can_accept": thread.get("can_accept", False),
+        "conversation_accepted": thread.get("conversation_accepted", False),
+        "project_why": thread.get("project_why", ""),
+        "partner_marriage": thread.get("partner_marriage", ""),
+        "partner_union": thread.get("partner_union", ""),
+        "partner_children": thread.get("partner_children", ""),
+        "ready_me": thread.get("ready_me", False),
+        "ready_both": thread.get("ready_both", False),
+        "close_reasons": thread.get("close_reasons", []),
         "partner_profile_id": thread.get("partner_profile_id", partner_id),
         "guided_intro_required": thread.get("guided_intro_required", False),
         "guided_prompts": thread.get("guided_prompts", []),
@@ -236,6 +269,19 @@ def discussion_media(request, partner_id):
 @require_http_methods(["GET", "POST"])
 def profil(request):
     profile = profile_controller.get_own(_profile(request))
+    if request.method == "POST" and request.POST.get("form") == "projet":
+        profile_controller.update_profile(
+            profile,
+            {
+                "marriage_timeline": request.POST.get("marriage_timeline"),
+                "union_type": request.POST.get("union_type"),
+                "children_wish": request.POST.get("children_wish"),
+                "partner_religion_importance": request.POST.get("partner_religion_importance"),
+                "meet_place": request.POST.get("meet_place"),
+            },
+        )
+        messages.success(request, "Projet de mariage enregistré.")
+        return redirect("app:profil")
     if request.method == "POST":
         profile_controller.update_profile(
             profile,
@@ -271,6 +317,12 @@ def profil(request):
         "traits": TRAITS,
         "life_values_catalog": LIFE_VALUES,
         "looking_for_catalog": LOOKING_FOR,
+        "marriage_timelines": MarriageTimeline.choices,
+        "union_types": UnionType.choices,
+        "children_wishes": ChildrenWish.choices,
+        "religion_importances": PartnerReligionImportance.choices,
+        "meet_places": MeetPlace.choices,
+        "blocked_users": moderation_controller.list_blocked(profile),
         "max_photos": profile_controller.MAX_GALLERY_PHOTOS,
         "show_dev_tools": settings.DEBUG,
     }

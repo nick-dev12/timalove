@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TimaLove</string>
+    <string name="permission_location_rationale_title">Autoriser la localisation</string>
+    <string name="permission_location_rationale_message">TimaLove utilise votre position uniquement lorsque vous l\'autorisez, pour afficher des profils près de vous et renseigner votre ville. La position n\'est pas suivie en continu ni en arrière-plan. Vous pouvez la saisir manuellement.</string>
+    <string name="permission_camera_rationale_title">Autoriser l\'appareil photo</string>
+    <string name="permission_camera_rationale_message">TimaLove utilise l\'appareil photo lorsque vous prenez une photo de profil, un selfie de vérification ou une image à envoyer dans une discussion.</string>
+    <string name="permission_microphone_rationale_title">Autoriser le micro</string>
+    <string name="permission_microphone_rationale_message">TimaLove utilise le microphone uniquement lorsque vous enregistrez un message vocal dans une discussion. L\'écoute n\'est jamais activée en arrière-plan.</string>
+    <string name="permission_photos_rationale_title">Autoriser l\'accès aux photos</string>
+    <string name="permission_photos_rationale_message">TimaLove accède à vos photos uniquement si vous choisissez d\'importer une image depuis la galerie pour votre profil ou une conversation.</string>
+    <string name="permission_notifications_rationale_title">Autoriser les notifications</string>
+    <string name="permission_notifications_rationale_message">TimaLove peut vous prévenir d\'une nouvelle connexion, d\'une demande reçue ou d\'un message. Vous pourrez désactiver les alertes à tout moment dans les réglages.</string>
+</resources>

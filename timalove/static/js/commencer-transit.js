@@ -3,13 +3,13 @@
  */
 (function () {
   const STORY = "Deux cœurs se cherchent…";
-  const DURATION_MS = 7200;
+  const DURATION_MS = 4000;
   let started = false;
 
   function typewriter(typeEl, text) {
     typeEl.textContent = "";
     let i = 0;
-    const step = Math.max(58, Math.floor(1600 / Math.max(text.length, 1)));
+    const step = Math.max(36, Math.floor(1100 / Math.max(text.length, 1)));
     const timer = setInterval(() => {
       i += 1;
       typeEl.textContent = text.slice(0, i);
@@ -43,7 +43,7 @@
     document.body.classList.add("is-commencer-transit");
     overlay.classList.add("is-active");
     typewriter(typeEl, STORY);
-    window.setTimeout(() => overlay.classList.add("is-united"), 3900);
+    window.setTimeout(() => overlay.classList.add("is-united"), 2600);
     window.setTimeout(() => go(target), DURATION_MS);
   }
 
@@ -53,6 +53,6 @@
     const cta = event.target.closest("#commencer-cta");
     if (!cta) return;
     event.preventDefault();
-    start(cta.getAttribute("data-href") || "/connexion/");
+    start(cta.getAttribute("data-href") || cta.getAttribute("href") || "/connexion/");
   });
 })();

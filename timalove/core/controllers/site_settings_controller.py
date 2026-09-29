@@ -8,14 +8,14 @@ from django.conf import settings
 
 DEFAULT_PLAN_FEATURES: dict[str, list[str]] = {
     "premium": [
-        "Messagerie illimitée",
+        "Échanges libres dans 5 conversations",
         "5× plus visible dans l'explorer",
         "Historique et likes reçus complets",
     ],
     "vip": [
-        "Messagerie illimitée",
-        "Liker n'importe quel profil",
-        "Accepter ou bloquer une discussion",
+        "Échanges libres dans 5 conversations",
+        "10 likes par jour",
+        "Mise en avant du profil",
         "Profils complets (> 70 %) en priorité",
         "10× plus visible dans l'explorer",
         "Badge VIP doré",
@@ -25,7 +25,7 @@ DEFAULT_PLAN_FEATURES: dict[str, list[str]] = {
         "Suggestions de profils ×10",
         "Badge doré",
         "Photos et audio illimités",
-        "Accepter ou refuser une discussion",
+        "Mise en avant du profil",
     ],
 }
 
@@ -232,12 +232,24 @@ def _default_duration_days(plan_id: str) -> int:
 
 
 def _parse_features(raw: Any, tier_kind: str, base: list[str] | None = None) -> list[str]:
+    obsolete = {
+        "Messagerie illimitée": "Échanges libres dans 5 conversations",
+        "Accepter ou bloquer une discussion": "Mise en avant du profil",
+        "Accepter ou refuser une discussion": "Mise en avant du profil",
+        "Liker n'importe quel profil": "10 likes par jour",
+        "vue et like de profil ilimiter": "10 likes par jour",
+        "message ilimité": "Échanges libres dans 5 conversations",
+    }
     if isinstance(raw, list):
-        items = [str(item).strip() for item in raw if str(item).strip()]
+        items = [obsolete.get(str(item).strip(), str(item).strip()) for item in raw if str(item).strip()]
         if items:
             return items
     if isinstance(raw, str) and raw.strip():
-        items = [line.strip() for line in raw.replace("\r", "").split("\n") if line.strip()]
+        items = [
+            obsolete.get(line.strip(), line.strip())
+            for line in raw.replace("\r", "").split("\n")
+            if line.strip()
+        ]
         if items:
             return items
     if base:

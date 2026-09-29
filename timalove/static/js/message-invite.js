@@ -52,9 +52,14 @@
       })
       .then(function (result) {
         if (!result.ok || !result.data.ok) {
-          const err = new Error((result.data && result.data.message) || "Impossible d’ouvrir la conversation.");
+          const err = new Error((result.data && result.data.message) || "Impossible d’envoyer la demande.");
           err.code = result.data && result.data.code;
           throw err;
+        }
+        if (result.data.request_sent || result.data.redirect_url) {
+          toast(result.data.message || "Demande de connexion envoyée.");
+          window.location.href = result.data.redirect_url || "/connexions/?onglet=envoyees";
+          return result.data;
         }
         const url = result.data.thread_url || "/discussions/" + profileId + "/";
         window.location.href = url;
@@ -340,13 +345,15 @@
       if (els.kicker) els.kicker.textContent = "Priorité envoyée";
       if (els.lead) {
         els.lead.textContent =
-          "Vous avez marqué votre intérêt. Écrivez à " + name + " pour vous présenter.";
+          "Vous avez marqué votre intérêt. Envoyez une demande de connexion à " +
+          name +
+          " pour faire connaissance.";
       }
     } else {
       if (els.kicker) els.kicker.textContent = "Like envoyé";
       if (els.lead) {
         els.lead.textContent =
-          "Votre regard est parti. Ouvrez la conversation pour faire connaissance.";
+          "Votre regard est parti. Envoyez une demande de connexion pour faire connaissance.";
       }
     }
 

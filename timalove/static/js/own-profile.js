@@ -67,7 +67,14 @@
         tab.setAttribute("aria-selected", on ? "true" : "false");
       });
       Object.keys(panels).forEach((k) => {
-        if (panels[k]) panels[k].hidden = k !== key;
+        if (!panels[k]) return;
+        if (document.body.classList.contains("moi-page")) {
+          if (panels[k].classList.contains("is-mounted")) {
+            panels[k].hidden = false;
+          }
+          return;
+        }
+        panels[k].hidden = k !== key;
       });
       const url = new URL(window.location.href);
       if (key === "about") {
@@ -140,6 +147,10 @@
         tab.setAttribute("aria-selected", on ? "true" : "false");
       });
       settingsPanels.forEach((panel) => {
+        if (document.body.classList.contains("moi-page") && panel.classList.contains("is-mounted")) {
+          panel.hidden = false;
+          return;
+        }
         const on = panel.getAttribute("data-settings-panel") === key;
         panel.hidden = !on;
       });
@@ -166,7 +177,15 @@
       tab.addEventListener("click", () => showTab(tab.getAttribute("data-tab")));
     });
     const initialTab = new URLSearchParams(window.location.search).get("tab");
-    if (initialTab && panels[initialTab]) showTab(initialTab);
+    if (document.body.classList.contains("moi-page")) {
+      Object.values(panels).forEach((panel) => {
+        if (panel && panel.classList.contains("is-mounted")) {
+          panel.hidden = false;
+        }
+      });
+    } else if (initialTab && panels[initialTab]) {
+      showTab(initialTab);
+    }
 
     async function postJSON(url, body) {
       const res = await fetch(url, {

@@ -1,7 +1,7 @@
 {% extends "layouts/base.html" %}
 {% load static subscription_tags %}
 {% block title %}Messages{% endblock %}
-{% block body_class %}messages-inbox-page{% endblock %}
+{% block body_class %}messages-inbox-page cdc-app{% endblock %}
 {% block head %}
 {% include "partials/member_page_scroll.html" %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -10,7 +10,7 @@
 <script src="{% static 'js/message-datetime.js' %}?v=20260913tz1" defer></script>
 <script src="{% static 'js/messages-inbox.js' %}?v=20260913tz1" defer></script>
 {% if user.is_authenticated %}
-<script src="{% static 'js/message-invite.js' %}?v=20260921lr2" defer></script>
+<script src="{% static 'js/message-invite.js' %}?v=20260927req1" defer></script>
 {% endif %}
 {% endblock %}
 {% block body %}
@@ -40,9 +40,12 @@
   </div>
 
   <main class="msg-list">
-    <header class="msg-list__intro">
-      <h1 class="msg-list__title">Messages</h1>
-      <p class="msg-list__lead">Vos conversations, au plus récent.</p>
+    <header class="msg-list__intro cdc-inbox">
+      <h1 class="cdc-page__title">Mes conversations</h1>
+      <p class="cdc-inbox__cap">{{ active_conversations }}/{{ conversation_cap }}</p>
+      {% if active_conversations >= conversation_cap %}
+      <p class="cdc-inbox__warn" role="status">Vous avez atteint votre limite de {{ conversation_cap }} conversations actives. Pour discuter avec quelqu'un d'autre, clôturez d'abord une conversation.</p>
+      {% endif %}
       {% if app_features.messages_search_enabled %}
       {% include "partials/explorer_search_bar.html" with search_placeholder="Rechercher une discussion…" search_label="Rechercher une discussion" search_results_id="msg-search-results" search_form_extra="data-msg-search-form" %}
       {% endif %}

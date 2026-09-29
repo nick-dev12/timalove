@@ -920,6 +920,35 @@
       });
   });
 
+  const closeModal = document.getElementById("msg-close-modal");
+
+  function openCloseModal() {
+    closeMoreMenu();
+    if (!closeModal) return;
+    closeModal.hidden = false;
+    document.body.classList.add("is-msg-report");
+    closeModal.querySelector(".msg-report__card")?.scrollTo(0, 0);
+    closeModal.querySelector("#msg-close-title")?.focus();
+  }
+
+  function hideCloseModal() {
+    if (!closeModal) return;
+    closeModal.hidden = true;
+    document.body.classList.remove("is-msg-report");
+  }
+
+  document.querySelector("[data-msg-close-open]")?.addEventListener("click", openCloseModal);
+  document.querySelectorAll("[data-msg-close-dismiss]").forEach(function (el) {
+    el.addEventListener("click", hideCloseModal);
+  });
+  document.addEventListener("keydown", function (event) {
+    if (!closeModal || closeModal.hidden) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      hideCloseModal();
+    }
+  });
+
   document.querySelector("[data-msg-report-open]")?.addEventListener("click", openReportModal);
 
   document.querySelectorAll("[data-msg-report-close]").forEach(function (el) {

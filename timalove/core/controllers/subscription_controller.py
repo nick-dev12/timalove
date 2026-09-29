@@ -100,7 +100,8 @@ def can_bypass_gender_filter(profile: Profile | None) -> bool:
 
 
 def conversation_requires_acceptance(recipient: Profile | None) -> bool:
-    return is_vip(recipient)
+    """Toute demande doit être acceptée avant de devenir une conversation active."""
+    return recipient is not None
 
 
 def can_send_media(profile: Profile | None) -> bool:

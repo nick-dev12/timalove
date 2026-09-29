@@ -182,6 +182,18 @@ def has_outgoing_like(profile: Profile, partner_id) -> bool:
     return Swipe.objects.filter(swiper=profile, swiped_id=partner_id).filter(LIKE_Q).exists()
 
 
+MAX_ACTIVE_CONVERSATIONS = 5
+CLOSE_REASONS = (
+    "projets",
+    "valeurs",
+    "distance",
+    "feeling",
+    "communication",
+    "autre",
+    "non_precise",
+)
+
+
 def get_active_match(profile: Profile, partner_id) -> Match | None:
     try:
         partner = Profile.objects.get(pk=partner_id)
@@ -194,15 +206,12 @@ def get_active_match(profile: Profile, partner_id) -> Match | None:
     )
 
 
-def _apply_conversation_gate(match: Match, initiator: Profile, recipient: Profile) -> None:
-    from core.controllers import subscription_controller
-
-    if not subscription_controller.conversation_requires_acceptance(recipient):
-        if match.conversation_status != ConversationStatus.ACCEPTED:
-            match.conversation_status = ConversationStatus.ACCEPTED
-            match.save(update_fields=["conversation_status", "updated_at"])
-        return
+def _apply_conversation_gate(match: Match, initiator: Profile, recipient: Profile, *, fresh: bool = False) -> None:
     if initiator.pk == recipient.pk:
+        return
+    if match.conversation_status == ConversationStatus.BLOCKED:
+        return
+    if match.conversation_status == ConversationStatus.ACCEPTED and not fresh:
         return
     match.conversation_status = ConversationStatus.PENDING
     match.conversation_initiator = initiator
@@ -210,7 +219,7 @@ def _apply_conversation_gate(match: Match, initiator: Profile, recipient: Profil
 
 
 def _conversation_visible(match: Match, profile: Profile) -> bool:
-    if match.conversation_status in {ConversationStatus.DECLINED, ConversationStatus.BLOCKED}:
+    if match.conversation_status in {ConversationStatus.DECLINED, ConversationStatus.BLOCKED, ConversationStatus.CLOSED}:
         return False
     return True
 
@@ -240,10 +249,19 @@ def accept_conversation(profile: Profile, partner_id) -> tuple[bool, str]:
         return False, "Aucune demande en attente."
     if not _is_conversation_recipient(match, profile):
         return False, "Seul le destinataire peut accepter."
+    if active_conversation_count(profile) >= MAX_ACTIVE_CONVERSATIONS:
+        return False, "Vous avez déjà 5 conversations actives. Clôturez-en une avant d'en accepter une nouvelle."
+    initiator = match.conversation_initiator
     match.conversation_status = ConversationStatus.ACCEPTED
     match.is_one_sided = False
     match.save(update_fields=["conversation_status", "is_one_sided", "updated_at"])
-    return True, "Discussion acceptée."
+    if initiator and initiator.id != profile.id:
+        from core.controllers import notification_controller
+
+        notification_controller.notify_connection_accepted(
+            recipient=initiator, sender=profile, match=match
+        )
+    return True, "Connexion acceptée. Vous pouvez maintenant discuter."
 
 
 @transaction.atomic
@@ -263,6 +281,141 @@ def decline_conversation(profile: Profile, partner_id) -> tuple[bool, str]:
     block_user(profile, partner.id)
     hide_conversation(profile, partner.id)
     return True, "Discussion refusée."
+
+
+def active_conversation_count(profile: Profile) -> int:
+    return Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE, conversation_status=ConversationStatus.ACCEPTED).count()
+
+
+def list_incoming_requests(profile: Profile) -> list[dict]:
+    matches = (
+        Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE, conversation_status=ConversationStatus.PENDING)
+        .select_related("user_1", "user_2", "conversation_initiator")
+        .order_by("-updated_at")
+    )
+    rows = []
+    for match in matches:
+        if not _is_conversation_recipient(match, profile):
+            continue
+        partner = match.partner_of(profile)
+        rows.append({
+            "match": match,
+            "partner": partner,
+            "partner_card": _person_card(partner),
+            "why": _project_why(profile, partner),
+        })
+    return rows
+
+
+def list_accepted_connections(profile: Profile) -> list[dict]:
+    matches = (
+        Match.objects.filter(
+            models_q_participant(profile),
+            status=MatchStatus.ACTIVE,
+            conversation_status=ConversationStatus.ACCEPTED,
+        )
+        .select_related("user_1", "user_2")
+        .order_by("-updated_at")
+    )
+    rows = []
+    for match in matches:
+        partner = match.partner_of(profile)
+        rows.append({
+            "match": match,
+            "partner": partner,
+            "is_online": bool(getattr(partner, "is_online", False)),
+        })
+    return rows
+
+
+def list_sent_requests(profile: Profile) -> list[dict]:
+    matches = (
+        Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE, conversation_status=ConversationStatus.PENDING)
+        .select_related("user_1", "user_2", "conversation_initiator")
+        .order_by("-updated_at")
+    )
+    rows = []
+    for match in matches:
+        if match.conversation_initiator_id != profile.id:
+            continue
+        partner = match.partner_of(profile)
+        rows.append({
+            "match": match,
+            "partner": partner,
+            "is_online": bool(getattr(partner, "is_online", False)),
+        })
+    return rows
+
+
+@transaction.atomic
+def send_connection_request(profile: Profile, partner_id) -> tuple[bool, str, Match | None, str]:
+    """Crée une demande. dest: thread | envoyees | recues."""
+    from core.controllers import notification_controller
+
+    ok, msg, match = ensure_conversation(profile, partner_id)
+    if not ok:
+        return False, msg, None, ""
+    if match.conversation_status == ConversationStatus.ACCEPTED:
+        return True, "", match, "thread"
+    if match.conversation_status in {ConversationStatus.DECLINED, ConversationStatus.BLOCKED, ConversationStatus.CLOSED}:
+        return False, "Cette connexion n'est plus disponible.", match, ""
+    if match.conversation_status == ConversationStatus.PENDING and match.conversation_initiator_id:
+        if match.conversation_initiator_id == profile.id:
+            return True, "Demande déjà envoyée.", match, "envoyees"
+        return True, "Cette personne vous a déjà envoyé une demande.", match, "recues"
+    partner = match.partner_of(profile)
+    _apply_conversation_gate(match, initiator=profile, recipient=partner, fresh=True)
+    notification_controller.notify_connection_request(recipient=partner, sender=profile, match=match)
+    notification_controller.notify_connection_sent(user=profile, partner=partner, match=match)
+    return True, "Demande de connexion envoyée.", match, "envoyees"
+
+
+@transaction.atomic
+def decline_request(profile: Profile, partner_id) -> tuple[bool, str]:
+    match = get_active_match(profile, partner_id)
+    if not match:
+        return False, "Demande introuvable."
+    if match.conversation_status != ConversationStatus.PENDING:
+        return False, "Aucune demande en attente."
+    if not _is_conversation_recipient(match, profile):
+        return False, "Seul le destinataire peut décliner."
+    match.conversation_status = ConversationStatus.DECLINED
+    match.save(update_fields=["conversation_status", "updated_at"])
+    return True, "Demande déclinée."
+
+
+@transaction.atomic
+def close_conversation(profile: Profile, partner_id, reason: str) -> tuple[bool, str]:
+    match = get_active_match(profile, partner_id)
+    if not match:
+        return False, "Conversation introuvable."
+    if match.conversation_status != ConversationStatus.ACCEPTED:
+        return False, "Seule une conversation active peut être clôturée."
+    reason = (reason or "").strip()
+    if reason not in CLOSE_REASONS:
+        return False, "Choisissez un motif."
+    match.conversation_status = ConversationStatus.CLOSED
+    match.close_reason = reason
+    match.save(update_fields=["conversation_status", "close_reason", "updated_at"])
+    return True, "Connexion clôturée. Une place est libre."
+
+
+@transaction.atomic
+def mark_ready_to_meet(profile: Profile, partner_id) -> tuple[bool, str, bool]:
+    match = get_active_match(profile, partner_id)
+    if not match:
+        return False, "Conversation introuvable.", False
+    if match.conversation_status != ConversationStatus.ACCEPTED:
+        return False, "La discussion doit être acceptée.", False
+    if match.user_1_id == profile.id:
+        match.user_1_ready = True
+    else:
+        match.user_2_ready = True
+    match.save(update_fields=["user_1_ready", "user_2_ready", "updated_at"])
+    both = bool(match.user_1_ready and match.user_2_ready)
+    if both:
+        return True, "Vous êtes tous les deux prêts à vous rencontrer !", True
+    return True, "Votre choix reste privé tant que l'autre personne n'a pas confirmé.", False
 
 
 @transaction.atomic
@@ -307,7 +460,6 @@ def ensure_conversation(profile: Profile, partner_id) -> tuple[bool, str, Match 
     if update_fields:
         match.save(update_fields=list(dict.fromkeys(update_fields)))
 
-    _apply_conversation_gate(match, initiator=profile, recipient=partner)
     unhide_conversation(profile, partner_id)
 
     for p in (profile, partner):
@@ -349,6 +501,8 @@ def list_conversations(profile: Profile, include_hidden: bool = False) -> list[d
     results = []
     for m in matches:
         partner = m.partner_of(profile)
+        if m.conversation_status != ConversationStatus.ACCEPTED:
+            continue
         if not _conversation_visible(m, profile):
             continue
         if not include_hidden and partner.id in hidden_ids:
@@ -381,7 +535,9 @@ def list_conversations(profile: Profile, include_hidden: bool = False) -> list[d
 
 def unread_count(profile: Profile) -> int:
     match_ids = Match.objects.filter(
-        models_q_participant(profile), status=MatchStatus.ACTIVE
+        models_q_participant(profile),
+        status=MatchStatus.ACTIVE,
+        conversation_status=ConversationStatus.ACCEPTED,
     ).values_list("id", flat=True)
     return Message.objects.filter(match_id__in=match_ids, is_read=False).exclude(sender=profile).count()
 
@@ -660,6 +816,12 @@ def unhide_conversation(profile: Profile, partner_id) -> None:
     ConversationHide.objects.filter(user=profile, partner_id=partner_id).delete()
 
 
+def _project_why(viewer: Profile, profile: Profile) -> str:
+    from core.controllers.explore_controller import _why_this_profile
+
+    return _why_this_profile(viewer, profile)
+
+
 def _person_card(profile: Profile) -> dict:
     from core.controllers import subscription_controller
 
@@ -730,11 +892,29 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
         "quota_message": quota_err if ((not blocked) and not pending_block and not quota_ok) else "",
         "messages_remaining": quota_controller.messages_remaining(profile),
         "conversation_pending": match.conversation_status == ConversationStatus.PENDING,
+        "conversation_accepted": match.conversation_status == ConversationStatus.ACCEPTED,
         "can_accept": can_accept,
+        "project_why": _project_why(profile, partner),
+        "partner_marriage": partner.get_marriage_timeline_display() if partner.marriage_timeline else "",
+        "partner_union": partner.get_union_type_display() if partner.union_type else "",
+        "partner_children": partner.get_children_wish_display() if partner.children_wish else "",
         "partner_profile_id": str(partner.id),
         "guided_intro_required": guided_required,
         "guided_prompts": list(guided_intro_prompts(match)),
         "daily_suggestion": daily_conversation_suggestion(profile),
+        "active_conversations": active_conversation_count(profile),
+        "conversation_cap": MAX_ACTIVE_CONVERSATIONS,
+        "ready_me": bool(match.user_1_ready if match.user_1_id == profile.id else match.user_2_ready),
+        "ready_both": bool(match.user_1_ready and match.user_2_ready),
+        "close_reasons": [
+            ("projets", "Projets différents"),
+            ("valeurs", "Valeurs différentes"),
+            ("distance", "Distance"),
+            ("feeling", "Pas assez de feeling"),
+            ("communication", "Communication difficile"),
+            ("autre", "Autre"),
+            ("non_precise", "Je préfère ne pas préciser"),
+        ],
     }
 
 

@@ -9,9 +9,9 @@
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.6.0/build/js/intlTelInput.min.js"></script>
 <script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
 <script src="{% static 'js/fcm.js' %}?v=20260826fcm2" defer></script>
-<script src="{% static 'js/auth-signup.js' %}?v=20260910signup1" defer></script>
+<script src="{% static 'js/auth-signup.js' %}?v=20260927signup4" defer></script>
 <script src="{% static 'js/auth-google.js' %}?v=20260910signup1" defer></script>
-<script src="{% static 'js/commencer-transit.js' %}?v=20260826t1" defer></script>
+<script src="{% static 'js/commencer-transit.js' %}?v=20260927t3" defer></script>
 {% endblock %}
 {% block body %}
 <div class="auth-hearts" data-auth-hearts aria-hidden="true">
@@ -266,7 +266,7 @@
           <p class="signup-kicker">{{ signup_copy.interests.kicker }}</p>
           <h2 class="signup-title">{{ signup_copy.interests.title }}</h2>
           <p class="signup-lead">{{ signup_copy.interests.lead }}</p>
-          <p class="form-label">Centres d’intérêt <span class="signup-optional">optionnel</span></p>
+          <p class="form-label">Centres d’intérêt <span class="signup-required">(1 à 4)</span></p>
           <div class="signup-pills" data-interests>
             {% for item in interests %}
             <button type="button" class="signup-pill" data-interest="{{ item.id }}" aria-pressed="false">
@@ -276,7 +276,7 @@
             {% endfor %}
           </div>
           <p class="form-error" data-error-for="interests" hidden></p>
-          <p class="form-label">Caractère <span class="signup-optional">optionnel</span></p>
+          <p class="form-label">Caractère <span class="signup-required">(1 à 3)</span></p>
           <div class="signup-pills" data-traits>
             {% for item in traits %}
             <button type="button" class="signup-pill" data-trait="{{ item.id }}" aria-pressed="false">
@@ -286,7 +286,7 @@
             {% endfor %}
           </div>
           <p class="form-error" data-error-for="personality_traits" hidden></p>
-          <p class="form-label">Valeurs <span class="signup-optional">optionnel</span></p>
+          <p class="form-label">Valeurs <span class="signup-required">(1 à 3)</span></p>
           <div class="signup-pills" data-values>
             {% for item in life_values_catalog %}
             <button type="button" class="signup-pill" data-value="{{ item.id }}" aria-pressed="false">
@@ -306,7 +306,8 @@
             <label class="form-label" for="signup-bio">À propos de vous <span class="signup-optional">optionnel</span></label>
             <textarea class="form-textarea" id="signup-bio" data-field="bio" rows="4" maxlength="800" placeholder="Ce qui vous tient à cœur…"></textarea>
           </div>
-          <p class="form-label">Le profil recherché <span class="signup-optional">optionnel</span></p>
+          <p class="form-label">Le profil recherché <span class="signup-required">(1 à 3)</span></p>
+          <p class="form-error" data-error-for="looking_for" hidden></p>
           <div class="signup-pills" data-looking-for>
             {% for item in looking_for_catalog %}
             <button type="button" class="signup-pill" data-looking="{{ item.id }}" aria-pressed="false">
@@ -315,7 +316,7 @@
             </button>
             {% endfor %}
           </div>
-          <p class="form-label">Votre intention <span class="signup-optional">optionnel</span></p>
+          <p class="form-label">Votre intention <span class="signup-required">(obligatoire)</span></p>
           <div class="signup-intents" data-intents>
             <button type="button" class="signup-intent" data-intent="mariage">
               <span class="signup-intent__mark" aria-hidden="true">♥</span>
@@ -342,14 +343,64 @@
           <p class="form-error" data-error-for="relationship_intent" hidden></p>
         </section>
 
-        <section class="signup-slide" data-signup-slide="projet">
-          <p class="signup-kicker">{{ signup_copy.projet.kicker }}</p>
-          <h2 class="signup-title">{{ signup_copy.projet.title }}</h2>
-          <p class="signup-lead">{{ signup_copy.projet.lead }}</p>
-          <div class="form-group">
-            <label class="form-label" for="signup-project">Votre projet de vie <span class="signup-optional">optionnel</span></label>
-            <textarea class="form-textarea" id="signup-project" data-field="life_project" rows="3" maxlength="400" placeholder="Famille, foi, installation, ce que vous construisez…"></textarea>
+        <section class="signup-slide signup-slide--projet" data-signup-slide="projet">
+          <p class="cdc-projet-slogan">On se marie quand au juste ?</p>
+          <div class="cdc-dots" aria-hidden="true"><i class="is-on"></i><i></i><i></i><i></i><i></i></div>
+          <h2 class="cdc-q">Quand souhaitez-vous vous marier ?</h2>
+          <div class="cdc-choice" data-choice="marriage_timeline">
+            <button type="button" class="cdc-choice__item" data-field-set="marriage_timeline" data-value="under_1y">
+              <span class="cdc-choice__ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" d="M3 9h18M8 3v4M16 3v4"/></svg></span>
+              Dans moins d'un an
+            </button>
+            <button type="button" class="cdc-choice__item" data-field-set="marriage_timeline" data-value="1_2y">
+              <span class="cdc-choice__ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" d="M3 9h18M8 3v4M16 3v4"/></svg></span>
+              Dans 1 à 2 ans
+            </button>
+            <button type="button" class="cdc-choice__item" data-field-set="marriage_timeline" data-value="over_2y">
+              <span class="cdc-choice__ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" d="M3 9h18M8 3v4M16 3v4"/></svg></span>
+              Dans plus de 2 ans
+            </button>
           </div>
+          <p class="form-error" data-error-for="marriage_timeline" hidden></p>
+          <h2 class="cdc-q">Quel type d'union recherchez-vous ?</h2>
+          <div class="cdc-choice" data-choice="union_type">
+            <button type="button" class="cdc-choice__item" data-field-set="union_type" data-value="monogame">
+              <span class="cdc-choice__ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="16" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" d="M4 19v-1.4C4 15.4 5.8 14 8 14s4 1.4 4 3.6V19M12 19v-1.2c0-1.8 1.4-3.2 3.6-3.6"/></svg></span>
+              Monogame
+            </button>
+            <button type="button" class="cdc-choice__item" data-field-set="union_type" data-value="polygame">
+              <span class="cdc-choice__ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><circle cx="7" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="17" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" d="M3 19v-1.2C3 15.6 4.6 14 7 14s4 1.6 4 3.8V19M10 19v-1c0-1.6 1-2.8 2.8-3.4M14 19v-1.2c0-2.2 1.6-3.8 4-3.8s4 1.6 4 3.8V19"/></svg></span>
+              Polygame
+            </button>
+            <button type="button" class="cdc-choice__item" data-field-set="union_type" data-value="open">
+              <span class="cdc-choice__ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.7" d="M12 20.5C4.5 14.2 1.5 9.8 1.5 5.8 1.5 2.8 3.8 1 6.6 1c2.1 0 4 1.1 5.4 2.9C13.4 2.1 15.3 1 17.4 1c2.8 0 5.1 1.8 5.1 4.8 0 4-3 8.4-10.5 14.7z"/></svg></span>
+              Ouvert(e) aux deux
+            </button>
+          </div>
+          <p class="form-error" data-error-for="union_type" hidden></p>
+          <h2 class="cdc-q">Souhaitez-vous avoir des enfants ?</h2>
+          <div class="cdc-choice" data-choice="children_wish">
+            <button type="button" class="cdc-choice__item" data-field-set="children_wish" data-value="yes">Oui</button>
+            <button type="button" class="cdc-choice__item" data-field-set="children_wish" data-value="no">Non</button>
+            <button type="button" class="cdc-choice__item" data-field-set="children_wish" data-value="maybe">Peut-être</button>
+            <button type="button" class="cdc-choice__item" data-field-set="children_wish" data-value="already">J'en ai déjà</button>
+          </div>
+          <p class="form-error" data-error-for="children_wish" hidden></p>
+          <h2 class="cdc-q">La religion du ou de la partenaire est-elle importante ?</h2>
+          <div class="cdc-choice" data-choice="partner_religion_importance">
+            <button type="button" class="cdc-choice__item" data-field-set="partner_religion_importance" data-value="same">Même religion</button>
+            <button type="button" class="cdc-choice__item" data-field-set="partner_religion_importance" data-value="some">Certaines religions</button>
+            <button type="button" class="cdc-choice__item" data-field-set="partner_religion_importance" data-value="any">Peu importe</button>
+          </div>
+          <p class="form-error" data-error-for="partner_religion_importance" hidden></p>
+          <h2 class="cdc-q">Où souhaitez-vous rencontrer votre partenaire ?</h2>
+          <div class="cdc-choice" data-choice="meet_place">
+            <button type="button" class="cdc-choice__item" data-field-set="meet_place" data-value="near">Près de moi</button>
+            <button type="button" class="cdc-choice__item" data-field-set="meet_place" data-value="country">Dans mon pays</button>
+            <button type="button" class="cdc-choice__item" data-field-set="meet_place" data-value="diaspora">Afrique &amp; diaspora</button>
+            <button type="button" class="cdc-choice__item" data-field-set="meet_place" data-value="anywhere">Partout</button>
+          </div>
+          <p class="form-error" data-error-for="meet_place" hidden></p>
         </section>
 
         <section class="signup-slide" data-signup-slide="photos">

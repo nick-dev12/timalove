@@ -222,18 +222,29 @@ def messages_open(request):
         return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
     data = _json(request) or request.POST
     partner_id = data.get("partner_id")
-    ok, msg, match = message_controller.ensure_conversation(profile, partner_id)
+    ok, msg, match, dest = message_controller.send_connection_request(profile, partner_id)
     if not ok:
         payload = {"ok": False, "message": msg}
         if msg == message_controller.LIKE_REQUIRED_MSG:
             payload["code"] = "like_required"
         return JsonResponse(payload, status=400)
+    if dest == "thread":
+        return JsonResponse(
+            {
+                "ok": True,
+                "partner_id": str(partner_id),
+                "match_id": str(match.id) if match else None,
+                "thread_url": f"/discussions/{partner_id}/",
+            }
+        )
     return JsonResponse(
         {
             "ok": True,
+            "request_sent": True,
+            "message": msg,
             "partner_id": str(partner_id),
             "match_id": str(match.id) if match else None,
-            "thread_url": f"/discussions/{partner_id}/",
+            "redirect_url": f"/connexions/?onglet={dest}",
         }
     )
 
@@ -528,6 +539,28 @@ def conversation_decline(request, partner_id):
     ok, msg = message_controller.decline_conversation(request.user.profile, partner_id)
     status = 200 if ok else 400
     return JsonResponse({"ok": ok, "message": msg}, status=status)
+
+
+@login_required
+@require_POST
+def conversation_decline_request(request, partner_id):
+    ok, msg = message_controller.decline_request(request.user.profile, partner_id)
+    return JsonResponse({"ok": ok, "message": msg}, status=200 if ok else 400)
+
+
+@login_required
+@require_POST
+def conversation_close(request, partner_id):
+    data = _json(request) or request.POST
+    ok, msg = message_controller.close_conversation(request.user.profile, partner_id, data.get("reason", ""))
+    return JsonResponse({"ok": ok, "message": msg}, status=200 if ok else 400)
+
+
+@login_required
+@require_POST
+def conversation_ready(request, partner_id):
+    ok, msg, both = message_controller.mark_ready_to_meet(request.user.profile, partner_id)
+    return JsonResponse({"ok": ok, "message": msg, "both": both}, status=200 if ok else 400)
 
 
 @login_required

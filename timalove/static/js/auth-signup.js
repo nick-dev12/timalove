@@ -6,7 +6,23 @@
   const EMAIL_STEPS = ["email", "password", "identity", "socio", "interests", "bios", "projet", "photos", "geo", "notif"];
   const PHONE_STEPS = ["phone", "password", "identity", "socio", "interests", "bios", "projet", "photos", "geo", "notif"];
   const OAUTH_STEPS = ["identity", "socio", "interests", "bios", "projet", "photos", "geo", "notif"];
-  const SKIP_HIDDEN_STEPS = ["email", "phone", "password", "identity", "socio", "photos"];
+  const SKIP_HIDDEN_STEPS = [
+    "email",
+    "phone",
+    "password",
+    "identity",
+    "socio",
+    "interests",
+    "bios",
+    "projet",
+    "photos",
+  ];
+  const PILL_LIMITS = {
+    "[data-interests]": { attr: "data-interest", max: 4, field: "interests" },
+    "[data-traits]": { attr: "data-trait", max: 3, field: "personality_traits" },
+    "[data-values]": { attr: "data-value", max: 3, field: "life_values" },
+    "[data-looking-for]": { attr: "data-looking", max: 3, field: "looking_for" },
+  };
   const CTAS = {
     email: "Continuer",
     phone: "Continuer",
@@ -282,7 +298,9 @@
         draft.relationship_intent = wizard.querySelector("[data-intents] .is-on")?.getAttribute("data-intent") || "";
       }
       if (step === "projet") {
-        draft.life_project = (slide.querySelector("[data-field='life_project']")?.value || "").trim();
+        slide.querySelectorAll("[data-field-set].is-on").forEach(function (btn) {
+          draft[btn.getAttribute("data-field-set")] = btn.getAttribute("data-value") || "";
+        });
       }
       if (step === "geo") {
         draft.city = (slide.querySelector("[data-field='city']")?.value || "").trim();
@@ -310,6 +328,10 @@
       setVal("[data-field='religion']", draft.religion);
       setVal("[data-field='bio']", draft.bio);
       setVal("[data-field='life_project']", draft.life_project);
+      wizard.querySelectorAll("[data-field-set]").forEach((btn) => {
+        const key = btn.getAttribute("data-field-set");
+        btn.classList.toggle("is-on", draft[key] === btn.getAttribute("data-value"));
+      });
       setVal("[data-field='city']", draft.city);
       setVal("[data-field='geo_country']", draft.geo_country || draft.residence_country);
       setVal("[data-field='commune']", draft.commune);
@@ -459,6 +481,32 @@
         }
         if (!draft.religion) errors.religion = "Sélectionnez votre religion.";
         if (!draft.country) errors.country = "Sélectionnez votre pays d’origine dans la liste.";
+      }
+      if (step === "interests") {
+        if (!(draft.interests || []).length) errors.interests = "Choisissez au moins un centre d’intérêt.";
+        else if ((draft.interests || []).length > 4) errors.interests = "Maximum 4 centres d’intérêt.";
+        if (!(draft.personality_traits || []).length) {
+          errors.personality_traits = "Choisissez au moins un trait de caractère.";
+        } else if ((draft.personality_traits || []).length > 3) {
+          errors.personality_traits = "Maximum 3 traits de caractère.";
+        }
+        if (!(draft.life_values || []).length) errors.life_values = "Choisissez au moins une valeur.";
+        else if ((draft.life_values || []).length > 3) errors.life_values = "Maximum 3 valeurs.";
+      }
+      if (step === "bios") {
+        const looking = draft.looking_for || [];
+        if (!looking.length) errors.looking_for = "Choisissez au moins une qualité recherchée.";
+        else if (looking.length > 3) errors.looking_for = "Maximum 3 qualités recherchées.";
+        if (!draft.relationship_intent) {
+          errors.relationship_intent = "Indiquez votre intention (mariage, relation sérieuse ou à préciser).";
+        }
+      }
+      if (step === "projet") {
+        if (!draft.marriage_timeline) errors.marriage_timeline = "Indiquez quand vous souhaitez vous marier.";
+        if (!draft.union_type) errors.union_type = "Indiquez le type d'union recherché.";
+        if (!draft.children_wish) errors.children_wish = "Indiquez votre projet concernant les enfants.";
+        if (!draft.partner_religion_importance) errors.partner_religion_importance = "Précisez l'importance de la religion.";
+        if (!draft.meet_place) errors.meet_place = "Indiquez où vous souhaitez rencontrer votre partenaire.";
       }
       if (step === "photos") {
         if (!(draft.photo_data_url || draft.photo_url)) errors.photos = "Ajoutez au moins une photo de profil.";
@@ -644,8 +692,7 @@
           void completeSignup();
           return;
         }
-        if (["interests", "bios", "projet", "geo"].includes(step)) {
-          if (step === "socio") return;
+        if (step === "geo") {
           showSlide(index + 1, true);
           return;
         }
@@ -653,16 +700,37 @@
       });
     });
 
-    wizard.querySelectorAll("[data-interest], [data-trait], [data-value], [data-looking]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const on = btn.classList.toggle("is-on");
-        btn.setAttribute("aria-pressed", on ? "true" : "false");
+    Object.entries(PILL_LIMITS).forEach(([containerSel, rule]) => {
+      const container = wizard.querySelector(containerSel);
+      if (!container) return;
+      container.querySelectorAll(`[${rule.attr}]`).forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const picked = container.querySelectorAll(".is-on").length;
+          if (!btn.classList.contains("is-on") && picked >= rule.max) {
+            setStatus(`Maximum ${rule.max} sélections pour cette section.`, true);
+            return;
+          }
+          const on = btn.classList.toggle("is-on");
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+          collectSlideIntoDraft();
+          clearErrors();
+          setStatus("", false);
+        });
       });
     });
     wizard.querySelectorAll("[data-intent]").forEach((btn) => {
       btn.addEventListener("click", () => {
         wizard.querySelectorAll("[data-intent]").forEach((other) => other.classList.remove("is-on"));
         btn.classList.add("is-on");
+      });
+    });
+    wizard.querySelectorAll("[data-field-set]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-field-set");
+        wizard.querySelectorAll(`[data-field-set="${key}"]`).forEach((other) => other.classList.remove("is-on"));
+        btn.classList.add("is-on");
+        draft[key] = btn.getAttribute("data-value") || "";
+        saveDraft(draft);
       });
     });
 
@@ -787,6 +855,7 @@
         draft.notifications_push = true;
         saveDraft(draft);
         if (state) state.textContent = "Notifications activées.";
+        btn?.classList.add("is-enabled");
         window.timaloveNotifPopup?.showSuccess(
           "Vous recevrez les likes, matchs et messages en temps réel.",
         );
@@ -808,13 +877,12 @@
       }
     });
 
-    const params = new URLSearchParams(window.location.search);
     const oauthIncomplete = panel.getAttribute("data-oauth-incomplete") === "true";
     const prefill = readPrefill();
     if (oauthIncomplete) {
       startOauth(Object.assign({}, prefill, { channel: "oauth" }));
-    } else if (panel.getAttribute("data-open-signup") === "true" || params.get("signup") === "1") {
-      api.showChoice();
+    } else {
+      api.showLogin();
     }
   });
 })();

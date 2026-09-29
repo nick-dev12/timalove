@@ -23,7 +23,18 @@ from core.controllers.auth_controller import (
     normalize_phone,
 )
 from core.data.countries import COUNTRIES_FR
-from core.data.onboarding import encode_looking_for, looking_for_ids
+from core.data.onboarding import (
+    MAX_INTERESTS,
+    MAX_LIFE_VALUES,
+    MAX_LOOKING_FOR_IDS,
+    MAX_TRAITS,
+    MIN_INTERESTS,
+    MIN_LIFE_VALUES,
+    MIN_LOOKING_FOR_IDS,
+    MIN_TRAITS,
+    encode_looking_for,
+    looking_for_ids,
+)
 from core.models import Profile
 from core.models.choices import Gender, RegistrationStatus, RelationshipIntent, Religion
 
@@ -158,8 +169,12 @@ def validate_step(step: str, data: dict, *, channel: str = "email", profile: Pro
         return _validate_identity(data, channel, profile)
     if step == "socio":
         return _validate_socio(data)
-    if step in {"interests", "bios", "projet"}:
-        return {}
+    if step == "projet":
+        return _validate_projet(data)
+    if step == "interests":
+        return _validate_interests(data)
+    if step == "bios":
+        return _validate_bios(data)
     if step == "photos":
         return _validate_photos(data, profile)
     if step in {"geo", "notif"}:
@@ -205,7 +220,7 @@ def register_from_draft(data: dict) -> tuple[bool, str, Profile | None, dict[str
     profile.onboarding_step = 4
     profile.registration_status = RegistrationStatus.APPROVED
     profile.save()
-    return True, "Compte créé. Bienvenue sur TimaLove.", profile, {}, None
+    return True, "Ton projet est prêt. Découvre maintenant des personnes dont le projet de mariage se rapproche du tien.", profile, {}, None
 
 
 @transaction.atomic
@@ -421,17 +436,58 @@ def _validate_socio(data: dict) -> dict[str, str]:
 
 def _validate_interests(data: dict) -> dict[str, str]:
     errors: dict[str, str] = {}
+    interests = onboarding_controller._as_str_list(data.get("interests"))
     traits = onboarding_controller._as_str_list(data.get("personality_traits") or data.get("traits"))
+    values = onboarding_controller._clean_values(data.get("life_values") or data.get("values"))
+    if len(interests) < MIN_INTERESTS:
+        errors["interests"] = "Choisissez au moins un centre d’intérêt."
+    elif len(interests) > MAX_INTERESTS:
+        errors["interests"] = f"Maximum {MAX_INTERESTS} centres d’intérêt."
     if len(traits) < MIN_TRAITS:
         errors["personality_traits"] = "Choisissez au moins un trait de caractère."
+    elif len(traits) > MAX_TRAITS:
+        errors["personality_traits"] = f"Maximum {MAX_TRAITS} traits de caractère."
+    if len(values) < MIN_LIFE_VALUES:
+        errors["life_values"] = "Choisissez au moins une valeur."
+    elif len(values) > MAX_LIFE_VALUES:
+        errors["life_values"] = f"Maximum {MAX_LIFE_VALUES} valeurs."
+    return errors
+
+
+def _validate_bios(data: dict) -> dict[str, str]:
+    errors: dict[str, str] = {}
+    looking = looking_for_ids(data.get("looking_for"))
+    if len(looking) < MIN_LOOKING_FOR_IDS:
+        errors["looking_for"] = "Choisissez au moins une qualité recherchée."
+    elif len(looking) > MAX_LOOKING_FOR_IDS:
+        errors["looking_for"] = f"Maximum {MAX_LOOKING_FOR_IDS} qualités recherchées."
+    intent = (data.get("relationship_intent") or "").strip()
+    if intent not in _INTENT_VALUES:
+        errors["relationship_intent"] = "Indiquez votre intention (mariage, relation sérieuse ou à préciser)."
     return errors
 
 
 def _validate_projet(data: dict) -> dict[str, str]:
-    intent = (data.get("relationship_intent") or "").strip()
-    if intent not in _INTENT_VALUES:
-        return {"relationship_intent": "Indiquez votre intention."}
-    return {}
+    from core.models.choices import (
+        ChildrenWish,
+        MarriageTimeline,
+        MeetPlace,
+        PartnerReligionImportance,
+        UnionType,
+    )
+
+    checks = (
+        ("marriage_timeline", MarriageTimeline.values, "Indiquez quand vous souhaitez vous marier."),
+        ("union_type", UnionType.values, "Indiquez le type d'union recherché."),
+        ("children_wish", ChildrenWish.values, "Indiquez votre souhait concernant les enfants."),
+        ("partner_religion_importance", PartnerReligionImportance.values, "Indiquez si la religion du partenaire compte."),
+        ("meet_place", MeetPlace.values, "Indiquez où vous souhaitez rencontrer votre partenaire."),
+    )
+    errors: dict[str, str] = {}
+    for key, allowed, message in checks:
+        if (data.get(key) or "").strip() not in allowed:
+            errors[key] = message
+    return errors
 
 
 def _validate_photos(data: dict, profile: Profile | None) -> dict[str, str]:
@@ -479,17 +535,29 @@ def _apply_socio_fields(profile: Profile, data: dict) -> None:
 
 
 def _apply_profile_extras(profile: Profile, data: dict) -> None:
-    profile.interests = []
+    profile.interests = onboarding_controller._as_str_list(data.get("interests"))[:MAX_INTERESTS]
     profile.personality_traits = onboarding_controller._as_str_list(
         data.get("personality_traits") or data.get("traits")
-    )
-    profile.life_values = onboarding_controller._clean_values(data.get("life_values") or data.get("values"))
+    )[:MAX_TRAITS]
+    profile.life_values = onboarding_controller._clean_values(data.get("life_values") or data.get("values"))[
+        :MAX_LIFE_VALUES
+    ]
     profile.bio = (data.get("bio") or "").strip() or profile.bio
     profile.looking_for = encode_looking_for(data.get("looking_for")) or profile.looking_for
     intent = (data.get("relationship_intent") or "").strip()
     if intent in _INTENT_VALUES:
         profile.relationship_intent = intent
     profile.life_project = (data.get("life_project") or "").strip()[:800]
+    for key in (
+        "marriage_timeline",
+        "union_type",
+        "children_wish",
+        "partner_religion_importance",
+        "meet_place",
+    ):
+        value = (data.get(key) or "").strip()
+        if value:
+            setattr(profile, key, value)
     commune = (data.get("commune") or "").strip()
     if commune:
         profile.commune = commune[:180]

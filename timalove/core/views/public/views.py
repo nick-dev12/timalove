@@ -119,7 +119,10 @@ def explorer(request):
     import secrets
 
     profile = getattr(request.user, "profile", None)
-    curated_mode = app_config_controller.explorer_curated_mode_enabled() and profile is not None
+    ua = request.META.get("HTTP_USER_AGENT", "")
+    curated_mode = profile is not None and app_config_controller.explorer_curated_mode_active(
+        user_agent=ua
+    )
 
     if curated_mode:
         explore_controller.reset_curated_session(request.session)
@@ -142,7 +145,8 @@ def explorer(request):
         context = {
             "title": "Parcours",
             "cards": cards,
-            "curated_mode": True,
+            "discover_tab": "pour-vous" if request.GET.get("vue") == "pour-vous" else "decouvrir",
+        "curated_mode": True,
             "curated_meta": curated_meta,
             "has_more": False,
             "next_offset": 0,
@@ -204,6 +208,7 @@ def explorer(request):
         "has_more": has_more,
         "next_offset": next_offset,
         "reveal_first": not is_hx,
+        "discover_tab": "pour-vous" if request.GET.get("vue") == "pour-vous" else "decouvrir",
         "curated_mode": False,
         "swipe_quota": quota,
         **filters_ctx,
@@ -228,7 +233,8 @@ def explorer_curated_more(request):
     from core.controllers import app_config_controller, explore_controller
 
     profile = getattr(request.user, "profile", None)
-    if profile is None or not app_config_controller.explorer_curated_mode_enabled():
+    ua = request.META.get("HTTP_USER_AGENT", "")
+    if profile is None or not app_config_controller.explorer_curated_mode_active(user_agent=ua):
         return HttpResponse(status=404)
 
     prev_ids = list(request.session.get(explore_controller.SESSION_CURATED_IDS_KEY) or [])
@@ -261,7 +267,8 @@ def explorer_curated_replace(request):
     from core.controllers import app_config_controller, explore_controller
 
     profile = getattr(request.user, "profile", None)
-    if profile is None or not app_config_controller.explorer_curated_mode_enabled():
+    ua = request.META.get("HTTP_USER_AGENT", "")
+    if profile is None or not app_config_controller.explorer_curated_mode_active(user_agent=ua):
         return HttpResponse(status=404)
 
     partner_id = (request.POST.get("profile_id") or "").strip()
@@ -334,11 +341,97 @@ def messages(request):
         "conversations": conversations,
         "me": profile,
         "is_preview": False,
-        "quota_locked": remaining == 0,
+        "quota_locked": False,
         "messages_remaining": remaining,
+        "active_conversations": message_controller.active_conversation_count(profile),
+        "conversation_cap": message_controller.MAX_ACTIVE_CONVERSATIONS,
     }
     ctx.update(profile_controller.freemium_subscription_context(profile))
     return render(request, "app/messages.html", ctx)
+
+
+def connexions(request):
+    from django.contrib import messages as flash
+
+    from core.controllers import message_controller
+
+    if not request.user.is_authenticated:
+        return redirect("public:home")
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return redirect("public:home")
+    if request.method == "POST":
+        partner_id = request.POST.get("partner_id")
+        action = request.POST.get("action")
+        if action == "accept":
+            ok, msg = message_controller.accept_conversation(profile, partner_id)
+        else:
+            ok, msg = message_controller.decline_request(profile, partner_id)
+        if ok:
+            flash.success(request, msg)
+        else:
+            flash.error(request, msg)
+        return redirect("public:connexions")
+    from core.controllers import notification_controller
+
+    notification_controller.mark_read_for_context(profile, "connexions")
+    onglet = (request.GET.get("onglet") or "recues").strip().lower()
+    if onglet not in {"recues", "envoyees"}:
+        onglet = "recues"
+    rows = message_controller.list_incoming_requests(profile)
+    connections = message_controller.list_accepted_connections(profile)
+    sent = message_controller.list_sent_requests(profile)
+    return render(
+        request,
+        "app/connexions.html",
+        {
+            "title": "Connexions",
+            "onglet": onglet,
+            "requests": rows,
+            "connections": connections,
+            "sent_requests": sent,
+            "active_conversations": message_controller.active_conversation_count(profile),
+            "conversation_cap": message_controller.MAX_ACTIVE_CONVERSATIONS,
+        },
+    )
+
+
+def conseils(request):
+    from django.contrib.staticfiles.storage import staticfiles_storage
+    from django.urls import reverse
+
+    from core.controllers import conseils_controller
+
+    if not request.user.is_authenticated:
+        return redirect("public:home")
+    topics = conseils_controller.list_topics()
+    for topic in topics:
+        detail = topic["detail"]
+        url_name = detail.get("cta_url_name")
+        if url_name:
+            detail["cta_href"] = reverse(url_name)
+    coaching = conseils_controller.coaching_block()
+    coaching["cta_href"] = reverse(coaching["cta_url_name"])
+    topics_payload = []
+    for topic in topics:
+        topics_payload.append(
+            {
+                "id": topic["id"],
+                "title": topic["title"],
+                "image": staticfiles_storage.url(topic["image"]),
+                "detail": topic["detail"],
+            }
+        )
+    return render(
+        request,
+        "app/conseils.html",
+        {
+            "title": "Conseils Tima",
+            "topics": topics,
+            "coaching": coaching,
+            "topics_payload": topics_payload,
+        },
+    )
 
 
 @require_GET

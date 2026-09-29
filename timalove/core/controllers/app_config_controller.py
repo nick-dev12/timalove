@@ -17,7 +17,7 @@ DEFAULT_APP_CONFIG: dict[str, Any] = {
     "explorer_search_enabled": False,
     "history_search_enabled": False,
     "messages_search_enabled": True,
-    "explorer_curated_mode": False,
+    "explorer_curated_mode": True,
     "guided_messages_enabled": True,
     "force_update_enabled": False,
     "force_update_ios": "1.0.0",
@@ -238,8 +238,24 @@ def image_messages_enabled() -> bool:
     return bool(get_app_config()["image_messages_enabled"])
 
 
+_NATIVE_APP_UA_TOKEN = "TimaLoveApp"
+
+
+def is_native_app_user_agent(user_agent: str | None) -> bool:
+    if not user_agent:
+        return False
+    return _NATIVE_APP_UA_TOKEN in user_agent
+
+
 def explorer_curated_mode_enabled() -> bool:
     return bool(get_app_config()["explorer_curated_mode"])
+
+
+def explorer_curated_mode_active(*, user_agent: str | None = None) -> bool:
+    """Parcours curated (anti-swipe) : config globale ou WebView app iOS/Android."""
+    if explorer_curated_mode_enabled():
+        return True
+    return is_native_app_user_agent(user_agent)
 
 
 def curated_daily_limit() -> int:

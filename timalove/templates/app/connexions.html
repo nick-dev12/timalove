@@ -1,0 +1,197 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% block title %}Connexions{% endblock %}
+{% block body_class %}likes-page cdc-app connexions-page{% endblock %}
+{% block head %}
+{% include "partials/member_page_scroll.html" %}
+<link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="{% static 'js/explorer-chrome.js' %}?v=20260921lb1" defer></script>
+{% endblock %}
+{% block body %}
+<div class="explorer">
+  <div class="explorer__chrome">
+    <header class="explorer__top">
+      <span class="explorer__top-spacer" aria-hidden="true"></span>
+      <a class="explorer__logo brand-script brand-mark" href="{% url 'public:explorer' %}">
+        <span>TimaLove</span>
+      </a>
+      <div class="explorer__top-actions">
+        <button type="button" class="explorer__icon-btn" aria-label="Rechercher" data-cx-search-toggle>
+          <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16.2 16.2 21 21"/></svg>
+        </button>
+      </div>
+    </header>
+    <label class="cdc-search" data-cx-search hidden>
+      <span class="visually-hidden">Rechercher une connexion</span>
+      <input type="search" placeholder="Rechercher…" data-cx-search-input>
+    </label>
+  </div>
+  <main class="cdc-page">
+    {% if onglet == "envoyees" %}
+    <h1 class="cdc-page__title">Demandes envoyées ({{ sent_requests|length }})</h1>
+    {% else %}
+    <h1 class="cdc-page__title">Mes connexions ({{ connections|length }})</h1>
+    {% endif %}
+    <nav class="cdc-cx-tabs" aria-label="Sections connexions">
+      <a href="{% url 'public:connexions' %}?onglet=recues" class="{% if onglet != 'envoyees' %}is-on{% endif %}">Connexions{% if requests %} · {{ requests|length }}{% endif %}</a>
+      <a href="{% url 'public:connexions' %}?onglet=envoyees" class="{% if onglet == 'envoyees' %}is-on{% endif %}">Envoyées{% if sent_requests %} · {{ sent_requests|length }}{% endif %}</a>
+    </nav>
+
+    {% if messages %}
+    {% for message in messages %}
+    <p class="cdc-inbox__warn" role="status">{{ message }}</p>
+    {% endfor %}
+    {% endif %}
+
+    {% if onglet == "envoyees" %}
+    {% if sent_requests %}
+    <section class="cdc-people" aria-label="Demandes envoyées">
+      {% for row in sent_requests %}
+      <article class="cdc-person" data-cx-row data-name="{{ row.partner.first_name }}">
+        <a class="cdc-person__avatar" href="{% url 'public:explorer_profil' row.partner.id %}">
+          {% if row.partner.primary_photo %}
+          <img src="{{ row.partner.primary_photo }}" alt="">
+          {% else %}
+          {{ row.partner.first_name|first|upper }}
+          {% endif %}
+        </a>
+        <div class="cdc-person__meta">
+          <strong>{{ row.partner.first_name }}{% if row.partner.age %}, {{ row.partner.age }}{% endif %}</strong>
+          <span class="cdc-person__wait">En attente d’acceptation</span>
+        </div>
+        <span aria-hidden="true"></span>
+        <div class="cdc-person__more">
+          <button type="button" class="cdc-person__dots" aria-label="Options" data-cx-more>
+            <span></span><span></span><span></span>
+          </button>
+          <div class="cdc-person__menu" hidden>
+            <a href="{% url 'public:explorer_profil' row.partner.id %}">Voir le profil</a>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+    {% else %}
+    <section class="msg-list__empty">
+      <h2>Aucune demande envoyée</h2>
+      <p>Après un like, touchez Message pour envoyer une demande de connexion.</p>
+      <a class="msg-list__cta" href="{% url 'public:explorer' %}">Découvrir des profils</a>
+    </section>
+    {% endif %}
+    {% else %}
+    {% if requests %}
+    <section class="cdc-people" aria-label="Demandes reçues">
+      {% for row in requests %}
+      <article class="cdc-person" data-cx-row data-name="{{ row.partner.first_name }}">
+        <a class="cdc-person__avatar" href="{% url 'public:explorer_profil' row.partner.id %}">
+          {% if row.partner.primary_photo %}
+          <img src="{{ row.partner.primary_photo }}" alt="">
+          {% else %}
+          {{ row.partner.first_name|first|upper }}
+          {% endif %}
+        </a>
+        <div class="cdc-person__meta">
+          <strong>{{ row.partner.first_name }}{% if row.partner.age %}, {{ row.partner.age }}{% endif %}</strong>
+          <span class="cdc-person__wait">Nouvelle demande</span>
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="partner_id" value="{{ row.partner.id }}">
+          <input type="hidden" name="action" value="accept">
+          <button type="submit" class="cdc-person__msg">Accepter</button>
+        </form>
+        <div class="cdc-person__more">
+          <button type="button" class="cdc-person__dots" aria-label="Options" data-cx-more>
+            <span></span><span></span><span></span>
+          </button>
+          <div class="cdc-person__menu" hidden>
+            <a href="{% url 'public:explorer_profil' row.partner.id %}">Voir le profil</a>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="partner_id" value="{{ row.partner.id }}">
+              <input type="hidden" name="action" value="decline">
+              <button type="submit">Décliner</button>
+            </form>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+    {% endif %}
+    {% if connections %}
+    <section class="cdc-people" aria-label="Connexions acceptées">
+      {% for row in connections %}
+      <article class="cdc-person" data-cx-row data-name="{{ row.partner.first_name }}">
+        <a class="cdc-person__avatar" href="{% url 'public:explorer_profil' row.partner.id %}">
+          {% if row.partner.primary_photo %}
+          <img src="{{ row.partner.primary_photo }}" alt="">
+          {% else %}
+          {{ row.partner.first_name|first|upper }}
+          {% endif %}
+        </a>
+        <div class="cdc-person__meta">
+          <strong>{{ row.partner.first_name }}{% if row.partner.age %}, {{ row.partner.age }}{% endif %}</strong>
+          {% if row.is_online %}
+          <span class="cdc-person__status is-on">En ligne</span>
+          {% else %}
+          <span class="cdc-person__status is-off">
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+            Hors ligne
+          </span>
+          {% endif %}
+        </div>
+        <a class="cdc-person__msg" href="{% url 'app:discussion_detail' row.partner.id %}">Message</a>
+        <div class="cdc-person__more">
+          <button type="button" class="cdc-person__dots" aria-label="Options" data-cx-more>
+            <span></span><span></span><span></span>
+          </button>
+          <div class="cdc-person__menu" hidden>
+            <a href="{% url 'public:explorer_profil' row.partner.id %}">Voir le profil</a>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+    {% elif not requests %}
+    <section class="msg-list__empty">
+      <h2>Aucune connexion</h2>
+      <p>Les demandes reçues et acceptées apparaissent ici. La discussion ne s’ouvre qu’après acceptation.</p>
+      <a class="msg-list__cta" href="{% url 'public:explorer' %}">Découvrir des profils</a>
+    </section>
+    {% endif %}
+    {% endif %}
+  </main>
+  {% include "partials/explorer_dock.html" with dock_active="connexions" %}
+</div>
+<script>
+(function () {
+  const toggle = document.querySelector("[data-cx-search-toggle]");
+  const box = document.querySelector("[data-cx-search]");
+  const input = document.querySelector("[data-cx-search-input]");
+  toggle?.addEventListener("click", function () {
+    if (!box) return;
+    const open = box.hasAttribute("hidden");
+    if (open) box.removeAttribute("hidden");
+    else box.setAttribute("hidden", "");
+    if (open) input?.focus();
+  });
+  input?.addEventListener("input", function () {
+    const q = (input.value || "").trim().toLowerCase();
+    document.querySelectorAll("[data-cx-row]").forEach(function (row) {
+      const name = (row.getAttribute("data-name") || "").toLowerCase();
+      row.hidden = Boolean(q) && name.indexOf(q) === -1;
+    });
+  });
+  document.addEventListener("click", function (event) {
+    const btn = event.target.closest("[data-cx-more]");
+    document.querySelectorAll(".cdc-person__menu").forEach(function (menu) {
+      if (btn && menu.parentElement.contains(btn) && menu.hidden) {
+        menu.hidden = false;
+      } else {
+        menu.hidden = true;
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

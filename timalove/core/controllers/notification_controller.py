@@ -169,8 +169,44 @@ def notify_match(*, profile: Profile, partner: Profile, match: Match) -> Notific
         user=profile,
         type=NotificationType.NEW_MATCH,
         title="Nouveau match",
-        message=f"Vous et {name} vous êtes likés. Écrivez-lui !",
+        message=f"Vous et {name} vous êtes likés. Envoyez une demande de connexion pour discuter.",
         related_user=partner,
+        related_match=match,
+    )
+
+
+def notify_connection_request(*, recipient: Profile, sender: Profile, match: Match) -> Notification:
+    name = (sender.first_name or "Quelqu'un").strip()
+    return create(
+        user=recipient,
+        type=NotificationType.NEW_MATCH,
+        title="Nouvelle demande",
+        message=f"{name} souhaite faire connaissance avec toi.",
+        related_user=sender,
+        related_match=match,
+    )
+
+
+def notify_connection_sent(*, user: Profile, partner: Profile, match: Match) -> Notification:
+    name = (partner.first_name or "ce profil").strip()
+    return create(
+        user=user,
+        type=NotificationType.NEW_MATCH,
+        title="Demande envoyée",
+        message=f"Votre demande de connexion a été envoyée à {name}.",
+        related_user=partner,
+        related_match=match,
+    )
+
+
+def notify_connection_accepted(*, recipient: Profile, sender: Profile, match: Match) -> Notification:
+    name = (sender.first_name or "Quelqu'un").strip()
+    return create(
+        user=recipient,
+        type=NotificationType.NEW_MATCH,
+        title="Demande acceptée",
+        message=f"{name} a accepté votre demande de connexion. Vous pouvez discuter.",
+        related_user=sender,
         related_match=match,
     )
 
@@ -243,10 +279,12 @@ def mark_read_for_context(profile: Profile, context: str, *, partner_id=None) ->
     if ctx == "likes":
         qs = qs.filter(type=NotificationType.NEW_LIKE)
     elif ctx == "messages":
-        qs = qs.filter(type__in=[NotificationType.NEW_MESSAGE, NotificationType.NEW_MATCH])
+        qs = qs.filter(type=NotificationType.NEW_MESSAGE)
         if partner_id:
             qs = qs.filter(related_user_id=partner_id)
     elif ctx == "matches":
+        qs = qs.filter(type=NotificationType.NEW_MATCH)
+    elif ctx == "connexions":
         qs = qs.filter(type=NotificationType.NEW_MATCH)
     elif ctx == "all":
         pass
