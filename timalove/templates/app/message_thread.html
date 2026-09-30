@@ -8,7 +8,7 @@
 <script src="{% static 'js/message-datetime.js' %}?v=20260913tz1" defer></script>
 <script src="{% static 'js/messages-thread.js' %}?v=20260927th2" defer></script>
 {% if not is_preview %}
-<script src="{% static 'js/message-invite.js' %}?v=20260930msg1" defer></script>
+<script src="{% static 'js/message-invite.js' %}?v=20260930msg2" defer></script>
 {% endif %}
 {% endblock %}
 {% block body %}
@@ -41,7 +41,8 @@
       </div>
     </header>
 
-    <div class="msg__pair">
+    <div class="msg__pair msg__pair--split">
+      <div class="msg__pair-people">
       <div class="msg__person">
         <button type="button" class="msg__avatar msg__avatar--link" data-profile-modal="{{ partner_profile_id }}" aria-label="Voir le profil de {{ partner.first_name }}">
           {% if partner.photo_url %}
@@ -74,6 +75,22 @@
         <strong>{{ me.first_name }}</strong>
         <em>{% if me.is_online %}En ligne{% else %}Hors ligne{% endif %}</em>
       </div>
+      </div>
+      {% if conversation_accepted and not blocked_by_me and not blocked_me %}
+      <div class="msg__pair-action" aria-label="Rencontre">
+        {% if ready_both %}
+        <a class="msg__cta msg__cta--compact" href="{% url 'public:conseils' %}#premier-rendez-vous">Conseils Tima</a>
+        {% elif ready_me %}
+        <p class="msg__pair-wait" title="Votre choix reste privé jusqu’à confirmation de l’autre personne.">En attente</p>
+        {% else %}
+        <form method="post" action="{% url 'app:discussion_detail' partner_id %}">
+          {% csrf_token %}
+          <input type="hidden" name="intent" value="ready">
+          <button type="submit" class="msg__cta msg__cta--compact">Je suis prêt(e) à rencontrer cette personne</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
     </div>
 
     {% if blocked_by_me %}
@@ -104,24 +121,8 @@
     </section>
     {% elif conversation_pending %}
     <p class="msg__status" role="status">Demande envoyée — en attente d’acceptation.</p>
-    {% elif conversation_accepted and not blocked_by_me and not blocked_me %}
-    <section class="msg__card msg__card--meet{% if ready_me and not ready_both %} is-quiet{% endif %}" aria-label="Rencontre">
-      {% if ready_both %}
-      <p class="msg__card-kicker">Premier rendez-vous</p>
-      <p class="msg__card-title">Vous êtes tous les deux prêts à vous rencontrer.</p>
-      <a class="msg__cta" href="{% url 'public:conseils' %}#premier-rendez-vous">Lire les conseils Tima</a>
-      {% elif ready_me %}
-      <p class="msg__card-title" title="Votre choix reste privé jusqu’à confirmation de l’autre personne.">En attente de confirmation</p>
-      {% else %}
-      <p class="msg__card-kicker">Et si vous vous rencontriez ?</p>
-      <p class="msg__card-title">Dites-le seulement si vous vous sentez prêt(e).</p>
-      <form method="post" action="{% url 'app:discussion_detail' partner_id %}">
-        {% csrf_token %}
-        <input type="hidden" name="intent" value="ready">
-        <button type="submit" class="msg__cta">Je suis prêt(e) à rencontrer cette personne</button>
-      </form>
-      {% endif %}
-    </section>
+    {% elif conversation_accepted and not blocked_by_me and not blocked_me and ready_both %}
+    <p class="msg__status msg__status--meet" role="status">Vous êtes tous les deux prêts à vous rencontrer.</p>
     {% endif %}
 
     <div class="msg__thread" data-msg-thread data-me-id="{{ me.id }}" data-me-photo="{{ me.photo_url }}" data-me-initial="{{ me.initial }}" data-partner-photo="{{ partner.photo_url }}" data-partner-initial="{{ partner.initial }}">

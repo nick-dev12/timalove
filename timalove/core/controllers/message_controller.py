@@ -183,6 +183,11 @@ def has_outgoing_like(profile: Profile, partner_id) -> bool:
 
 
 MAX_ACTIVE_CONVERSATIONS = 5
+CONVERSATION_LIMIT_CODE = "conversation_limit"
+CONVERSATION_LIMIT_MSG = (
+    f"Vous avez atteint la limite de {MAX_ACTIVE_CONVERSATIONS} conversations actives. "
+    "Passez au Premium pour discuter sans limite."
+)
 CLOSE_REASONS = (
     "projets",
     "valeurs",
@@ -255,8 +260,9 @@ def accept_conversation(profile: Profile, partner_id) -> tuple[bool, str]:
         return False, "Aucune demande en attente."
     if not _is_conversation_recipient(match, profile):
         return False, "Seul le destinataire peut accepter."
-    if active_conversation_count(profile) >= MAX_ACTIVE_CONVERSATIONS:
-        return False, "Vous avez déjà 5 conversations actives. Clôturez-en une avant d'en accepter une nouvelle."
+    ok, err = check_conversation_slot(profile, partner_id)
+    if not ok:
+        return False, err
     initiator = match.conversation_initiator
     match.conversation_status = ConversationStatus.ACCEPTED
     match.is_one_sided = False
@@ -291,6 +297,31 @@ def decline_conversation(profile: Profile, partner_id) -> tuple[bool, str]:
 
 def active_conversation_count(profile: Profile) -> int:
     return Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE, conversation_status=ConversationStatus.ACCEPTED).count()
+
+
+def conversation_cap_for(profile: Profile | None) -> int | None:
+    """Plafond de discussions actives (hommes freemium uniquement)."""
+    from core.controllers import quota_controller
+
+    if not profile or not quota_controller.is_male_freemium(profile):
+        return None
+    return MAX_ACTIVE_CONVERSATIONS
+
+
+def check_conversation_slot(profile: Profile, partner_id) -> tuple[bool, str]:
+    cap = conversation_cap_for(profile)
+    if cap is None:
+        return True, ""
+    existing = get_active_match(profile, partner_id)
+    if existing and existing.conversation_status not in {
+        ConversationStatus.DECLINED,
+        ConversationStatus.BLOCKED,
+        ConversationStatus.CLOSED,
+    }:
+        return True, ""
+    if active_conversation_count(profile) >= cap:
+        return False, CONVERSATION_LIMIT_MSG
+    return True, ""
 
 
 def list_incoming_requests(profile: Profile) -> list[dict]:
@@ -448,6 +479,10 @@ def ensure_conversation(profile: Profile, partner_id) -> tuple[bool, str, Match 
             return False, "Cette discussion n'est plus disponible.", existing
         unhide_conversation(profile, partner_id)
         return True, "", _activate_direct_chat(existing)
+
+    ok_slot, slot_err = check_conversation_slot(profile, partner_id)
+    if not ok_slot:
+        return False, slot_err, None
 
     liked = has_outgoing_like(profile, partner_id)
     if not liked:
@@ -943,7 +978,7 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
         "guided_prompts": list(guided_intro_prompts(match)),
         "daily_suggestion": daily_conversation_suggestion(profile),
         "active_conversations": active_conversation_count(profile),
-        "conversation_cap": MAX_ACTIVE_CONVERSATIONS,
+        "conversation_cap": conversation_cap_for(profile),
         "ready_me": bool(match.user_1_ready if match.user_1_id == profile.id else match.user_2_ready),
         "ready_both": bool(match.user_1_ready and match.user_2_ready),
         "close_reasons": [

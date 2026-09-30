@@ -33,7 +33,14 @@
   function isLimitError(err) {
     if (!err) return false;
     const code = err.code || (err.data && err.data.code);
-    if (code === "message_limit" || code === "like_limit" || code === "swipe_limit") return true;
+    if (
+      code === "message_limit" ||
+      code === "conversation_limit" ||
+      code === "like_limit" ||
+      code === "swipe_limit"
+    ) {
+      return true;
+    }
     const message = err.message || err.error || (err.data && (err.data.error || err.data.message)) || "";
     return /limite/i.test(message);
   }

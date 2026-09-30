@@ -67,6 +67,14 @@
             profileId: profileId,
             name: opts.name || "",
           });
+        } else if (
+          err &&
+          err.code === "conversation_limit" &&
+          window.timaloveSubscriptionModal &&
+          typeof window.timaloveSubscriptionModal.handleLimitError === "function" &&
+          window.timaloveSubscriptionModal.handleLimitError(err)
+        ) {
+          /* modal abonnement */
         } else if (opts.onError) {
           opts.onError(msg);
         } else {

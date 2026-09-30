@@ -344,7 +344,7 @@ def messages(request):
         "quota_locked": False,
         "messages_remaining": remaining,
         "active_conversations": message_controller.active_conversation_count(profile),
-        "conversation_cap": message_controller.MAX_ACTIVE_CONVERSATIONS,
+        "conversation_cap": message_controller.conversation_cap_for(profile),
     }
     ctx.update(profile_controller.freemium_subscription_context(profile))
     return render(request, "app/messages.html", ctx)

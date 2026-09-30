@@ -227,11 +227,14 @@ def messages_open(request):
         payload = {"ok": False, "message": msg}
         if msg == message_controller.LIKE_REQUIRED_MSG:
             payload["code"] = "like_required"
-        from core.controllers import quota_controller
+        elif msg == message_controller.CONVERSATION_LIMIT_MSG:
+            payload["code"] = message_controller.CONVERSATION_LIMIT_CODE
+        else:
+            from core.controllers import quota_controller
 
-        code = quota_controller.limit_code_for(profile)
-        if code:
-            payload["code"] = code
+            code = quota_controller.limit_code_for(profile)
+            if code:
+                payload["code"] = code
         return JsonResponse(payload, status=400)
     return JsonResponse(
         {

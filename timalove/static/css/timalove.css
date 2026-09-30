@@ -16012,6 +16012,60 @@ body.is-msg-report {
   z-index: 2;
 }
 
+.msg__pair--split {
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.65rem 0.4rem;
+}
+
+.msg__pair-people {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.msg__pair-action {
+  flex: 0 0 auto;
+  max-width: min(11.5rem, 46vw);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.msg__pair-action form {
+  margin: 0;
+  width: 100%;
+}
+
+.msg__cta--compact {
+  width: 100%;
+  min-height: 2.45rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.62rem;
+  line-height: 1.25;
+  white-space: normal;
+  text-align: center;
+}
+
+.msg__pair-wait {
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: #faf4f6;
+  color: #6b5a5e;
+  font-size: 0.65rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+body.messages-page.cdc-app .msg__status--meet {
+  margin-top: 0.35rem;
+}
+
 .msg__person {
   position: relative;
   flex: 0 0 auto;
@@ -19742,6 +19796,18 @@ body.messages-page.cdc-app .msg__pair {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border-bottom: 1px solid #f7eef0;
+}
+body.messages-page.cdc-app .msg__pair--split {
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+body.messages-page.cdc-app .msg__pair-people {
+  gap: 0.5rem;
+}
+body.messages-page.cdc-app .msg__cta--compact {
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 600;
 }
 body.messages-page.cdc-app .msg__person::before {
   display: none;
