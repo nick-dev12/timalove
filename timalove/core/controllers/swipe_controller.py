@@ -123,8 +123,27 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
     swiped.save(update_fields=["likes_received_count", "updated_at"])
 
     if counts:
+        from core.controllers import message_controller
+
+        def _may_open_match() -> tuple[bool, str]:
+            return message_controller.check_conversation_slot(swiper, swiped.id)
+
         reciprocal = Swipe.objects.filter(swiper=swiped, swiped=swiper).filter(like_q).first()
         if reciprocal:
+            ok_slot, _ = _may_open_match()
+            if not ok_slot:
+                return {
+                    "ok": True,
+                    "swipe_id": str(swipe.id),
+                    "matched": False,
+                    "match_id": None,
+                    "created": created,
+                    "is_like": is_like,
+                    "is_super_like": is_super_like,
+                    "conversation_limit": True,
+                    "code": message_controller.CONVERSATION_LIMIT_CODE,
+                    "quota": quota_controller.snapshot(swiper),
+                }
             u1, u2 = _ordered_pair(swiper, swiped)
             match, created = Match.objects.get_or_create(
                 user_1=u1,
@@ -150,6 +169,24 @@ def set_flags(swiper: Profile, swiped_id, *, is_like: bool, is_super_like: bool)
                 partner = swiped if p.pk == swiper.pk else swiper
                 notification_controller.notify_match(profile=p, partner=partner, match=match)
         else:
+            ok_slot, _ = _may_open_match()
+            if not ok_slot:
+                if is_super_like and not was_super:
+                    notification_controller.notify_like(recipient=swiped, sender=swiper, is_super_like=True)
+                elif is_like and not was_like:
+                    notification_controller.notify_like(recipient=swiped, sender=swiper, is_super_like=False)
+                return {
+                    "ok": True,
+                    "swipe_id": str(swipe.id),
+                    "matched": False,
+                    "match_id": None,
+                    "created": created,
+                    "is_like": is_like,
+                    "is_super_like": is_super_like,
+                    "conversation_limit": True,
+                    "code": message_controller.CONVERSATION_LIMIT_CODE,
+                    "quota": quota_controller.snapshot(swiper),
+                }
             u1, u2 = _ordered_pair(swiper, swiped)
             match, created = Match.objects.get_or_create(
                 user_1=u1,

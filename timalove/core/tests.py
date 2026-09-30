@@ -1322,6 +1322,53 @@ class FreemiumQuotaTests(TestCase):
         self.assertIn("vip_1m", homme_ids)
         self.assertNotIn("pass_femme", homme_ids)
 
+    def test_freemium_male_conversation_cap_blocks_new_open(self):
+        from core.controllers import message_controller, swipe_controller
+
+        partners = [self.p2, self.p3]
+        for i in range(3, 8):
+            partners.append(make_profile(f"conv{i}@test.com", Gender.FEMALE, f"P{i}"))
+        for partner in partners[:5]:
+            partner.photo_url = "https://example.com/photo.webp"
+            partner.onboarding_completed = True
+            partner.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+            result = swipe_controller.record_swipe(self.free, partner.id, "like")
+            self.assertTrue(result["ok"], result)
+            self.assertIsNotNone(result.get("match_id"))
+
+        extra = partners[5]
+        extra.photo_url = "https://example.com/photo.webp"
+        extra.onboarding_completed = True
+        extra.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+        swipe_controller.record_swipe(self.free, extra.id, "like")
+        self.client.force_login(self.free.user)
+        blocked = self.client.post(
+            "/api/messages/open/",
+            data='{"partner_id": "%s"}' % extra.id,
+            content_type="application/json",
+        )
+        self.assertEqual(blocked.status_code, 400)
+        self.assertFalse(blocked.json()["ok"])
+        self.assertEqual(blocked.json()["code"], message_controller.CONVERSATION_LIMIT_CODE)
+
+    def test_premium_male_no_conversation_cap(self):
+        from core.controllers import message_controller, swipe_controller
+        from core.models.choices import SubscriptionStatus, SubscriptionTier
+
+        self.free.subscription_tier = SubscriptionTier.PREMIUM_1M
+        self.free.subscription_status = SubscriptionStatus.ACTIVE
+        self.free.save(update_fields=["subscription_tier", "subscription_status", "updated_at"])
+        partners = [self.p2, self.p3]
+        for i in range(3, 8):
+            partners.append(make_profile(f"prem{i}@test.com", Gender.FEMALE, f"Q{i}"))
+        for partner in partners[:6]:
+            partner.photo_url = "https://example.com/photo.webp"
+            partner.onboarding_completed = True
+            partner.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
+            swipe_controller.record_swipe(self.free, partner.id, "like")
+            ok, msg, _ = message_controller.ensure_conversation(self.free, partner.id)
+            self.assertTrue(ok, msg)
+
     def test_thread_shows_subscription_modal_when_message_limit_reached(self):
         from core.controllers import app_config_controller
 
