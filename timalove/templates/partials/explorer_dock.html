@@ -7,13 +7,6 @@
       </span>
       <span class="explorer__tab-label">Découvrir</span>
     </a>
-    <a class="explorer__tab{% if dock_active == 'connexions' %} is-active{% endif %}" href="{% if user.is_authenticated %}{% url 'public:connexions' %}{% else %}#{% endif %}"{% if not user.is_authenticated %} data-gate-open{% endif %}{% if dock_active == 'connexions' %} aria-current="page"{% endif %}{% if user.is_authenticated and nav_badges.connections_count and dock_active != 'connexions' %} aria-label="Connexions, {{ nav_badges.connections_count }}"{% endif %}>
-      <span class="explorer__tab-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M8 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm8 1a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 20v-1.2C2.5 16 5 14.2 8 14.2s5.5 1.8 5.5 4.6V20M13 20v-1c0-1.6 1.2-3 3.2-3.6"/></svg>
-        <span class="explorer__tab-badge"{% if not user.is_authenticated or not nav_badges.connections_count or dock_active == 'connexions' %} hidden{% endif %}>{% if nav_badges.connections_count > 99 %}99+{% else %}{{ nav_badges.connections_count }}{% endif %}</span>
-      </span>
-      <span class="explorer__tab-label">Connexions</span>
-    </a>
     <a class="explorer__tab{% if dock_active == 'messages' %} is-active{% endif %}" href="{% if user.is_authenticated %}{% url 'public:messages' %}{% else %}#{% endif %}"{% if not user.is_authenticated %} data-gate-open{% endif %}{% if dock_active == 'messages' %} aria-current="page"{% endif %}{% if user.is_authenticated and nav_badges.unread_messages %} aria-label="Messages, {{ nav_badges.unread_messages }} non lu{{ nav_badges.unread_messages|pluralize }}"{% endif %} data-dock-messages>
       <span class="explorer__tab-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>

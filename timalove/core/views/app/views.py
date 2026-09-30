@@ -161,7 +161,7 @@ def discussion_detail(request, partner_id):
             ok, msg = message_controller.decline_request(profile, partner_id)
             if ok:
                 messages.success(request, msg)
-                return redirect("public:connexions")
+                return redirect("public:messages")
         elif intent == "close":
             ok, msg = message_controller.close_conversation(profile, partner_id, request.POST.get("reason", ""))
             if ok:
@@ -183,12 +183,16 @@ def discussion_detail(request, partner_id):
             messages.success(request, msg)
         return redirect("app:discussion_detail", partner_id=partner_id)
     from core.controllers import notification_controller
-    from django.urls import reverse
 
     thread = message_controller.thread_for(profile, partner_id)
-    if not thread or not thread.get("conversation_accepted"):
-        onglet = "recues" if thread and thread.get("can_accept") else "envoyees"
-        return redirect(f"{reverse('public:connexions')}?onglet={onglet}")
+    if not thread:
+        ok, msg, _match = message_controller.ensure_conversation(profile, partner_id)
+        if not ok:
+            messages.error(request, msg)
+            return redirect("public:messages")
+        thread = message_controller.thread_for(profile, partner_id)
+        if not thread:
+            return redirect("public:messages")
     message_controller.mark_read(profile, partner_id)
     notification_controller.mark_read_for_context(profile, "messages", partner_id=partner_id)
     inbox_back = len(message_controller.list_conversations(profile)) > 1

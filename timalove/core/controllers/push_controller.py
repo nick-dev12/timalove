@@ -205,16 +205,10 @@ def notification_link(notification: Notification) -> str:
         if partner_id:
             return f"/discussions/{partner_id}/"
     if notification.type == "new_match":
-        if title == "Nouvelle demande":
-            return "/connexions/?onglet=recues"
-        if title == "Demande envoyée":
-            return "/connexions/?onglet=envoyees"
-        if title == "Demande acceptée":
-            partner_id = notification.related_user_id
-            if partner_id:
-                return f"/discussions/{partner_id}/"
-            return "/connexions/?onglet=recues"
-        return "/connexions/?onglet=recues"
+        partner_id = notification.related_user_id
+        if partner_id:
+            return f"/discussions/{partner_id}/"
+        return "/messages/"
     if notification.type == "new_like":
         return "/likes/"
     return "/profil/?tab=settings"

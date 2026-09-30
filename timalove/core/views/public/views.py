@@ -351,49 +351,7 @@ def messages(request):
 
 
 def connexions(request):
-    from django.contrib import messages as flash
-
-    from core.controllers import message_controller
-
-    if not request.user.is_authenticated:
-        return redirect("public:home")
-    profile = getattr(request.user, "profile", None)
-    if not profile:
-        return redirect("public:home")
-    if request.method == "POST":
-        partner_id = request.POST.get("partner_id")
-        action = request.POST.get("action")
-        if action == "accept":
-            ok, msg = message_controller.accept_conversation(profile, partner_id)
-        else:
-            ok, msg = message_controller.decline_request(profile, partner_id)
-        if ok:
-            flash.success(request, msg)
-        else:
-            flash.error(request, msg)
-        return redirect("public:connexions")
-    from core.controllers import notification_controller
-
-    notification_controller.mark_read_for_context(profile, "connexions")
-    onglet = (request.GET.get("onglet") or "recues").strip().lower()
-    if onglet not in {"recues", "envoyees"}:
-        onglet = "recues"
-    rows = message_controller.list_incoming_requests(profile)
-    connections = message_controller.list_accepted_connections(profile)
-    sent = message_controller.list_sent_requests(profile)
-    return render(
-        request,
-        "app/connexions.html",
-        {
-            "title": "Connexions",
-            "onglet": onglet,
-            "requests": rows,
-            "connections": connections,
-            "sent_requests": sent,
-            "active_conversations": message_controller.active_conversation_count(profile),
-            "conversation_cap": message_controller.MAX_ACTIVE_CONVERSATIONS,
-        },
-    )
+    return redirect("public:messages")
 
 
 def conseils(request):

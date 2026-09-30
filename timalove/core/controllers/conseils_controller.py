@@ -63,7 +63,7 @@ def list_topics() -> list[Topic]:
                 "Ne partagez pas votre adresse personnelle tant que la confiance n'est pas établie.",
             ],
             cta_label="Préparer ma rencontre",
-            cta_url_name="public:connexions",
+            cta_url_name="public:messages",
         ),
         _topic(
             id="faire-connaissance",
@@ -74,13 +74,13 @@ def list_topics() -> list[Topic]:
             intro="Une relation sérieuse se construit pas à pas. TimaLove vous aide à avancer sans brûler les étapes.",
             bullets=[
                 "Utilisez la messagerie pour poser des questions sur les valeurs, le projet de vie et la famille.",
-                "Attendez une connexion acceptée avant d'engager un échange approfondi.",
+                "Échangez dans l'application avant de partager vos coordonnées personnelles.",
                 "Évitez de basculer trop vite sur WhatsApp ou les réseaux : gardez une trace sereine ici.",
                 "Si une réponse vous met mal à l'aise, faites une pause — le respect prime sur la vitesse.",
                 "Quand vous vous sentez prêt·e, proposez un premier rendez-vous en lieu public.",
             ],
-            cta_label="Voir mes connexions",
-            cta_url_name="public:connexions",
+            cta_label="Voir mes messages",
+            cta_url_name="public:messages",
         ),
         _topic(
             id="couple",
@@ -212,7 +212,7 @@ def list_topics() -> list[Topic]:
                 "Le partage des responsabilités doit rester équitable et discuté.",
             ],
             cta_label="Planifier un rendez-vous",
-            cta_url_name="public:connexions",
+            cta_url_name="public:messages",
         ),
         _topic(
             id="respect",

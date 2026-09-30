@@ -55,6 +55,11 @@ class SwipeMatchTests(TestCase):
 class FreemiumMessageTests(TestCase):
     def setUp(self):
         site_settings_controller.seed_defaults()
+        from core.controllers import app_config_controller
+
+        cfg = app_config_controller.get_app_config()
+        cfg["guided_messages_enabled"] = False
+        app_config_controller.save_app_config(cfg)
         site_settings_controller.set_value("free_messages_limit", 1)
         self.a = make_profile("m1@test.com", Gender.MALE, "Mamadou")
         self.b = make_profile("f1@test.com", Gender.FEMALE, "Fatou")
@@ -218,6 +223,11 @@ class LikesMessagingFlowTests(TestCase):
     def setUp(self):
         site_settings_controller.seed_defaults()
         site_settings_controller.set_value("free_messages_limit", 10)
+        from core.controllers import app_config_controller
+
+        cfg = app_config_controller.get_app_config()
+        cfg["guided_messages_enabled"] = False
+        app_config_controller.save_app_config(cfg)
         self.client = Client(enforce_csrf_checks=False)
         self.p1 = make_profile("teste1@gmail.com", Gender.MALE, "Testeur1")
         self.p2 = make_profile("teste2@gmail.com", Gender.FEMALE, "Testeur2")
@@ -467,9 +477,6 @@ class LikesMessagingFlowTests(TestCase):
         from core.models import Match
 
         swipe_controller.record_swipe(self.p1, self.p2.id, "like")
-        self.assertFalse(Match.objects.filter(user_1=self.p1, user_2=self.p2).exists())
-        self.assertFalse(Match.objects.filter(user_1=self.p2, user_2=self.p1).exists())
-
         ok, msg, match = message_controller.ensure_conversation(self.p1, self.p2.id)
         self.assertTrue(ok, msg)
         self.assertIsNotNone(match)
@@ -530,19 +537,25 @@ class LikesMessagingFlowTests(TestCase):
         from PIL import Image
 
         from core.models import Match, Message
-        from core.models.choices import MatchStatus, MessageType
+        from core.models.choices import ConversationStatus, MatchStatus, MessageType
 
-        Match.objects.create(user_1=self.p1, user_2=self.p2, status=MatchStatus.ACTIVE)
+        Match.objects.create(
+            user_1=self.p1,
+            user_2=self.p2,
+            status=MatchStatus.ACTIVE,
+            conversation_status=ConversationStatus.ACCEPTED,
+        )
         canvas = Image.new("RGB", (1600, 900), (232, 99, 122))
         buf = BytesIO()
         canvas.save(buf, format="JPEG", quality=95)
         upload = SimpleUploadedFile("photo.jpg", buf.getvalue(), content_type="image/jpeg")
 
         self._login(self.u1)
-        r = self.client.post(
-            "/discussions/%s/media/" % self.p2.id,
-            data={"kind": "photo", "file": upload},
-        )
+        with patch("core.controllers.subscription_controller.can_send_media", return_value=True):
+            r = self.client.post(
+                "/discussions/%s/media/" % self.p2.id,
+                data={"kind": "photo", "file": upload},
+            )
         self.assertEqual(r.status_code, 200, r.content)
         payload = r.json()
         self.assertTrue(payload["ok"])
@@ -1097,6 +1110,11 @@ class FreemiumQuotaTests(TestCase):
     def setUp(self):
         site_settings_controller.seed_defaults()
         site_settings_controller.set_value("free_messages_limit", 5)
+        from core.controllers import app_config_controller
+
+        cfg = app_config_controller.get_app_config()
+        cfg["guided_messages_enabled"] = False
+        app_config_controller.save_app_config(cfg)
         site_settings_controller.set_value("free_swipes_per_day", 20)
         site_settings_controller.set_value("free_likes_per_day", 20)
         site_settings_controller.set_value("free_likes_visible", 2)

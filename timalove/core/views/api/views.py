@@ -222,29 +222,23 @@ def messages_open(request):
         return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
     data = _json(request) or request.POST
     partner_id = data.get("partner_id")
-    ok, msg, match, dest = message_controller.send_connection_request(profile, partner_id)
+    ok, msg, match = message_controller.ensure_conversation(profile, partner_id)
     if not ok:
         payload = {"ok": False, "message": msg}
         if msg == message_controller.LIKE_REQUIRED_MSG:
             payload["code"] = "like_required"
+        from core.controllers import quota_controller
+
+        code = quota_controller.limit_code_for(profile)
+        if code:
+            payload["code"] = code
         return JsonResponse(payload, status=400)
-    if dest == "thread":
-        return JsonResponse(
-            {
-                "ok": True,
-                "partner_id": str(partner_id),
-                "match_id": str(match.id) if match else None,
-                "thread_url": f"/discussions/{partner_id}/",
-            }
-        )
     return JsonResponse(
         {
             "ok": True,
-            "request_sent": True,
-            "message": msg,
             "partner_id": str(partner_id),
             "match_id": str(match.id) if match else None,
-            "redirect_url": f"/connexions/?onglet={dest}",
+            "thread_url": f"/discussions/{partner_id}/",
         }
     )
 

@@ -4324,7 +4324,7 @@ body:not(.explorer-page) .explorer__bottom {
 .explorer__dock {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   align-items: end;
   background: var(--white);
   border-radius: 1.35rem 1.35rem 0.85rem 0.85rem;
@@ -18655,7 +18655,7 @@ body.cdc-app .explorer__dock {
   box-shadow: none;
   border-top: 1px solid #f4ecee;
   padding: 0.62rem 0.1rem calc(0.42rem + env(safe-area-inset-bottom, 0px));
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 body.explorer-page .explorer__tab,
 body.cdc-app .explorer__tab {

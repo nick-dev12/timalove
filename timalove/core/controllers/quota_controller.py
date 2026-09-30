@@ -272,7 +272,19 @@ def likes_visible_cap(profile: Profile | None) -> int | None:
 
 
 def check_message(profile: Profile) -> tuple[bool, str]:
-    """Le cahier des charges plafonne les conversations, pas le nombre de messages."""
+    """Plafond admin (plan gratuit) : nombre de messages envoyés sur la période."""
+    if not is_freemium(profile):
+        return True, ""
+    cfg = quota_settings()
+    if not cfg["messages_enabled"]:
+        return True, ""
+    limit = cfg["messages_limit"]
+    used = messages_sent_count(profile)
+    if used >= limit:
+        return (
+            False,
+            f"Limite de {limit} messages {cfg['period_window']} atteinte. Passez au plan supérieur pour continuer.",
+        )
     return True, ""
 
 
@@ -372,7 +384,7 @@ def snapshot(profile: Profile | None) -> dict:
         "is_freemium": True,
         "swipes_left": swipes_left,
         "likes_left": likes_left,
-        "messages_left": None,
+        "messages_left": messages_remaining(profile),
         "history_locked": False,
         "history_visible": history_limit_for(profile),
         "likes_visible": likes_visible_cap(profile),

@@ -229,15 +229,21 @@ def _is_conversation_recipient(match: Match, profile: Profile) -> bool:
 
 
 def _pending_blocks_send(match: Match, profile: Profile) -> tuple[bool, str]:
-    if match.conversation_status != ConversationStatus.PENDING:
-        return False, ""
-    if _is_conversation_recipient(match, profile):
-        return True, "Acceptez ou refusez cette demande pour répondre."
-    if match.conversation_initiator_id == profile.id:
-        sent = match.messages.filter(sender=profile).count()
-        if sent >= 1:
-            return True, "En attente d’acceptation. Vous pourrez écrire à nouveau une fois la discussion acceptée."
     return False, ""
+
+
+def _activate_direct_chat(match: Match) -> Match:
+    closed = {
+        ConversationStatus.DECLINED,
+        ConversationStatus.BLOCKED,
+        ConversationStatus.CLOSED,
+    }
+    if match.conversation_status in closed:
+        return match
+    if match.conversation_status != ConversationStatus.ACCEPTED:
+        match.conversation_status = ConversationStatus.ACCEPTED
+        match.save(update_fields=["conversation_status", "updated_at"])
+    return match
 
 
 @transaction.atomic
@@ -434,8 +440,14 @@ def ensure_conversation(profile: Profile, partner_id) -> tuple[bool, str, Match 
 
     existing = get_active_match(profile, partner_id)
     if existing:
+        if existing.conversation_status in {
+            ConversationStatus.DECLINED,
+            ConversationStatus.BLOCKED,
+            ConversationStatus.CLOSED,
+        }:
+            return False, "Cette discussion n'est plus disponible.", existing
         unhide_conversation(profile, partner_id)
-        return True, "", existing
+        return True, "", _activate_direct_chat(existing)
 
     liked = has_outgoing_like(profile, partner_id)
     if not liked:
@@ -447,7 +459,11 @@ def ensure_conversation(profile: Profile, partner_id) -> tuple[bool, str, Match 
     match, _created = Match.objects.get_or_create(
         user_1=u1,
         user_2=u2,
-        defaults={"status": MatchStatus.ACTIVE, "is_one_sided": not they_liked},
+        defaults={
+            "status": MatchStatus.ACTIVE,
+            "is_one_sided": not they_liked,
+            "conversation_status": ConversationStatus.ACCEPTED,
+        },
     )
     update_fields: list[str] = []
     if match.status != MatchStatus.ACTIVE:
@@ -460,6 +476,7 @@ def ensure_conversation(profile: Profile, partner_id) -> tuple[bool, str, Match 
     if update_fields:
         match.save(update_fields=list(dict.fromkeys(update_fields)))
 
+    match = _activate_direct_chat(match)
     unhide_conversation(profile, partner_id)
 
     for p in (profile, partner):
@@ -501,7 +518,11 @@ def list_conversations(profile: Profile, include_hidden: bool = False) -> list[d
     results = []
     for m in matches:
         partner = m.partner_of(profile)
-        if m.conversation_status != ConversationStatus.ACCEPTED:
+        if m.conversation_status in {
+            ConversationStatus.DECLINED,
+            ConversationStatus.BLOCKED,
+            ConversationStatus.CLOSED,
+        }:
             continue
         if not _conversation_visible(m, profile):
             continue
@@ -537,7 +558,12 @@ def unread_count(profile: Profile) -> int:
     match_ids = Match.objects.filter(
         models_q_participant(profile),
         status=MatchStatus.ACTIVE,
-        conversation_status=ConversationStatus.ACCEPTED,
+    ).exclude(
+        conversation_status__in={
+            ConversationStatus.DECLINED,
+            ConversationStatus.BLOCKED,
+            ConversationStatus.CLOSED,
+        }
     ).values_list("id", flat=True)
     return Message.objects.filter(match_id__in=match_ids, is_read=False).exclude(sender=profile).count()
 
@@ -640,17 +666,28 @@ def can_send_media(profile: Profile, match: Match) -> tuple[bool, str]:
     return True, ""
 
 
+def _match_for_send(profile: Profile, partner_id) -> tuple[bool, str, Match | None]:
+    match = get_active_match(profile, partner_id)
+    if match:
+        if match.conversation_status in {
+            ConversationStatus.DECLINED,
+            ConversationStatus.BLOCKED,
+            ConversationStatus.CLOSED,
+        }:
+            return False, "Cette discussion n'est plus disponible.", match
+        return True, "", _activate_direct_chat(match)
+    return ensure_conversation(profile, partner_id)
+
+
 @transaction.atomic
 def send_text(profile: Profile, partner_id, content: str) -> tuple[bool, str, Message | None]:
     from core.controllers import app_config_controller
 
     if not app_config_controller.text_messages_enabled():
         return False, "Les messages texte sont temporairement désactivés.", None
-    match = get_active_match(profile, partner_id)
-    if not match:
-        if has_outgoing_like(profile, partner_id):
-            return False, "Ouvrez la conversation avant d’envoyer un message.", None
-        return False, LIKE_REQUIRED_MSG, None
+    opened, err, match = _match_for_send(profile, partner_id)
+    if not opened or match is None:
+        return False, err, None
     ok, err = can_send(profile, match)
     if not ok:
         return False, err, None
@@ -690,11 +727,9 @@ def send_voice(
 
     if not app_config_controller.voice_messages_enabled():
         return False, "Les messages vocaux sont temporairement désactivés.", None
-    match = get_active_match(profile, partner_id)
-    if not match:
-        if has_outgoing_like(profile, partner_id):
-            return False, "Ouvrez la conversation avant d’envoyer un message.", None
-        return False, LIKE_REQUIRED_MSG, None
+    opened, err, match = _match_for_send(profile, partner_id)
+    if not opened or match is None:
+        return False, err, None
     ok, err = can_send_media(profile, match)
     if not ok:
         return False, err, None
@@ -718,11 +753,9 @@ def send_image(profile: Profile, partner_id, image_url: str) -> tuple[bool, str,
 
     if not app_config_controller.image_messages_enabled():
         return False, "L’envoi d’images est temporairement désactivé.", None
-    match = get_active_match(profile, partner_id)
-    if not match:
-        if has_outgoing_like(profile, partner_id):
-            return False, "Ouvrez la conversation avant d’envoyer un message.", None
-        return False, LIKE_REQUIRED_MSG, None
+    opened, err, match = _match_for_send(profile, partner_id)
+    if not opened or match is None:
+        return False, err, None
     ok, err = can_send_media(profile, match)
     if not ok:
         return False, err, None
@@ -862,6 +895,12 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
     match = get_active_match(profile, partner_id)
     if not match:
         return None
+    if match.conversation_status not in {
+        ConversationStatus.DECLINED,
+        ConversationStatus.BLOCKED,
+        ConversationStatus.CLOSED,
+    }:
+        match = _activate_direct_chat(match)
     partner = match.partner_of(profile)
     from core.controllers import quota_controller
 
@@ -891,8 +930,9 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
         "quota_locked": (not blocked) and not pending_block and not quota_ok,
         "quota_message": quota_err if ((not blocked) and not pending_block and not quota_ok) else "",
         "messages_remaining": quota_controller.messages_remaining(profile),
-        "conversation_pending": match.conversation_status == ConversationStatus.PENDING,
-        "conversation_accepted": match.conversation_status == ConversationStatus.ACCEPTED,
+        "conversation_pending": False,
+        "conversation_accepted": match.conversation_status
+        not in {ConversationStatus.DECLINED, ConversationStatus.BLOCKED, ConversationStatus.CLOSED},
         "can_accept": can_accept,
         "project_why": _project_why(profile, partner),
         "partner_marriage": partner.get_marriage_timeline_display() if partner.marriage_timeline else "",
