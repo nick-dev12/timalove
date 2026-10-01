@@ -26,7 +26,6 @@ from core.controllers import (
     site_settings_controller,
     swipe_controller,
     matching_controller,
-    voice_intro_controller,
 )
 
 
@@ -1079,6 +1078,8 @@ def profile_voice(request):
         duration = int(request.POST.get("duration") or 0)
     except (TypeError, ValueError):
         duration = 0
+    from core.controllers import voice_intro_controller
+
     try:
         data = voice_intro_controller.save_for(profile, upload, duration)
     except ValueError as exc:
@@ -1092,6 +1093,8 @@ def profile_voice_delete(request):
     profile = getattr(request.user, "profile", None)
     if not profile:
         return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    from core.controllers import voice_intro_controller
+
     data = voice_intro_controller.delete_for(profile)
     return JsonResponse({"ok": True, **data})
 
