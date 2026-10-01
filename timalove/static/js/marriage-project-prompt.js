@@ -114,7 +114,13 @@
           body: JSON.stringify(payload),
         })
           .then(function (res) {
-            return res.json().then(function (data) {
+            return res.text().then(function (text) {
+              var data = {};
+              try {
+                data = text ? JSON.parse(text) : {};
+              } catch (parseErr) {
+                throw new Error("Enregistrement impossible. Réessayez dans un instant.");
+              }
               return { ok: res.ok, data: data };
             });
           })

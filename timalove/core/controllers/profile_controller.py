@@ -285,8 +285,34 @@ def _public_place(value: str | None) -> str:
     return text
 
 
+def _voice_intro_public_payload(profile: Profile | None) -> dict:
+    empty = {
+        "voice_intro_url": "",
+        "voice_intro_duration": 0,
+        "voice_intro_label": "",
+        "has_voice_intro": False,
+    }
+    if profile is None:
+        return empty
+    url = str(getattr(profile, "voice_intro_url", "") or "").strip()
+    if not url:
+        return empty
+    try:
+        seconds = int(getattr(profile, "voice_intro_duration_seconds", 0) or 0)
+    except (TypeError, ValueError):
+        seconds = 0
+    if seconds < 0:
+        seconds = 0
+    return {
+        "voice_intro_url": url,
+        "voice_intro_duration": seconds,
+        "voice_intro_label": f"{seconds // 60}:{seconds % 60:02d}",
+        "has_voice_intro": True,
+    }
+
+
 def serialize_visit(profile: Profile) -> dict:
-    from core.controllers import subscription_controller, voice_intro_controller
+    from core.controllers import subscription_controller
 
     location_parts = [p for p in (_public_place(profile.commune), _public_place(profile.city), _public_place(profile.country)) if p]
     photos = gallery_urls(profile)
@@ -336,7 +362,7 @@ def serialize_visit(profile: Profile) -> dict:
         "hide_age": bool(profile.hide_age),
         "is_hidden": bool(profile.is_hidden),
         "subscription_badge": subscription_controller.badge_for(profile),
-        **voice_intro_controller.public_payload(profile),
+        **_voice_intro_public_payload(profile),
     }
 
 

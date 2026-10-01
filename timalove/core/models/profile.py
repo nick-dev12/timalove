@@ -66,6 +66,8 @@ class Profile(models.Model):
     photo_url = models.TextField(blank=True, null=True)
     photo_url_2 = models.TextField(blank=True, null=True)
     photo_url_3 = models.TextField(blank=True, null=True)
+    voice_intro_url = models.TextField(blank=True, null=True)
+    voice_intro_duration_seconds = models.PositiveSmallIntegerField(blank=True, null=True)
     interests = models.JSONField(default=list, blank=True)
     personality_traits = models.JSONField(default=list, blank=True)
     verification_photo_url = models.TextField(blank=True, null=True)

@@ -1,0 +1,23 @@
+{% if url %}
+<div class="voice-intro{% if compact %} voice-intro--card{% endif %}" data-voice-intro data-src="{{ url }}" data-duration="{{ duration|default:0 }}"{% if profile_id %} data-profile-id="{{ profile_id }}"{% endif %}{% if first_name %} data-profile-name="{{ first_name }}"{% endif %}>
+  <button type="button" class="voice-intro__play" data-voice-intro-play aria-label="Écouter{% if first_name %} {{ first_name }}{% endif %}">
+    <svg class="voice-intro__ico voice-intro__ico--play" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 5.5v13l11-6.5L8 5.5z"/></svg>
+    <svg class="voice-intro__ico voice-intro__ico--pause" viewBox="0 0 24 24" width="16" height="16" hidden aria-hidden="true"><path fill="currentColor" d="M7 5h4v14H7V5zm6 0h4v14h-4V5z"/></svg>
+    <span>Écouter</span>
+  </button>
+  <span class="voice-intro__time" data-voice-intro-time>{{ label|default:"0:00" }}</span>
+  {% if reportable %}
+  <details class="voice-intro__report">
+    <summary>Signaler cette voix</summary>
+    <form class="voice-intro__report-form" data-voice-intro-report-form>
+      <label>
+        <span class="visually-hidden">Motif</span>
+        <textarea name="message" rows="3" required minlength="10" maxlength="1000" placeholder="Décrivez ce qui pose problème…"></textarea>
+      </label>
+      <p class="voice-intro__report-status" data-voice-intro-report-status hidden></p>
+      <button type="submit">Envoyer le signalement</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+{% endif %}

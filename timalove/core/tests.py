@@ -2758,6 +2758,29 @@ class MarriageProjectPromptTests(TestCase):
         self.assertContains(page, "Pour continuer, veuillez remplir votre projet")
         self.assertContains(page, "data-needs-projet")
 
+    def test_profil_page_ok(self):
+        self.assertTrue(self.client.login(username=self.profile.user.username, password="Ludvanne12"))
+        page = self.client.get("/profil/")
+        self.assertEqual(page.status_code, 200)
+
+    def test_api_saves_marriage_project_as_json(self):
+        self.assertTrue(self.client.login(username=self.profile.user.username, password="Ludvanne12"))
+        response = self.client.post(
+            "/api/profile/update/",
+            data={
+                "marriage_timeline": "under_1y",
+                "union_type": "monogame",
+                "children_wish": "yes",
+                "partner_religion_importance": "some",
+                "meet_place": "anywhere",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertIn("member", payload)
+
     def test_no_modal_when_complete(self):
         from core.controllers.profile_controller import update_profile
 
