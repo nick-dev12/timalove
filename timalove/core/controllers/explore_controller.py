@@ -9,7 +9,7 @@ import uuid
 from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import Http404
 
-from core.controllers import matching_controller, swipe_controller
+from core.controllers import matching_controller, swipe_controller, voice_intro_controller
 from core.data.onboarding import (
     INTERESTS,
     LOOKING_FOR,
@@ -198,10 +198,18 @@ def _alignment_rows(viewer, profile: Profile) -> list[str]:
     return rows
 
 
-def _why_this_profile(viewer, profile: Profile) -> str:
+def recommendation_reasons(viewer, profile: Profile, *, limit: int = 3) -> list[str]:
+    """Trois raisons lisibles, sans score de popularité ni pourcentage."""
     rows = _alignment_rows(viewer, profile)
-    if not rows:
-        return "Ce profil est proposé dans votre découverte."
+    if rows:
+        return rows[:limit]
+    return ["Ce profil est proposé dans votre découverte."]
+
+
+def _why_this_profile(viewer, profile: Profile) -> str:
+    rows = recommendation_reasons(viewer, profile)
+    if len(rows) == 1 and rows[0].startswith("Ce profil"):
+        return rows[0]
     return "Vous partagez " + ", ".join(row[0].lower() + row[1:] for row in rows) + "."
 
 
@@ -236,6 +244,8 @@ def serialize_card(
         "children_label": profile.get_children_wish_display() if profile.children_wish else "",
         "why": _why_this_profile(viewer, profile),
         "alignments": _alignment_rows(viewer, profile),
+        "reasons": recommendation_reasons(viewer, profile),
+        **voice_intro_controller.public_payload(profile),
         "compatibility": compatibility_score(profile, viewer),
         "profile_url": f"/explorer/profil/{profile.pk}/",
         "liked": liked,
@@ -508,7 +518,10 @@ def get_public_profile(profile_id, viewer=None) -> dict | None:
         "is_online": _is_present(profile),
         "is_boosted": bool(profile.is_boosted),
         "member_since": profile.created_at.year if profile.created_at else None,
-        "followers": int(profile.likes_received_count or 0),
+        "followers": 0,
+        "why": _why_this_profile(viewer, profile),
+        "reasons": recommendation_reasons(viewer, profile),
+        **voice_intro_controller.public_payload(profile),
         "following": int(profile.likes_given_count or 0),
         "favorites": int(profile.matches_count or 0),
         "interest_labels": [
@@ -613,10 +626,32 @@ def reset_curated_session(session) -> None:
     session.modified = True
 
 
+REVIEW_VOICE_EMAIL = "apple.review@timalove.local"
+REVIEW_VOICE_PARTNER_EMAIL = "awa.demo@timalove.local"
+
+
+def _pin_review_voice_intro(viewer, curated_ids: list) -> list:
+    """Le compte démo App Store entend Awa dès Découvrir, même déjà mise en relation."""
+    if viewer is None:
+        return curated_ids
+    if (viewer.email or "").strip().lower() != REVIEW_VOICE_EMAIL:
+        return curated_ids
+    awa = (
+        Profile.objects.filter(email__iexact=REVIEW_VOICE_PARTNER_EMAIL)
+        .exclude(voice_intro_url__isnull=True)
+        .exclude(voice_intro_url="")
+        .first()
+    )
+    if awa is None:
+        return curated_ids
+    rest = [pk for pk in curated_ids if pk != awa.pk]
+    return [awa.pk] + rest
+
+
 def curated_daily_feed(viewer, session, *, expand_by: int = 0) -> tuple[list[dict], dict]:
     """
     Sélection Parcours curated — ordre aléatoire à chaque visite de la page.
-    « Voir plus » conserve la sélection en cours et ajoute des profils sans réordonner.
+    Le chargement infini conserve la sélection en cours et ajoute des profils sans réordonner.
     """
     from django.utils import timezone
 
@@ -640,6 +675,10 @@ def curated_daily_feed(viewer, session, *, expand_by: int = 0) -> tuple[list[dic
         target = int(session.get(SESSION_CURATED_TARGET_KEY) or initial_limit)
         if expand_by > 0:
             target = min(target + expand_by, daily_max)
+            session[SESSION_CURATED_TARGET_KEY] = target
+            session.modified = True
+        elif fresh_visit:
+            target = initial_limit
             session[SESSION_CURATED_TARGET_KEY] = target
             session.modified = True
         limit = min(max(target, initial_limit), daily_max)
@@ -672,10 +711,14 @@ def curated_daily_feed(viewer, session, *, expand_by: int = 0) -> tuple[list[dic
             need = limit - len(curated_ids)
             curated_ids.extend(ordered[:need])
 
+    if len(curated_ids) > limit:
+        curated_ids = curated_ids[:limit]
+
     if fresh_visit:
         if len(curated_ids) > 1:
             shuffle_rng = random.Random(secrets.token_hex(16))
             shuffle_rng.shuffle(curated_ids)
+        curated_ids = _pin_review_voice_intro(viewer, curated_ids)
         if session is not None:
             session[SESSION_CURATED_DATE_KEY] = today
             session[SESSION_CURATED_TARGET_KEY] = target

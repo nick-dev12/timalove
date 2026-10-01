@@ -949,7 +949,12 @@
     }
   });
 
-  document.querySelector("[data-msg-report-open]")?.addEventListener("click", openReportModal);
+  document.addEventListener("click", function (event) {
+    const btn = event.target.closest("[data-msg-report-open]");
+    if (!btn) return;
+    event.preventDefault();
+    openReportModal();
+  });
 
   document.querySelectorAll("[data-msg-report-close]").forEach(function (el) {
     el.addEventListener("click", closeReportModal);

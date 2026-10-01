@@ -1,3 +1,12 @@
-<div class="curated-list__more-wrap" id="curated-more-wrap"{% if not curated_meta.has_more %} hidden{% endif %}>
-  <button type="button" class="btn btn-secondary curated-list__more-btn" data-curated-more>Voir plus</button>
+<div
+  class="curated-list__sentinel"
+  id="curated-scroll-sentinel"
+  data-curated-more
+  data-has-more="{% if curated_meta.has_more %}1{% else %}0{% endif %}"
+  {% if not curated_meta.has_more %}hidden{% endif %}
+  aria-hidden="true"
+></div>
+<div class="curated-list__loader" data-curated-loader hidden>
+  <span class="curated-list__spinner" aria-hidden="true"></span>
+  <span class="visually-hidden">Chargement des profils</span>
 </div>

@@ -6,7 +6,7 @@
 {% include "partials/member_page_scroll.html" %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="{% static 'js/subscription-badges.js' %}?v=20260830badge2" defer></script>
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260921lb1" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20261001lotB" defer></script>
 <script src="{% static 'js/message-datetime.js' %}?v=20260913tz1" defer></script>
 <script src="{% static 'js/messages-inbox.js' %}?v=20260913tz1" defer></script>
 {% if user.is_authenticated %}
@@ -45,7 +45,7 @@
       {% if conversation_cap %}
       <p class="cdc-inbox__cap">{{ active_conversations }}/{{ conversation_cap }}</p>
       {% if active_conversations >= conversation_cap %}
-      <p class="cdc-inbox__warn" role="status">Limite de {{ conversation_cap }} conversations (plan gratuit). Passez au Premium pour en ouvrir d'autres, ou clôturez une discussion existante.</p>
+      <p class="cdc-inbox__warn" role="status">Limite de {{ conversation_cap }} parcours de discussion (plan gratuit). Passez au Premium pour continuer le chemin vers le mariage sans limite, ou clôturez une discussion existante.</p>
       {% endif %}
       {% endif %}
       {% if app_features.messages_search_enabled %}
@@ -62,6 +62,7 @@
           href="{% if is_preview or c.demo %}{% url 'public:messages_preview' c.partner.id %}{% else %}{% url 'app:discussion_detail' c.partner.id %}{% endif %}"
           data-msg-card
           data-msg-search="{{ c.partner.first_name }} {{ c.preview }}"
+          {% if c.guided_review_required %}data-guided-review="1"{% endif %}
         >
           <span class="msg-list__avatar{% if c.partner|sub_badge == 'vip' %} is-vip{% elif c.partner|sub_badge == 'premium' %} is-premium{% endif %}" data-profile-modal="{{ c.partner.id }}" role="button" tabindex="0" aria-label="Voir le profil de {{ c.partner.first_name }}">
             {% if c.partner.primary_photo %}

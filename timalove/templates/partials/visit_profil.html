@@ -132,13 +132,30 @@
         </div>
       </div>
       <div class="visit__trust-item">
-        <span class="visit__trust-ico" aria-hidden="true">♥</span>
+        <span class="visit__trust-ico" aria-hidden="true">○</span>
         <div>
-          <strong>{% if member.followers %}{{ member.followers }} attentions{% else %}Nouveau coup de cœur{% endif %}</strong>
+          <strong>Profil actif</strong>
           <p>{% if member.member_since %}Membre depuis {{ member.member_since }}{% else %}Présence sérieuse{% endif %}</p>
         </div>
       </div>
     </section>
+    {% if member.reasons %}
+    <section class="visit__why visit-glass" aria-label="Pourquoi ce profil">
+      <p class="visit__kicker">Pourquoi TimaLove propose cette personne</p>
+      <ul class="visit__why-list">
+        {% for reason in member.reasons %}
+        <li>{{ reason }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+    {% if member.has_voice_intro %}
+    <section class="visit__voice visit-glass" aria-label="Présentation vocale">
+      <p class="visit__kicker">Présentation vocale</p>
+      <p class="visit__card-lead">{{ member.first_name }} se présente en quelques secondes, avant l’échange écrit.</p>
+      {% include "partials/voice_intro_player.html" with url=member.voice_intro_url duration=member.voice_intro_duration label=member.voice_intro_label first_name=member.first_name profile_id=member.id reportable=1 %}
+    </section>
+    {% endif %}
 
     <div class="visit__tabs visit__tabs--profile" role="tablist" aria-label="Sections du profil" data-visit-tabs>
       <button type="button" class="visit__tab is-active" role="tab" aria-selected="true" aria-controls="panel-about" data-tab="about">À propos</button>

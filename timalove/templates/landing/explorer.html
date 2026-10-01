@@ -29,7 +29,7 @@
   body.explorer-page--curated .explorer-rise { display: none; }
 </style>
 <script src="{% static 'js/explorer-like-burst.js' %}?v=20260821b4" defer></script>
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260921lb1" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20261001lotB" defer></script>
 {% if user.is_authenticated %}
 <script src="{% static 'js/explorer-filters.js' %}?v=20260920f1" defer></script>
 {% endif %}
@@ -40,11 +40,11 @@
 <script src="{% static 'js/message-invite.js' %}?v=20260930msg2" defer></script>
 <script src="{% static 'js/explorer-match.js' %}?v=20260910m2" defer></script>
 {% if curated_mode %}
-<script src="{% static 'js/explorer-curated.js' %}?v=20260924p1" defer></script>
+<script src="{% static 'js/explorer-curated.js' %}?v=20261001feed20" defer></script>
 {% else %}
 <script src="{% static 'js/explorer-feed-sync.js' %}?v=20260910fs1" defer></script>
 {% endif %}
-<script src="{% static 'js/explorer-swipe.js' %}?v=20260924c1" defer></script>
+<script src="{% static 'js/explorer-swipe.js' %}?v=20261001quota1" defer></script>
 {% else %}
 <script src="{% static 'js/explorer-match.js' %}?v=20260910m2" defer></script>
 {% endif %}
@@ -118,7 +118,7 @@
     <a class="{% if discover_tab == 'pour-vous' %}is-on{% endif %}" href="{% url 'public:explorer' %}?vue=pour-vous">Pour vous</a>
   </nav>
 
-  {% if app_features.explorer_search_enabled %}
+  {% if app_features.explorer_search_enabled and not curated_mode %}
   {% url 'public:explorer_search' as explorer_search_url %}
   {% include "partials/explorer_search_bar.html" with search_url=explorer_search_url search_placeholder="Rechercher un profil…" search_label="Rechercher un profil" %}
   {% endif %}

@@ -17,7 +17,7 @@ DEFAULT_APP_CONFIG: dict[str, Any] = {
     "explorer_search_enabled": False,
     "history_search_enabled": False,
     "messages_search_enabled": True,
-    "explorer_curated_mode": False,
+    "explorer_curated_mode": True,
     "guided_messages_enabled": True,
     "force_update_enabled": False,
     "force_update_ios": "1.0.0",
@@ -252,22 +252,21 @@ def explorer_curated_mode_enabled() -> bool:
 
 
 def explorer_curated_mode_active(*, user_agent: str | None = None) -> bool:
-    """Parcours curated (anti-swipe) : config globale ou WebView app iOS/Android."""
-    if explorer_curated_mode_enabled():
-        return True
-    return is_native_app_user_agent(user_agent)
+    """Même parcours partout : navigateur et app native suivent le même réglage."""
+    del user_agent
+    return explorer_curated_mode_enabled()
 
 
 def curated_daily_limit() -> int:
-    return _as_int(get_app_config().get("curated_daily_limit"), 20, minimum=3, maximum=50)
+    return 20
 
 
 def curated_daily_max() -> int:
-    return 50
+    return 200
 
 
 def curated_load_more_step() -> int:
-    return 10
+    return 20
 
 
 def guided_messages_enabled() -> bool:

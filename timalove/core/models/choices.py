@@ -197,6 +197,7 @@ class ReportReason(models.TextChoices):
     HARASSMENT = "harassment", "Harcèlement"
     HATE_SPEECH = "hate_speech", "Propos haineux"
     INAPPROPRIATE_CONTENT = "inappropriate_content", "Photos inappropriées"
+    INAPPROPRIATE_VOICE = "inappropriate_voice", "Voix inappropriée"
     SCAM = "scam", "Demande d'argent"
     SPAM = "spam", "Spam"
     OTHER = "other", "Autre"
@@ -213,4 +214,5 @@ class ReportStatus(models.TextChoices):
 
 class ReportKind(models.TextChoices):
     PROFILE = "profile", "Profil"
+    VOICE = "voice", "Présentation vocale"
     SUPPORT = "support", "Support"

@@ -38,3 +38,10 @@ def process_scheduled_campaigns():
     from core.controllers import crm_controller
 
     return crm_controller.process_due_scheduled_campaigns()
+
+
+@shared_task
+def expire_guided_intros():
+    from core.controllers import guided_intro_controller
+
+    return guided_intro_controller.expire_stale_intros()

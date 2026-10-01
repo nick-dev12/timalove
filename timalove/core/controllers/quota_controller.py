@@ -294,24 +294,7 @@ def limit_code_for(profile: Profile) -> str:
 
 
 def check_swipe(swiper: Profile, swiped_id, action: str) -> tuple[bool, str, str]:
-    """Retourne (ok, message, code). 10 likes par jour pour tout le monde."""
-    action = action if action in SwipeAction.values else SwipeAction.PASS
-    existing = Swipe.objects.filter(swiper=swiper, swiped_id=swiped_id).first()
-    already_like = bool(existing and (existing.is_like or existing.is_super_like))
-    wants_like = action in {SwipeAction.LIKE, SwipeAction.SUPER_LIKE}
-    if wants_like and not already_like:
-        start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
-        today = Swipe.objects.filter(swiper=swiper, created_at__gte=start).filter(LIKE_Q).count()
-        if today >= 10:
-            return (
-                False,
-                "Tes 10 likes du jour sont utilisés. De nouveaux likes seront disponibles demain.",
-                "like_limit",
-            )
-    if not is_freemium(swiper):
-        return True, "", ""
-
-    cfg = quota_settings()
+    """Retourne (ok, message, code). Quotas likes/swipes du plan gratuit (super admin)."""
     action = action if action in SwipeAction.values else SwipeAction.PASS
     existing = Swipe.objects.filter(swiper=swiper, swiped_id=swiped_id).first()
     already_like = bool(existing and (existing.is_like or existing.is_super_like))
@@ -325,6 +308,18 @@ def check_swipe(swiper: Profile, swiped_id, action: str) -> tuple[bool, str, str
         return True, "", ""
     if action == SwipeAction.PASS and counted_in_period:
         return True, "", ""
+
+    if not is_freemium(swiper):
+        return True, "", ""
+
+    cfg = quota_settings()
+    if wants_like and not already_like and cfg["likes_enabled"]:
+        if period_like_count(swiper) >= cfg["likes_limit"]:
+            return (
+                False,
+                f"Limite de {cfg['likes_limit']} likes {cfg['period_window']} atteinte. Passez au plan supérieur pour continuer.",
+                "like_limit",
+            )
 
     counts_as_new_swipe = not existing or not counted_in_period
     if (
@@ -340,10 +335,13 @@ def check_swipe(swiper: Profile, swiped_id, action: str) -> tuple[bool, str, str
     return True, "", ""
 
 
-def likes_left_today(profile: Profile) -> int:
-    start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
-    used = Swipe.objects.filter(swiper=profile, created_at__gte=start).filter(LIKE_Q).count()
-    return max(0, 10 - used)
+def likes_left_today(profile: Profile) -> int | None:
+    if not is_freemium(profile):
+        return None
+    cfg = quota_settings()
+    if not cfg["likes_enabled"]:
+        return None
+    return max(0, cfg["likes_limit"] - period_like_count(profile))
 
 
 def snapshot(profile: Profile | None) -> dict:
@@ -372,8 +370,8 @@ def snapshot(profile: Profile | None) -> dict:
             "history_locked": False,
             "history_visible": None,
             "likes_visible": None,
-            "period": "day",
-            "period_label": "aujourd'hui",
+            "period": cfg["period"],
+            "period_label": cfg["period_label"],
             "show_explorer_quota": False,
             "upgrade_path": UPGRADE_PATH,
         }
@@ -388,8 +386,8 @@ def snapshot(profile: Profile | None) -> dict:
         "history_locked": False,
         "history_visible": history_limit_for(profile),
         "likes_visible": likes_visible_cap(profile),
-        "period": "day",
-        "period_label": "aujourd'hui",
+        "period": cfg["period"],
+        "period_label": cfg["period_label"],
         "show_explorer_quota": False,
         "upgrade_path": UPGRADE_PATH,
     }

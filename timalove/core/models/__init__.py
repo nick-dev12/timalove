@@ -14,7 +14,7 @@ from .commerce import (
     Testimonial,
     Transaction,
 )
-from .matching import BlockedUser, ConversationHide, Match, Message, Swipe
+from .matching import BlockedUser, ConversationHide, GuidedIntroClip, Match, Message, Swipe
 from .crm import CampaignDelivery, MarketingCampaign
 from .profile import Profile, ProfileGalleryPhoto
 from .push import PushDevice
@@ -24,6 +24,7 @@ __all__ = [
     "ProfileGalleryPhoto",
     "Swipe",
     "Match",
+    "GuidedIntroClip",
     "Message",
     "ConversationHide",
     "BlockedUser",

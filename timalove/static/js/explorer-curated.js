@@ -1,33 +1,56 @@
 /**
- * TimaLove — Parcours curated : bouton « Voir plus » + statut en ligne
- * + retrait / remplacement après like ou super like.
+ * TimaLove — Parcours curated : chargement infini + statut en ligne
+ * + retrait / remplacement après like.
  */
 (function () {
   const grid = document.getElementById("curated-list-grid");
-  const wrap = document.getElementById("curated-more-wrap");
+  const sentinel = document.getElementById("curated-scroll-sentinel");
+  const loader = document.querySelector("[data-curated-loader]");
   if (!grid) return;
 
   const ONLINE_POLL_MS = 12000;
+  const LOAD_DELAY_MS = 2000;
+  let loading = false;
+  let observer = null;
 
   function csrf() {
     const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
     return m ? decodeURIComponent(m[1]) : "";
   }
 
+  function setLoader(on) {
+    if (!loader) return;
+    loader.hidden = !on;
+  }
+
   function applyOnlineDot(card, isOn) {
     card.setAttribute("data-online", isOn ? "1" : "0");
     const media = card.querySelector(".curated-card__media");
-    if (!media) return;
-    let dot = media.querySelector(".curated-card__online");
-    if (isOn) {
-      if (!dot) {
-        dot = document.createElement("i");
-        dot.className = "curated-card__online";
-        dot.setAttribute("aria-label", "En ligne");
-        media.appendChild(dot);
+    if (media) {
+      let dot = media.querySelector(".curated-card__online");
+      if (isOn) {
+        if (!dot) {
+          dot = document.createElement("i");
+          dot.className = "curated-card__online";
+          dot.setAttribute("aria-label", "En ligne");
+          media.appendChild(dot);
+        }
+      } else if (dot) {
+        dot.remove();
       }
-    } else if (dot) {
-      dot.remove();
+    }
+    const place = card.querySelector(".curated-card__place");
+    if (!place) return;
+    let live = place.querySelector(".curated-card__live");
+    if (isOn) {
+      if (!live) {
+        live = document.createElement("span");
+        live.className = "curated-card__live";
+        live.textContent = "En ligne";
+        place.insertBefore(live, place.firstChild);
+      }
+    } else if (live) {
+      live.remove();
     }
   }
 
@@ -80,26 +103,32 @@
     empty.innerHTML =
       "<h2>Aucun profil compatible aujourd'hui</h2><p>Revenez demain ou ajustez vos filtres de découverte.</p>";
     grid.remove();
-    if (wrap) wrap.hidden = true;
+    if (sentinel) sentinel.hidden = true;
+    setLoader(false);
     section.appendChild(empty);
   }
 
-  function applyMoreWrap(htmlWrap) {
-    if (!wrap) return;
-    if (!htmlWrap) {
-      wrap.hidden = true;
+  function applySentinel(node) {
+    if (!sentinel) return;
+    if (!node) {
+      sentinel.hidden = true;
+      sentinel.setAttribute("data-has-more", "0");
       return;
     }
-    wrap.hidden = htmlWrap.hidden;
-    const btn = wrap.querySelector("[data-curated-more]");
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "Voir plus";
-    }
+    const has = node.getAttribute("data-has-more") === "1" && !node.hidden;
+    sentinel.setAttribute("data-has-more", has ? "1" : "0");
+    sentinel.hidden = !has;
+  }
+
+  function hasMore() {
+    return !!(sentinel && !sentinel.hidden && sentinel.getAttribute("data-has-more") === "1");
   }
 
   function appendCardsFromHtml(html) {
-    if (!html || !html.trim()) return;
+    if (!html || !html.trim()) {
+      applySentinel(null);
+      return;
+    }
     const tmp = document.createElement("div");
     tmp.innerHTML = html.trim();
     tmp.querySelectorAll(".curated-card").forEach(function (node) {
@@ -108,8 +137,52 @@
       }
       grid.appendChild(node);
     });
-    applyMoreWrap(tmp.querySelector("#curated-more-wrap"));
+    applySentinel(tmp.querySelector("#curated-scroll-sentinel"));
     syncOnlineDots();
+  }
+
+  function wait(ms) {
+    return new Promise(function (resolve) {
+      window.setTimeout(resolve, ms);
+    });
+  }
+
+  function loadMore() {
+    if (loading || !hasMore()) return;
+    loading = true;
+    setLoader(true);
+    const started = Date.now();
+    fetch("/explorer/curated-plus/", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "X-CSRFToken": csrf(),
+        "HX-Request": "true",
+        "X-Requested-With": "XMLHttpRequest",
+      },
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error("Chargement impossible.");
+        return res.text();
+      })
+      .then(function (html) {
+        const remain = Math.max(0, LOAD_DELAY_MS - (Date.now() - started));
+        return wait(remain).then(function () {
+          return html;
+        });
+      })
+      .then(function (html) {
+        if (!html.trim()) {
+          applySentinel(null);
+          return;
+        }
+        appendCardsFromHtml(html);
+      })
+      .catch(function () {})
+      .finally(function () {
+        setLoader(false);
+        loading = false;
+      });
   }
 
   function replaceConsumed(profileId) {
@@ -151,50 +224,15 @@
     replaceConsumed(profileId);
   });
 
-  if (!wrap) return;
-
-  wrap.addEventListener("click", function (event) {
-    const btn = event.target.closest("[data-curated-more]");
-    if (!btn || btn.disabled) return;
-    event.preventDefault();
-    btn.disabled = true;
-    btn.textContent = "Chargement…";
-
-    fetch("/explorer/curated-plus/", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        "X-CSRFToken": csrf(),
-        "HX-Request": "true",
-      },
-    })
-      .then(function (res) {
-        if (!res.ok) throw new Error("Chargement impossible.");
-        return res.text();
-      })
-      .then(function (html) {
-        if (!html.trim()) {
-          wrap.hidden = true;
-          return;
-        }
-        const tmp = document.createElement("div");
-        tmp.innerHTML = html.trim();
-        tmp.querySelectorAll(".curated-card").forEach(function (node) {
-          grid.appendChild(node);
+  if (sentinel && "IntersectionObserver" in window) {
+    observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) loadMore();
         });
-        syncOnlineDots();
-        const nextWrap = tmp.querySelector("#curated-more-wrap");
-        if (nextWrap) {
-          wrap.hidden = nextWrap.hidden;
-          wrap.querySelector("[data-curated-more]").disabled = false;
-          wrap.querySelector("[data-curated-more]").textContent = "Voir plus";
-        } else {
-          wrap.hidden = true;
-        }
-      })
-      .catch(function () {
-        btn.disabled = false;
-        btn.textContent = "Voir plus";
-      });
-  });
+      },
+      { root: null, rootMargin: "280px 0px", threshold: 0 }
+    );
+    observer.observe(sentinel);
+  }
 })();

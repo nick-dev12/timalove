@@ -61,6 +61,8 @@ urlpatterns = [
     path("profile/photo/", views.profile_photo, name="profile_photo"),
     path("profile/photo/delete/", views.profile_photo_delete, name="profile_photo_delete"),
     path("profile/photo/primary/", views.profile_photo_primary, name="profile_photo_primary"),
+    path("profile/voice/", views.profile_voice, name="profile_voice"),
+    path("profile/voice/delete/", views.profile_voice_delete, name="profile_voice_delete"),
     path("profile/filters/", views.profile_filters, name="profile_filters"),
     path("profile/delete/", views.profile_delete, name="profile_delete"),
 ]

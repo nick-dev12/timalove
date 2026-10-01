@@ -8,12 +8,12 @@ from django.conf import settings
 
 DEFAULT_PLAN_FEATURES: dict[str, list[str]] = {
     "premium": [
-        "Échanges libres dans 5 conversations",
+        "Parcours de discussion illimités vers le mariage",
         "5× plus visible dans l'explorer",
         "Historique et likes reçus complets",
     ],
     "vip": [
-        "Échanges libres dans 5 conversations",
+        "Parcours de discussion illimités vers le mariage",
         "10 likes par jour",
         "Mise en avant du profil",
         "Profils complets (> 70 %) en priorité",
@@ -233,12 +233,13 @@ def _default_duration_days(plan_id: str) -> int:
 
 def _parse_features(raw: Any, tier_kind: str, base: list[str] | None = None) -> list[str]:
     obsolete = {
-        "Messagerie illimitée": "Échanges libres dans 5 conversations",
+        "Messagerie illimitée": "Parcours de discussion illimités vers le mariage",
+        "Échanges libres dans 5 conversations": "Parcours de discussion illimités vers le mariage",
         "Accepter ou bloquer une discussion": "Mise en avant du profil",
         "Accepter ou refuser une discussion": "Mise en avant du profil",
         "Liker n'importe quel profil": "10 likes par jour",
         "vue et like de profil ilimiter": "10 likes par jour",
-        "message ilimité": "Échanges libres dans 5 conversations",
+        "message ilimité": "Parcours de discussion illimités vers le mariage",
     }
     if isinstance(raw, list):
         items = [obsolete.get(str(item).strip(), str(item).strip()) for item in raw if str(item).strip()]

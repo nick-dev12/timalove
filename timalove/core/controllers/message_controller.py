@@ -117,9 +117,9 @@ LIKE_REQUIRED_MSG = (
     "Manifestez votre intérêt pour ce profil avant de démarrer une discussion."
 )
 
-from core.data.guided_prompts import GUIDED_INTRO_POOL, daily_suggestion, prompts_for_match
+from core.data.guided_prompts import GUIDED_INTRO_POOL, daily_suggestion, format_prompt, prompts_for_match
 
-GUIDED_INTRO_PROMPTS: tuple[str, ...] = GUIDED_INTRO_POOL[:3]
+GUIDED_INTRO_PROMPTS: tuple[str, ...] = tuple(format_prompt(item) for item in GUIDED_INTRO_POOL[:3])
 
 
 def guided_intro_prompts(match: Match | None = None) -> tuple[str, ...]:
@@ -153,12 +153,31 @@ def is_guided_prompt(content: str, match: Match | None = None) -> bool:
     return any(_normalize_prompt(prompt) == norm for prompt in GUIDED_INTRO_POOL)
 
 
+def _text_sender_ids(match: Match) -> set:
+    return set(
+        match.messages.filter(message_type=MessageType.TEXT)
+        .exclude(content="")
+        .values_list("sender_id", flat=True)
+    )
+
+
+def remaining_guided_prompts(match: Match, profile: Profile) -> list[str]:
+    sent = {
+        _normalize_prompt(content)
+        for content in match.messages.filter(sender=profile).values_list("content", flat=True)
+        if content
+    }
+    return [prompt for prompt in guided_intro_prompts(match) if _normalize_prompt(prompt) not in sent]
+
+
 def needs_guided_intro(match: Match) -> bool:
-    if match.guided_intro_completed:
-        return False
-    if match.messages.exists():
-        return False
-    return bool(guided_intro_prompts(match))
+    from core.controllers import guided_intro_controller
+
+    return guided_intro_controller.needs_guided_intro(match)
+
+
+def _complete_guided_if_ready(match: Match) -> None:
+    return
 
 
 @transaction.atomic
@@ -166,13 +185,9 @@ def skip_guided_intro(profile: Profile, partner_id) -> tuple[bool, str]:
     match = get_active_match(profile, partner_id)
     if not match:
         return False, "Conversation introuvable."
-    if match.guided_intro_completed or match.messages.exists():
+    if not needs_guided_intro(match):
         return True, ""
-    if not guided_intro_prompts(match):
-        return True, ""
-    match.guided_intro_completed = True
-    match.save(update_fields=["guided_intro_completed", "updated_at"])
-    return True, ""
+    return False, "Les questions de projet sont nécessaires avant le chat libre."
 
 
 def has_outgoing_like(profile: Profile, partner_id) -> bool:
@@ -185,8 +200,8 @@ def has_outgoing_like(profile: Profile, partner_id) -> bool:
 MAX_ACTIVE_CONVERSATIONS = 5
 CONVERSATION_LIMIT_CODE = "conversation_limit"
 CONVERSATION_LIMIT_MSG = (
-    f"Vous avez atteint la limite de {MAX_ACTIVE_CONVERSATIONS} conversations actives. "
-    "Passez au Premium pour discuter sans limite."
+    f"Vous avez atteint {MAX_ACTIVE_CONVERSATIONS} parcours de discussion. "
+    "Passez au Premium pour continuer le chemin vers le mariage sans limite."
 )
 CLOSE_REASONS = (
     "projets",
@@ -226,6 +241,12 @@ def _apply_conversation_gate(match: Match, initiator: Profile, recipient: Profil
 def _conversation_visible(match: Match, profile: Profile) -> bool:
     if match.conversation_status in {ConversationStatus.DECLINED, ConversationStatus.BLOCKED, ConversationStatus.CLOSED}:
         return False
+    from core.controllers import guided_intro_controller
+
+    if guided_intro_controller.needs_guided_intro(match) and not match.guided_intro_submitted:
+        opener = guided_intro_controller.opener_of(match)
+        if opener is None or profile.id != opener.id:
+            return False
     return True
 
 
@@ -296,7 +317,22 @@ def decline_conversation(profile: Profile, partner_id) -> tuple[bool, str]:
 
 
 def active_conversation_count(profile: Profile) -> int:
-    return Match.objects.filter(models_q_participant(profile), status=MatchStatus.ACTIVE, conversation_status=ConversationStatus.ACCEPTED).count()
+    from django.db.models import Q
+
+    from core.controllers import guided_intro_controller
+
+    guided_intro_controller.expire_stale_intros(limit=20)
+    return (
+        Match.objects.filter(
+            models_q_participant(profile),
+            status=MatchStatus.ACTIVE,
+            conversation_status=ConversationStatus.ACCEPTED,
+        )
+        .filter(Q(guided_intro_completed=True) | Q(messages__isnull=False))
+        .exclude(guided_intro_submitted=True, guided_intro_completed=False)
+        .distinct()
+        .count()
+    )
 
 
 def conversation_cap_for(profile: Profile | None) -> int | None:
@@ -444,6 +480,8 @@ def mark_ready_to_meet(profile: Profile, partner_id) -> tuple[bool, str, bool]:
         return False, "Conversation introuvable.", False
     if match.conversation_status != ConversationStatus.ACCEPTED:
         return False, "La discussion doit être acceptée.", False
+    if needs_guided_intro(match):
+        return False, "Terminez d’abord les questions de projet.", False
     if match.user_1_id == profile.id:
         match.user_1_ready = True
     else:
@@ -498,12 +536,16 @@ def ensure_conversation(profile: Profile, partner_id) -> tuple[bool, str, Match 
             "status": MatchStatus.ACTIVE,
             "is_one_sided": not they_liked,
             "conversation_status": ConversationStatus.ACCEPTED,
+            "conversation_initiator": profile,
         },
     )
     update_fields: list[str] = []
     if match.status != MatchStatus.ACTIVE:
         match.status = MatchStatus.ACTIVE
         update_fields.extend(["status", "updated_at"])
+    if not match.conversation_initiator_id:
+        match.conversation_initiator = profile
+        update_fields.extend(["conversation_initiator", "updated_at"])
     target_one_sided = not they_liked
     if match.is_one_sided != target_one_sided:
         match.is_one_sided = target_one_sided
@@ -542,6 +584,9 @@ def _messaging_denied(profile: Profile, partner: Profile) -> str:
 
 
 def list_conversations(profile: Profile, include_hidden: bool = False) -> list[dict]:
+    from core.controllers import guided_intro_controller
+
+    guided_intro_controller.expire_stale_intros(limit=30)
     hidden_ids = set(
         ConversationHide.objects.filter(user=profile).values_list("partner_id", flat=True)
     )
@@ -569,6 +614,21 @@ def list_conversations(profile: Profile, include_hidden: bool = False) -> list[d
         unread = m.messages.filter(is_read=False).exclude(sender=profile).count()
         flags = _block_flags(profile, partner)
         preview = _preview_text(last, profile)
+        from core.controllers import guided_intro_controller
+
+        guided_review = (
+            guided_intro_controller.needs_guided_intro(m)
+            and m.guided_intro_submitted
+            and guided_intro_controller.is_recipient(m, profile)
+        )
+        if m.guided_intro_submitted and not m.guided_intro_completed:
+            if guided_review:
+                preview = "Une intention à écouter"
+                unread = max(unread, 1)
+            else:
+                preview = "En attente de décision"
+        elif guided_intro_controller.needs_guided_intro(m) and not m.guided_intro_submitted:
+            preview = "Un vocal de 15 s pour vous présenter"
         if flags["blocked_by_me"]:
             preview = "Bloqué"
         results.append(
@@ -583,6 +643,7 @@ def list_conversations(profile: Profile, include_hidden: bool = False) -> list[d
                 "conversation_pending": m.conversation_status == ConversationStatus.PENDING,
                 "can_accept": m.conversation_status == ConversationStatus.PENDING
                 and _is_conversation_recipient(m, profile),
+                "guided_review_required": guided_review,
                 **flags,
             }
         )
@@ -698,6 +759,8 @@ def can_send_media(profile: Profile, match: Match) -> tuple[bool, str]:
         return False, err
     if not subscription_controller.can_send_media(profile):
         return False, "Photos et audio réservés aux membres Premium."
+    if needs_guided_intro(match):
+        return False, "Répondez d’abord aux questions de projet."
     return True, ""
 
 
@@ -730,10 +793,7 @@ def send_text(profile: Profile, partner_id, content: str) -> tuple[bool, str, Me
     if not content:
         return False, "Message vide.", None
     if needs_guided_intro(match):
-        if not is_guided_prompt(content, match):
-            return False, "Choisissez l'une des questions suggérées pour démarrer la conversation.", None
-        match.guided_intro_completed = True
-        match.save(update_fields=["guided_intro_completed", "updated_at"])
+        return False, "Répondez d’abord aux questions vocales de projet.", None
     banned = site_settings_controller.get("banned_words", []) or []
     lower = content.lower()
     if any(w and w.lower() in lower for w in banned):
@@ -749,6 +809,7 @@ def send_text(profile: Profile, partner_id, content: str) -> tuple[bool, str, Me
         is_flagged=bool(original),
     )
     _increment_count(match, profile)
+    _complete_guided_if_ready(match)
     _notify_new_message(profile, match, _message_preview(profile, masked))
     _broadcast_new_message(match, msg)
     return True, "Envoyé.", msg
@@ -930,6 +991,11 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
     match = get_active_match(profile, partner_id)
     if not match:
         return None
+    from core.controllers import guided_intro_controller
+
+    match = guided_intro_controller.expire_match_if_stale(match)
+    if not match:
+        return None
     if match.conversation_status not in {
         ConversationStatus.DECLINED,
         ConversationStatus.BLOCKED,
@@ -953,7 +1019,20 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
     can_accept = (
         match.conversation_status == ConversationStatus.PENDING and _is_conversation_recipient(match, profile)
     )
-    guided_required = needs_guided_intro(match) and not blocked and not pending_block and not denied
+    from core.controllers import guided_intro_controller
+
+    guided_ctx = guided_intro_controller.context_for(match, profile)
+    if blocked or pending_block or denied:
+        guided_ctx = {
+            **guided_ctx,
+            "guided_intro_required": False,
+            "guided_waiting": False,
+            "guided_review_required": False,
+            "guided_recording": False,
+            "guided_state": "open",
+            "guided_clips": [],
+        }
+    remaining = remaining_guided_prompts(match, profile) if guided_ctx["guided_intro_required"] else []
     return {
         "me": _person_card(profile),
         "partner": _person_card(partner),
@@ -974,8 +1053,10 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
         "partner_union": partner.get_union_type_display() if partner.union_type else "",
         "partner_children": partner.get_children_wish_display() if partner.children_wish else "",
         "partner_profile_id": str(partner.id),
-        "guided_intro_required": guided_required,
-        "guided_prompts": list(guided_intro_prompts(match)),
+        "guided_intro_required": guided_ctx["guided_intro_required"],
+        "guided_waiting": guided_ctx["guided_waiting"],
+        "guided_answer": False,
+        "guided_prompts": remaining if guided_ctx["guided_intro_required"] else list(guided_intro_prompts(match)),
         "daily_suggestion": daily_conversation_suggestion(profile),
         "active_conversations": active_conversation_count(profile),
         "conversation_cap": conversation_cap_for(profile),
@@ -990,6 +1071,7 @@ def thread_for(profile: Profile, partner_id) -> dict | None:
             ("autre", "Autre"),
             ("non_precise", "Je préfère ne pas préciser"),
         ],
+        **guided_ctx,
     }
 
 

@@ -4,9 +4,10 @@
 {% block body_class %}messages-page cdc-app{% if is_preview %} is-guest{% endif %}{% endblock %}
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260921lb1" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20261001lotB" defer></script>
 <script src="{% static 'js/message-datetime.js' %}?v=20260913tz1" defer></script>
 <script src="{% static 'js/messages-thread.js' %}?v=20260927th2" defer></script>
+<script src="{% static 'js/guided-intro.js' %}?v=20261001adj1" defer></script>
 {% if not is_preview %}
 <script src="{% static 'js/message-invite.js' %}?v=20260930msg2" defer></script>
 {% endif %}
@@ -76,7 +77,7 @@
         <em>{% if me.is_online %}En ligne{% else %}Hors ligne{% endif %}</em>
       </div>
       </div>
-      {% if conversation_accepted and not blocked_by_me and not blocked_me %}
+      {% if conversation_accepted and not blocked_by_me and not blocked_me and not guided_intro_required %}
       <div class="msg__pair-action" aria-label="Rencontre">
         {% if ready_both %}
         <a class="msg__cta msg__cta--compact" href="{% url 'public:conseils' %}#premier-rendez-vous">Conseils Tima</a>
@@ -141,6 +142,7 @@
             <img class="msg__photo" src="{{ item.image_url }}" alt="Photo" loading="lazy">
           </button>
           {% elif item.is_voice %}
+          {% if item.content %}<p class="msg__voice-q">{{ item.content }}</p>{% endif %}
           <div class="msg__voice-card" data-voice-player data-src="{{ item.voice_url }}" data-duration="{{ item.voice_duration }}">
             <button type="button" class="msg__voice-play" data-voice-play aria-label="Lire le vocal">
               <svg class="msg__voice-ico msg__voice-ico--play" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 5.5v13l11-6.5L8 5.5z"/></svg>
@@ -171,7 +173,17 @@
         </div>
       </article>
       {% empty %}
+      {% if guided_recording %}
+      <p class="msg__empty">Un vocal de 15 s suffit. Si le micro ne marche pas, vous pourrez écrire.</p>
+      {% elif guided_waiting %}
+      <p class="msg__empty">Votre intention est chez {{ partner.first_name }}. Vous pouvez revenir plus tard.</p>
+      {% elif guided_review_required %}
+      <p class="msg__empty">Écoutez cette intention, puis choisissez de continuer ou de passer.</p>
+      {% elif guided_intro_required %}
+      <p class="msg__empty">Commencez par dire pourquoi vous voulez écrire à {{ partner.first_name }}.</p>
+      {% else %}
       <p class="msg__empty">Dites bonjour, avec douceur.</p>
+      {% endif %}
       {% endfor %}
     </div>
 
@@ -203,24 +215,74 @@
     <div class="msg__composer msg__composer--disabled" aria-disabled="true">
       <p class="msg__composer-lock">{{ composer_lock_message|default:"Messagerie désactivée pour cette conversation." }}</p>
     </div>
-    {% else %}
-    {% if guided_intro_required and guided_prompts %}
-    {% if daily_suggestion %}
-    <p class="msg__daily-suggestion" role="note">{{ daily_suggestion }}</p>
-    {% endif %}
-    <form class="msg__composer msg__composer--guided" method="post" action="{% url 'app:discussion_detail' partner_id %}">
-      {% csrf_token %}
-      <div class="msg__guided" data-guided-intro>
-        <p class="msg__guided-lead">Pour démarrer respectueusement, choisissez une question :</p>
-        <div class="msg__guided-list">
-          {% for prompt in guided_prompts %}
-          <button type="submit" name="content" value="{{ prompt }}" class="msg__guided-btn">{{ prompt }}</button>
-          {% endfor %}
-        </div>
-        <button type="button" class="msg__guided-skip" data-guided-skip>Ignorer et écrire librement</button>
+    {% elif guided_intro_required %}
+    {% if guided_waiting %}
+    <div class="msg__composer msg__composer--guided">
+      <div class="msg__guided msg__guided-wait">
+        <p class="msg__guided-kicker">En attente</p>
+        <h2 class="msg__guided-title">{{ partner.first_name }} écoute votre intention</h2>
+        <p class="msg__guided-lead">La discussion s’ouvrira si {{ partner.first_name }} choisit de continuer. Sans réponse sous {{ guided_wait_hours|default:48 }} h, votre place se libère.</p>
+        <form method="post" action="{% url 'app:discussion_guided_review' partner_id %}">
+          {% csrf_token %}
+          <button type="submit" name="intent" value="withdraw" class="msg__guided-withdraw">Retirer ma demande</button>
+        </form>
       </div>
-    </form>
+    </div>
+    {% elif guided_review_required %}
+    <div class="msg__composer msg__composer--guided">
+      <div class="msg__guided">
+        <p class="msg__guided-kicker">Décision requise</p>
+        <h2 class="msg__guided-title">Prenez une décision pour continuer</h2>
+        <p class="msg__guided-lead">Écoutez cette intention, puis continuez ou passez. Fermer ne décide rien.</p>
+        <button type="button" class="msg__guided-reopen" data-guided-reopen>Réécouter l’intention</button>
+      </div>
+    </div>
+    {% else %}
+    <div
+      class="msg__composer msg__composer--guided"
+      data-guided-rec
+      data-upload-url="{% url 'app:discussion_guided_voice' partner_id %}"
+      data-max-seconds="{{ guided_max_seconds|default:15 }}"
+      data-text-max="{{ guided_text_max|default:400 }}"
+    >
+      <div class="msg__guided">
+        <p class="msg__guided-kicker">Votre intention</p>
+        <h2 class="msg__guided-title">{{ guided_headline }}</h2>
+        <p class="msg__guided-q">{{ guided_current_prompt }}</p>
+        <div class="msg__guided-rec">
+          <p class="msg__guided-time" data-guided-time>0:00 / 0:{{ guided_max_seconds|default:15 }}</p>
+          <button type="button" class="msg__guided-mic" data-guided-mic data-label-idle="Enregistrer (15 s max)" data-label-stop="Arrêter">
+            <svg class="msg__guided-ico" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 15.5a3.2 3.2 0 0 0 3.2-3.2V7.2a3.2 3.2 0 1 0-6.4 0v5.1A3.2 3.2 0 0 0 12 15.5z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6.4 12.4a5.6 5.6 0 0 0 11.2 0M12 18.2v2.2"/></svg>
+            <span data-guided-mic-label>Enregistrer (15 s max)</span>
+          </button>
+          <p class="msg__guided-status" data-guided-status hidden></p>
+          <div class="msg__guided-actions" data-guided-actions hidden>
+            <button type="button" class="msg__guided-redo" data-guided-redo>
+              <svg class="msg__guided-ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4.8 12a7.2 7.2 0 1 0 2-5.1M4.8 4.8v4.2h4.2"/></svg>
+              <span>Recommencer</span>
+            </button>
+            <button type="button" class="msg__guided-send" data-guided-send>
+              <svg class="msg__guided-ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M3.4 11.2 20.2 3.6c.7-.3 1.4.4 1.1 1.1L13.8 21.6c-.3.8-1.5.8-1.8 0l-2.6-7.2-7.2-2.6c-.8-.3-.8-1.5 0-1.8z"/></svg>
+              <span>Envoyer</span>
+            </button>
+          </div>
+          <button type="button" class="msg__guided-text-toggle" data-guided-text-toggle>Écrire un message à la place</button>
+          <div class="msg__guided-text" data-guided-text hidden>
+            <label class="msg__guided-answer">
+              <span class="visually-hidden">Votre intention par écrit</span>
+              <textarea data-guided-text-input rows="3" maxlength="{{ guided_text_max|default:400 }}" placeholder="Écrivez au moins 20 caractères si le micro ne fonctionne pas."></textarea>
+            </label>
+            <p class="msg__guided-text-count" data-guided-text-count>0 / {{ guided_text_max|default:400 }}</p>
+            <button type="button" class="msg__guided-send msg__guided-send--text" data-guided-text-send>
+              <svg class="msg__guided-ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M3.4 11.2 20.2 3.6c.7-.3 1.4.4 1.1 1.1L13.8 21.6c-.3.8-1.5.8-1.8 0l-2.6-7.2-7.2-2.6c-.8-.3-.8-1.5 0-1.8z"/></svg>
+              <span>Envoyer le texte</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     {% endif %}
+    {% else %}
     <form class="msg__composer" method="post" action="{% url 'app:discussion_detail' partner_id %}" data-partner-id="{{ partner_id }}" data-skip-intro-url="{% url 'app:discussion_skip_guided' partner_id %}" data-media-url="{% url 'app:discussion_media' partner_id %}" data-text-enabled="{% if app_features.text_messages_enabled %}1{% else %}0{% endif %}">
       {% csrf_token %}
       <div class="msg__record" data-msg-record hidden>
@@ -271,6 +333,9 @@
   </div>
 </div>
 {% include "partials/message_report_modal.html" %}
+{% if guided_review_required %}
+{% include "partials/guided_review_modal.html" %}
+{% endif %}
 {% include "partials/message_delete_modal.html" %}
 {% if conversation_accepted and not blocked_by_me and not blocked_me %}
 <div class="msg-report" id="msg-close-modal" hidden>

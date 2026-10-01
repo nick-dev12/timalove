@@ -287,7 +287,7 @@
       if (document.body.classList.contains("is-guest")) return;
       if (
         event.target.closest(
-          "[data-msg-open], [data-msg-like-required], [data-swipe], [data-match-score], [data-likes-pass], [data-likes-super], [data-likes-back], .history__actions, .likes__card-actions, .likes__card-bar, .curated-card__actions"
+          "[data-msg-open], [data-msg-like-required], [data-swipe], [data-match-score], [data-likes-pass], [data-likes-super], [data-likes-back], [data-voice-intro], .history__actions, .likes__card-actions, .likes__card-bar, .curated-card__actions"
         )
       ) {
         return;

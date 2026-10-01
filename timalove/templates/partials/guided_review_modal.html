@@ -1,0 +1,37 @@
+<div
+  class="guided-review"
+  id="guided-review-modal"
+  {% if not guided_review_required %}hidden{% endif %}
+  data-auto-open="{% if guided_review_required %}1{% else %}0{% endif %}"
+>
+  <div class="guided-review__backdrop" aria-hidden="true"></div>
+  <div class="guided-review__card" role="dialog" aria-modal="true" aria-labelledby="guided-review-title">
+    <button type="button" class="guided-review__close" data-guided-close aria-label="Fermer">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+    </button>
+    <p class="guided-review__kicker">Avant de discuter</p>
+    <h2 class="guided-review__title" id="guided-review-title" tabindex="-1">{{ partner.first_name }} souhaite vous écrire</h2>
+    <p class="guided-review__lead">Écoutez cette intention, puis décidez. Fermer ne clôture rien : vous pourrez revenir plus tard.</p>
+    {% for clip in guided_clips %}
+    <article class="guided-review__clip">
+      <p class="guided-review__step">Intention</p>
+      <p class="guided-review__q">{{ clip.question }}</p>
+      {% if clip.is_text %}
+      <p class="guided-review__text">{{ clip.answer_text }}</p>
+      {% else %}
+      {% include "partials/voice_intro_player.html" with url=clip.voice_url duration=clip.duration label=clip.voice_label first_name=clip.sender_name compact=1 %}
+      {% endif %}
+    </article>
+    {% endfor %}
+    <p class="guided-review__error" data-guided-review-error hidden></p>
+    <div class="guided-review__safety">
+      <button type="button" data-msg-report-open>Signaler</button>
+      <button type="button" data-guided-block>Bloquer</button>
+    </div>
+    <form class="guided-review__actions" method="post" action="{% url 'app:discussion_guided_review' partner_id %}" data-guided-review-form>
+      {% csrf_token %}
+      <button type="submit" name="intent" value="reject" class="guided-review__btn guided-review__btn--reject" data-guided-reject>Pas cette fois</button>
+      <button type="submit" name="intent" value="accept" class="guided-review__btn guided-review__btn--accept" data-guided-accept>Continuer la discussion</button>
+    </form>
+  </div>
+</div>

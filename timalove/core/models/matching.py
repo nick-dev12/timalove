@@ -57,9 +57,13 @@ class Match(models.Model):
     user_2_message_count = models.PositiveIntegerField(default=0)
     scheduled_date = models.DateTimeField(blank=True, null=True)
     meet_link = models.TextField(blank=True, null=True)
+    guided_intro_submitted = models.BooleanField(
+        default=False,
+        help_text="L’intention vocale (ou écrite) a été envoyée au destinataire.",
+    )
     guided_intro_completed = models.BooleanField(
         default=False,
-        help_text="Premier message guidé envoyé dans la conversation.",
+        help_text="Le destinataire a accepté de poursuivre la discussion.",
     )
     close_reason = models.CharField(max_length=40, blank=True, default="")
     user_1_ready = models.BooleanField(default=False)
@@ -111,6 +115,33 @@ class Message(models.Model):
 
     def __str__(self) -> str:
         return f"Msg {self.id} ({self.message_type})"
+
+
+class GuidedIntroClip(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name="guided_clips")
+    sender = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="guided_intro_clips")
+    step = models.PositiveSmallIntegerField()
+    question = models.CharField(max_length=280)
+    voice_url = models.TextField(blank=True, default="")
+    answer_text = models.TextField(blank=True, default="")
+    duration_seconds = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["match", "sender", "step"],
+                name="unique_guided_clip_step",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["match", "step"]),
+        ]
+        ordering = ["step", "created_at"]
+
+    def __str__(self) -> str:
+        return f"Guided clip {self.step} ({self.match_id})"
 
 
 class ConversationHide(models.Model):
