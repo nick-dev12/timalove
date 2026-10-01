@@ -222,8 +222,40 @@
 
     root.querySelectorAll("[data-interest], [data-trait], [data-value], [data-looking]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const on = btn.classList.toggle("is-on");
-        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        const group = btn.hasAttribute("data-trait")
+          ? { attr: "data-trait", max: 3, min: 1, msg: "3 traits de caractère maximum. Conservez au moins 1." }
+          : btn.hasAttribute("data-value")
+            ? { attr: "data-value", max: 3, min: 0, msg: "3 valeurs maximum." }
+            : btn.hasAttribute("data-looking")
+              ? { attr: "data-looking", max: 4, min: 0, msg: "4 qualités recherchées maximum." }
+              : { attr: "data-interest", max: 4, min: 0, msg: "4 centres d’intérêt maximum." };
+        const on = btn.classList.contains("is-on");
+        if (!on) {
+          const count = [...root.querySelectorAll("[" + group.attr + "]")].filter((b) =>
+            b.classList.contains("is-on")
+          ).length;
+          if (count >= group.max) {
+            const key = btn.hasAttribute("data-trait")
+              ? "traits"
+              : btn.hasAttribute("data-value")
+                ? "values"
+                : btn.hasAttribute("data-looking")
+                  ? "looking"
+                  : "";
+            if (key) setMsg(key, group.msg, true);
+            return;
+          }
+        } else if (group.min > 0) {
+          const count = [...root.querySelectorAll("[" + group.attr + "]")].filter((b) =>
+            b.classList.contains("is-on")
+          ).length;
+          if (count <= group.min) {
+            setMsg("traits", "Choisissez au moins un trait de caractère.", true);
+            return;
+          }
+        }
+        const next = btn.classList.toggle("is-on");
+        btn.setAttribute("aria-pressed", next ? "true" : "false");
       });
     });
     root.querySelectorAll("[data-intent]").forEach((btn) => {
@@ -238,6 +270,17 @@
         .filter((b) => b.classList.contains("is-on"))
         .map((b) => b.getAttribute(attr));
     }
+
+    function capOnPills(selector, max) {
+      const on = [...root.querySelectorAll(selector)].filter((b) => b.classList.contains("is-on"));
+      on.slice(max).forEach((btn) => {
+        btn.classList.remove("is-on");
+        btn.setAttribute("aria-pressed", "false");
+      });
+    }
+    capOnPills("[data-trait]", 3);
+    capOnPills("[data-value]", 3);
+    capOnPills("[data-looking]", 4);
 
     const profileForm = root.querySelector("[data-profile-form]");
     const filtersForm = root.querySelector("[data-filters-form]");
@@ -292,21 +335,28 @@
     }
 
     async function saveTraits() {
+      const traits = selected("[data-trait]", "data-trait");
+      if (!traits.length) throw new Error("Choisissez au moins un trait de caractère.");
+      if (traits.length > 3) throw new Error("Maximum 3 traits de caractère.");
       await postJSON("/api/profile/update/", {
         interests: [],
-        personality_traits: selected("[data-trait]", "data-trait"),
+        personality_traits: traits,
       });
     }
 
     async function saveValues() {
+      const values = selected("[data-value]", "data-value");
+      if (values.length > 3) throw new Error("Maximum 3 valeurs.");
       await postJSON("/api/profile/update/", {
-        life_values: selected("[data-value]", "data-value"),
+        life_values: values,
       });
     }
 
     async function saveLooking() {
+      const looking = selected("[data-looking]", "data-looking");
+      if (looking.length > 4) throw new Error("Maximum 4 qualités recherchées.");
       await postJSON("/api/profile/update/", {
-        looking_for: selected("[data-looking]", "data-looking"),
+        looking_for: looking,
         relationship_intent: root.querySelector("[data-intents] .is-on")?.getAttribute("data-intent") || "",
       });
     }

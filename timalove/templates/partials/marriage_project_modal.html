@@ -1,0 +1,63 @@
+{% if needs_marriage_project %}
+<div id="projet-prompt-modal" class="projet-prompt" hidden>
+  <div class="projet-prompt__stage">
+    <div class="projet-prompt__backdrop" aria-hidden="true"></div>
+    <div
+      class="projet-prompt__dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="projet-prompt-title"
+    >
+      <p class="projet-prompt__kicker">On se marie quand au juste ?</p>
+      <h2 id="projet-prompt-title">Pour continuer, veuillez remplir votre projet</h2>
+      <p class="projet-prompt__lead">
+        Ces réponses alignent vos rencontres avec votre horizon matrimonial. Elles sont indispensables pour avancer.
+      </p>
+      <form class="projet-prompt__form" data-projet-prompt-form novalidate>
+        <fieldset class="projet-prompt__set">
+          <legend>Délai</legend>
+          <div class="cdc-choice" data-choice="marriage_timeline">
+            {% for value, label in marriage_prompt_choices.marriage_timeline %}
+            <button type="button" class="cdc-choice__item{% if marriage_prompt_values.marriage_timeline == value %} is-on{% endif %}" data-field-set="marriage_timeline" data-value="{{ value }}">{{ label }}</button>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <fieldset class="projet-prompt__set">
+          <legend>Union</legend>
+          <div class="cdc-choice" data-choice="union_type">
+            {% for value, label in marriage_prompt_choices.union_type %}
+            <button type="button" class="cdc-choice__item{% if marriage_prompt_values.union_type == value %} is-on{% endif %}" data-field-set="union_type" data-value="{{ value }}">{{ label }}</button>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <fieldset class="projet-prompt__set">
+          <legend>Enfants</legend>
+          <div class="cdc-choice" data-choice="children_wish">
+            {% for value, label in marriage_prompt_choices.children_wish %}
+            <button type="button" class="cdc-choice__item{% if marriage_prompt_values.children_wish == value %} is-on{% endif %}" data-field-set="children_wish" data-value="{{ value }}">{{ label }}</button>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <fieldset class="projet-prompt__set">
+          <legend>Religion du partenaire</legend>
+          <div class="cdc-choice" data-choice="partner_religion_importance">
+            {% for value, label in marriage_prompt_choices.partner_religion_importance %}
+            <button type="button" class="cdc-choice__item{% if marriage_prompt_values.partner_religion_importance == value %} is-on{% endif %}" data-field-set="partner_religion_importance" data-value="{{ value }}">{{ label }}</button>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <fieldset class="projet-prompt__set">
+          <legend>Lieu de rencontre</legend>
+          <div class="cdc-choice" data-choice="meet_place">
+            {% for value, label in marriage_prompt_choices.meet_place %}
+            <button type="button" class="cdc-choice__item{% if marriage_prompt_values.meet_place == value %} is-on{% endif %}" data-field-set="meet_place" data-value="{{ value }}">{{ label }}</button>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <p class="form-error projet-prompt__error" data-projet-prompt-error hidden></p>
+        <button type="submit" class="btn btn-primary projet-prompt__save" data-projet-prompt-save>Enregistrer</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}

@@ -193,6 +193,8 @@ def discussion_detail(request, partner_id):
         thread = message_controller.thread_for(profile, partner_id)
         if not thread:
             return redirect("public:messages")
+    if thread.get("guided_state") == "hidden":
+        return redirect("public:messages")
     message_controller.mark_read(profile, partner_id)
     notification_controller.mark_read_for_context(profile, "messages", partner_id=partner_id)
     inbox_back = len(message_controller.list_conversations(profile)) > 1
@@ -223,7 +225,21 @@ def discussion_detail(request, partner_id):
         "close_reasons": thread.get("close_reasons", []),
         "partner_profile_id": thread.get("partner_profile_id", partner_id),
         "guided_intro_required": thread.get("guided_intro_required", False),
+        "guided_waiting": thread.get("guided_waiting", False),
+        "guided_answer": thread.get("guided_answer", False),
         "guided_prompts": thread.get("guided_prompts", []),
+        "guided_state": thread.get("guided_state", "open"),
+        "guided_recording": thread.get("guided_recording", False),
+        "guided_review_required": thread.get("guided_review_required", False),
+        "guided_step": thread.get("guided_step", 1),
+        "guided_step_total": thread.get("guided_step_total", 1),
+        "guided_current_prompt": thread.get("guided_current_prompt", ""),
+        "guided_headline": thread.get("guided_headline", ""),
+        "guided_partner_name": thread.get("guided_partner_name", ""),
+        "guided_clips": thread.get("guided_clips", []),
+        "guided_max_seconds": thread.get("guided_max_seconds", 15),
+        "guided_text_max": thread.get("guided_text_max", 400),
+        "guided_wait_hours": thread.get("guided_wait_hours", 48),
         "daily_suggestion": thread.get("daily_suggestion", ""),
         "report_reasons": ReportReason.choices,
     }
@@ -239,6 +255,65 @@ def discussion_skip_guided(request, partner_id):
         return JsonResponse({"ok": ok, "message": msg}, status=200 if ok else 400)
     if not ok:
         messages.error(request, msg)
+    return redirect("app:discussion_detail", partner_id=partner_id)
+
+
+@login_required
+@require_POST
+def discussion_guided_voice(request, partner_id):
+    from core.controllers import guided_intro_controller
+
+    try:
+        duration = int(request.POST.get("duration") or 0)
+    except (TypeError, ValueError):
+        duration = 0
+    if request.FILES.get("file"):
+        ok, msg, payload = guided_intro_controller.submit_clip(
+            _profile(request),
+            partner_id,
+            request.FILES.get("file"),
+            duration,
+        )
+    else:
+        ok, msg, payload = guided_intro_controller.submit_text(
+            _profile(request),
+            partner_id,
+            request.POST.get("content", ""),
+        )
+    status = 200 if ok else 400
+    data = {"ok": ok, "message": msg, **(payload or {})}
+    return JsonResponse(data, status=status)
+
+
+@login_required
+@require_POST
+def discussion_guided_review(request, partner_id):
+    from core.controllers import guided_intro_controller
+
+    profile = _profile(request)
+    intent = (request.POST.get("intent") or "").strip().lower()
+    if intent == "accept":
+        ok, msg = guided_intro_controller.accept_intro(profile, partner_id)
+        redirect_to = f"/discussions/{partner_id}/"
+    elif intent == "reject":
+        ok, msg = guided_intro_controller.reject_intro(profile, partner_id)
+        redirect_to = "/messages/"
+    elif intent == "block":
+        ok, msg = guided_intro_controller.block_intro(profile, partner_id)
+        redirect_to = "/messages/"
+    elif intent == "withdraw":
+        ok, msg = guided_intro_controller.withdraw_intro(profile, partner_id)
+        redirect_to = "/messages/"
+    else:
+        ok, msg, redirect_to = False, "Action invalide.", f"/discussions/{partner_id}/"
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"ok": ok, "message": msg, "redirect": redirect_to}, status=200 if ok else 400)
+    if not ok:
+        messages.error(request, msg)
+        return redirect("app:discussion_detail", partner_id=partner_id)
+    messages.success(request, msg)
+    if intent in {"reject", "block", "withdraw"}:
+        return redirect("public:messages")
     return redirect("app:discussion_detail", partner_id=partner_id)
 
 
@@ -274,16 +349,20 @@ def discussion_media(request, partner_id):
 def profil(request):
     profile = profile_controller.get_own(_profile(request))
     if request.method == "POST" and request.POST.get("form") == "projet":
-        profile_controller.update_profile(
-            profile,
-            {
-                "marriage_timeline": request.POST.get("marriage_timeline"),
-                "union_type": request.POST.get("union_type"),
-                "children_wish": request.POST.get("children_wish"),
-                "partner_religion_importance": request.POST.get("partner_religion_importance"),
-                "meet_place": request.POST.get("meet_place"),
-            },
-        )
+        try:
+            profile_controller.update_profile(
+                profile,
+                {
+                    "marriage_timeline": request.POST.get("marriage_timeline"),
+                    "union_type": request.POST.get("union_type"),
+                    "children_wish": request.POST.get("children_wish"),
+                    "partner_religion_importance": request.POST.get("partner_religion_importance"),
+                    "meet_place": request.POST.get("meet_place"),
+                },
+            )
+        except profile_controller.ProfileUpdateError as exc:
+            messages.error(request, str(exc))
+            return redirect("app:profil")
         messages.success(request, "Projet de mariage enregistré.")
         return redirect("app:profil")
     if request.method == "POST":

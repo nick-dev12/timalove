@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models import Q
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
@@ -592,6 +593,52 @@ class CuratedExplorerTests(TestCase):
         html = page.content.decode()
         self.assertIn("explorer-swipe.js", html)
         self.assertIn("explorer-curated.js", html)
+
+    def test_explorer_card_shows_reasons_not_pass_or_star(self):
+        from core.models.choices import RelationshipIntent, Religion
+
+        self.viewer.religion = Religion.MUSULMANE
+        self.viewer.relationship_intent = RelationshipIntent.MARIAGE
+        self.viewer.save(update_fields=["religion", "relationship_intent", "updated_at"])
+        self.a.religion = Religion.MUSULMANE
+        self.a.relationship_intent = RelationshipIntent.MARIAGE
+        self.a.save(update_fields=["religion", "relationship_intent", "updated_at"])
+        self.assertTrue(self.client.login(username=self.viewer.user.username, password="Ludvanne12"))
+        page = self.client.get("/explorer/")
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        self.assertIn("Pourquoi ce profil", html)
+        self.assertIn("Exprimer mon intérêt", html)
+        self.assertNotIn("data-swipe=\"pass\"", html)
+        self.assertNotIn("data-swipe=\"super_like\"", html)
+        self.assertNotIn("attentions", html)
+
+    def test_online_label_shown_on_curated_card(self):
+        from core.controllers import explore_controller, presence_controller
+
+        presence_controller.mark_socket_connected(self.a.id)
+        self.assertTrue(self.client.login(username=self.viewer.user.username, password="Ludvanne12"))
+        session = self.client.session
+        session[explore_controller.SESSION_CURATED_IDS_KEY] = [str(self.a.id)]
+        session[explore_controller.SESSION_CURATED_TARGET_KEY] = 1
+        session.save()
+        page = self.client.get("/explorer/")
+        html = page.content.decode()
+        self.assertIn("curated-card__live", html)
+        self.assertIn("En ligne", html)
+        self.assertIn("curated-card__online", html)
+
+    def test_explorer_card_shows_listen_when_voice_intro(self):
+        self.a.voice_intro_url = "/media/voice-intros/awa-demo.wav"
+        self.a.voice_intro_duration_seconds = 8
+        self.a.save(update_fields=["voice_intro_url", "voice_intro_duration_seconds", "updated_at"])
+        self.assertTrue(self.client.login(username=self.viewer.user.username, password="Ludvanne12"))
+        page = self.client.get("/explorer/")
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        self.assertIn("Écouter", html)
+        self.assertIn("data-voice-intro", html)
+        self.assertIn("/media/voice-intros/awa-demo.wav", html)
 
     def test_like_then_replace_removes_liked_profile(self):
         from core.controllers import explore_controller, swipe_controller
@@ -1503,8 +1550,9 @@ class SearchFeatureFlagsTests(TestCase):
         from core.controllers import app_config_controller
 
         flags = app_config_controller.feature_flags()
-        self.assertTrue(flags["explorer_search_enabled"])
-        self.assertTrue(flags["history_search_enabled"])
+        self.assertTrue(flags["explorer_curated_mode"])
+        self.assertFalse(flags["explorer_search_enabled"])
+        self.assertFalse(flags["history_search_enabled"])
         self.assertTrue(flags["messages_search_enabled"])
 
     def test_admin_can_disable_search_bars(self):
@@ -1527,19 +1575,20 @@ class SearchFeatureFlagsTests(TestCase):
             }
         )
         flags = app_config_controller.feature_flags()
-        self.assertTrue(flags["explorer_search_enabled"])
-        self.assertTrue(flags["history_search_enabled"])
+        self.assertFalse(flags["explorer_search_enabled"])
+        self.assertFalse(flags["history_search_enabled"])
         self.assertTrue(flags["messages_search_enabled"])
 
-    def test_explorer_renders_search_bar(self):
+    def test_explorer_hides_search_and_pass_in_curated_mode(self):
         profile = make_profile("searchbar@test.com", Gender.FEMALE, "Aicha")
         profile.onboarding_completed = True
         profile.save(update_fields=["onboarding_completed"])
         self.client.force_login(profile.user)
-        r = self.client.get("/explorer/")
+        r = self.client.get("/explorer/", HTTP_USER_AGENT="Mozilla/5.0")
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "data-explorer-search")
-        self.assertContains(r, "Rechercher un profil")
+        self.assertContains(r, "curated-list")
+        self.assertNotContains(r, "data-explorer-search")
+        self.assertNotContains(r, "Passer ce profil")
 
 
 class LoginRedirectTests(TestCase):
@@ -2334,4 +2383,396 @@ class AccountDeletionReregistrationTests(TestCase):
         )
         self.assertTrue(ok, msg)
         self.assertIsNotNone(profile)
+
+
+class VoiceIntroTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        self.client = Client()
+        self.owner = make_profile("voice.owner@gmail.com", Gender.FEMALE, "Awa")
+        self.viewer = make_profile("voice.viewer@gmail.com", Gender.MALE, "Amadou")
+        self.owner.user.set_password("Ludvanne12")
+        self.owner.user.save()
+        self.viewer.user.set_password("Ludvanne12")
+        self.viewer.user.save()
+
+    def _wav(self, seconds=1):
+        import io
+        import wave
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(8000)
+            wf.writeframes(b"\x00\x00" * (8000 * seconds))
+        return SimpleUploadedFile("intro.wav", buf.getvalue(), content_type="audio/wav")
+
+    def test_save_and_delete_voice_intro(self):
+        import tempfile
+        from pathlib import Path
+
+        from django.test import override_settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with override_settings(MEDIA_ROOT=tmp, MEDIA_URL="/media/"):
+                self.assertTrue(self.client.login(username=self.owner.user.username, password="Ludvanne12"))
+                posted = self.client.post(
+                    "/api/profile/voice/",
+                    {"duration": "8", "file": self._wav()},
+                )
+                self.assertEqual(posted.status_code, 200, posted.content)
+                payload = posted.json()
+                self.assertTrue(payload["ok"])
+                self.assertTrue(payload["has_voice_intro"])
+                self.assertEqual(payload["voice_intro_duration"], 8)
+                self.owner.refresh_from_db()
+                self.assertTrue(self.owner.voice_intro_url)
+                stored = Path(tmp) / "voice-intros"
+                self.assertTrue(any(stored.iterdir()))
+
+                deleted = self.client.post("/api/profile/voice/delete/")
+                self.assertEqual(deleted.status_code, 200)
+                self.assertFalse(deleted.json()["has_voice_intro"])
+                self.owner.refresh_from_db()
+                self.assertFalse(self.owner.voice_intro_url)
+
+    def test_rejects_voice_longer_than_30_seconds(self):
+        import tempfile
+
+        from django.test import override_settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with override_settings(MEDIA_ROOT=tmp, MEDIA_URL="/media/"):
+                self.assertTrue(self.client.login(username=self.owner.user.username, password="Ludvanne12"))
+                posted = self.client.post(
+                    "/api/profile/voice/",
+                    {"duration": "31", "file": self._wav()},
+                )
+                self.assertEqual(posted.status_code, 400)
+                self.assertIn("30", posted.json()["message"])
+                self.owner.refresh_from_db()
+                self.assertFalse(self.owner.voice_intro_url)
+
+    def test_public_profile_and_report_include_voice(self):
+        from core.controllers import explore_controller, moderation_controller
+        from core.models import Report
+
+        self.owner.voice_intro_url = "/media/voice-intros/awa-demo.wav"
+        self.owner.voice_intro_duration_seconds = 8
+        self.owner.photo_url = "https://example.com/awa.webp"
+        self.owner.onboarding_completed = True
+        self.owner.save(
+            update_fields=[
+                "voice_intro_url",
+                "voice_intro_duration_seconds",
+                "photo_url",
+                "onboarding_completed",
+                "updated_at",
+            ]
+        )
+        card = explore_controller.serialize_card(self.owner, viewer=self.viewer)
+        self.assertTrue(card["has_voice_intro"])
+        self.assertEqual(card["voice_intro_duration"], 8)
+        public = explore_controller.get_public_profile(self.owner.id, viewer=self.viewer)
+        self.assertTrue(public["has_voice_intro"])
+
+        report = moderation_controller.create_report(
+            self.viewer,
+            {
+                "reported_profile_id": str(self.owner.id),
+                "reason": "inappropriate_voice",
+                "report_kind": "voice",
+                "message": "Présentation vocale inappropriée pour TimaLove.",
+            },
+        )
+        self.assertEqual(report.report_kind, "voice")
+        self.assertEqual(Report.objects.filter(report_kind="voice").count(), 1)
+
+    def test_apple_review_feed_pins_awa_voice(self):
+        from core.controllers import explore_controller
+
+        reviewer = make_profile("apple.review@timalove.local", Gender.MALE, "Amadou")
+        awa = make_profile("awa.demo@timalove.local", Gender.FEMALE, "Awa")
+        other = make_profile("other.demo@timalove.local", Gender.FEMALE, "Other")
+        awa.voice_intro_url = "/media/voice-intros/awa-demo.wav"
+        awa.voice_intro_duration_seconds = 8
+        awa.save(update_fields=["voice_intro_url", "voice_intro_duration_seconds", "updated_at"])
+        pinned = explore_controller._pin_review_voice_intro(reviewer, [other.pk])
+        self.assertEqual(pinned[0], awa.pk)
+        self.assertIn(other.pk, pinned)
+
+
+class GuidedIntroTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        from core.controllers import app_config_controller
+
+        cfg = app_config_controller.get_app_config()
+        cfg["guided_messages_enabled"] = True
+        app_config_controller.save_app_config(cfg)
+        self.client = Client(enforce_csrf_checks=False)
+        self.p1 = make_profile("guided1@gmail.com", Gender.MALE, "Amadou")
+        self.p2 = make_profile("guided2@gmail.com", Gender.FEMALE, "Fatou")
+        for profile in (self.p1, self.p2):
+            profile.onboarding_completed = True
+            profile.save(update_fields=["onboarding_completed", "updated_at"])
+        self.p1.user.set_password("Ludvanne12")
+        self.p1.user.save()
+        self.p2.user.set_password("Ludvanne12")
+        self.p2.user.save()
+        swipe_controller.record_swipe(self.p1, self.p2.id, "like")
+        swipe_controller.record_swipe(self.p2, self.p1.id, "like")
+
+    def _voice_upload(self):
+        data_size = 240
+        payload = (
+            b"RIFF"
+            + (36 + data_size).to_bytes(4, "little")
+            + b"WAVE"
+            + b"fmt "
+            + (16).to_bytes(4, "little")
+            + (1).to_bytes(2, "little")
+            + (1).to_bytes(2, "little")
+            + (8000).to_bytes(4, "little")
+            + (8000).to_bytes(4, "little")
+            + (1).to_bytes(2, "little")
+            + (8).to_bytes(2, "little")
+            + b"data"
+            + data_size.to_bytes(4, "little")
+            + b"\x80" * data_size
+        )
+        return SimpleUploadedFile("guided.wav", payload, content_type="audio/wav")
+
+    def _record_one(self, duration=8):
+        from core.controllers import guided_intro_controller
+
+        ok, msg, payload = guided_intro_controller.submit_clip(
+            self.p1, self.p2.id, self._voice_upload(), duration
+        )
+        self.assertTrue(ok, msg)
+        return payload
+
+    def test_free_text_rejected_until_guided_prompt(self):
+        ok, msg, _ = message_controller.send_text(self.p1, self.p2.id, "Salut ça va")
+        self.assertFalse(ok)
+        self.assertIn("questions", msg.lower())
+
+    def test_one_voice_then_recipient_gate(self):
+        from core.controllers import guided_intro_controller
+        from core.models import Match, Swipe
+
+        payload = self._record_one()
+        self.assertTrue(payload.get("done"))
+        match = message_controller.get_active_match(self.p1, self.p2.id)
+        match.refresh_from_db()
+        self.assertTrue(match.guided_intro_submitted)
+        self.assertFalse(match.guided_intro_completed)
+        self.assertEqual(message_controller.active_conversation_count(self.p1), 0)
+
+        ok_wait, msg_wait, _ = message_controller.send_text(self.p1, self.p2.id, "Et toi ?")
+        self.assertFalse(ok_wait)
+
+        inbox_p2 = message_controller.list_conversations(self.p2)
+        self.assertTrue(inbox_p2)
+        self.assertTrue(inbox_p2[0]["guided_review_required"])
+        self.assertIn("intention", inbox_p2[0]["preview"].lower())
+
+        inbox_p1 = message_controller.list_conversations(self.p1)
+        self.assertEqual(inbox_p1[0]["preview"], "En attente de décision")
+
+        ok_accept, _ = guided_intro_controller.accept_intro(self.p2, self.p1.id)
+        self.assertTrue(ok_accept)
+        match.refresh_from_db()
+        self.assertTrue(match.guided_intro_completed)
+        self.assertEqual(message_controller.active_conversation_count(self.p1), 1)
+        ok_free, _, _ = message_controller.send_text(self.p1, self.p2.id, "Merci pour votre sincérité.")
+        self.assertTrue(ok_free)
+        self.assertTrue(Match.objects.filter(pk=match.pk).exists())
+        self.assertTrue(Swipe.objects.filter(swiper=self.p1, swiped=self.p2).exists())
+
+    def test_text_fallback_opens_review(self):
+        from core.controllers import guided_intro_controller
+
+        ok, msg, payload = guided_intro_controller.submit_text(
+            self.p1,
+            self.p2.id,
+            "Chez Fatou, c’est le sérieux du projet de couple et la clarté de ses valeurs.",
+        )
+        self.assertTrue(ok, msg)
+        self.assertTrue(payload.get("done"))
+        match = message_controller.get_active_match(self.p1, self.p2.id)
+        self.assertTrue(match.guided_intro_submitted)
+        clip = match.guided_clips.first()
+        self.assertTrue(clip.answer_text)
+        self.assertFalse(clip.voice_url)
+
+    def test_reject_restores_discover(self):
+        from core.controllers import guided_intro_controller
+        from core.models import Match, Notification, Swipe
+
+        self._record_one()
+        ok, msg = guided_intro_controller.reject_intro(self.p2, self.p1.id)
+        self.assertTrue(ok, msg)
+        self.assertFalse(Match.objects.filter(user_1=self.p1, user_2=self.p2).exists())
+        self.assertFalse(Match.objects.filter(user_1=self.p2, user_2=self.p1).exists())
+        self.assertFalse(Swipe.objects.filter(swiper=self.p1, swiped=self.p2).exists())
+        notice = Notification.objects.filter(user=self.p1, title="Discussion refusée").first()
+        self.assertIsNotNone(notice)
+        self.assertIn("retenter", notice.message.lower())
+        hidden = swipe_controller.excluded_swiped_ids(self.p1)
+        self.assertNotIn(self.p2.id, hidden)
+
+    def test_withdraw_and_timeout_free_slot(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from core.controllers import guided_intro_controller
+        from core.models import Match, Swipe
+
+        self._record_one()
+        ok, msg = guided_intro_controller.withdraw_intro(self.p1, self.p2.id)
+        self.assertTrue(ok, msg)
+        self.assertFalse(Match.objects.filter(user_1=self.p1, user_2=self.p2).exists())
+        self.assertTrue(Swipe.objects.filter(swiper=self.p1, swiped=self.p2).exists())
+
+        self._record_one()
+        match = message_controller.get_active_match(self.p1, self.p2.id)
+        Match.objects.filter(pk=match.pk).update(updated_at=timezone.now() - timedelta(hours=49))
+        expired = guided_intro_controller.expire_stale_intros()
+        self.assertEqual(expired, 1)
+        self.assertFalse(Match.objects.filter(pk=match.pk).exists())
+        self.assertFalse(Swipe.objects.filter(swiper=self.p1, swiped=self.p2).exists())
+
+    def test_skip_refused_and_ready_blocked(self):
+        ok, msg = message_controller.skip_guided_intro(self.p1, self.p2.id)
+        self.assertFalse(ok)
+        self.assertIn("nécessaires", msg)
+        ok_ready, ready_msg, _ = message_controller.mark_ready_to_meet(self.p1, self.p2.id)
+        self.assertFalse(ok_ready)
+        self.assertIn("questions de projet", ready_msg)
+
+    def test_thread_shows_questions_not_skip_or_composer(self):
+        self.assertTrue(self.client.login(username=self.p1.user.username, password="Ludvanne12"))
+        page = self.client.get("/discussions/%s/" % self.p2.id)
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Pourquoi voulez-vous écrire")
+        self.assertContains(page, "Enregistrer (15 s max)")
+        self.assertContains(page, "Écrire un message à la place")
+        self.assertNotContains(page, "Ignorer et écrire librement")
+        self.assertNotContains(page, "Je suis prêt(e) à rencontrer cette personne")
+        self.assertContains(page, "Un vocal de 15 s suffit")
+
+    def test_recipient_modal_after_submit(self):
+        self._record_one()
+        self.assertTrue(self.client.login(username=self.p2.user.username, password="Ludvanne12"))
+        page = self.client.get("/discussions/%s/" % self.p1.id)
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "guided-review-modal")
+        self.assertContains(page, "Continuer la discussion")
+        self.assertContains(page, "Pas cette fois")
+        self.assertContains(page, "Signaler")
+        self.assertContains(page, "Bloquer")
+
+
+class ProfileGuideCapsTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        self.profile = make_profile("guides@test.com", Gender.FEMALE, "Awa")
+
+    def test_trim_excess_traits_values_looking(self):
+        from core.controllers.profile_controller import trim_guide_fields
+        from core.data.onboarding import looking_for_ids
+
+        self.profile.personality_traits = ["bienveillant", "fidele", "spirituel", "ambitieux"]
+        self.profile.life_values = ["famille", "foi", "sincerite", "respect"]
+        self.profile.looking_for = json.dumps(
+            ["serieux", "familial", "croyant", "calme", "ambitieux"]
+        )
+        self.profile.save()
+        changed = trim_guide_fields(self.profile)
+        self.assertIn("personality_traits", changed)
+        self.assertIn("life_values", changed)
+        self.assertIn("looking_for", changed)
+        self.assertEqual(self.profile.personality_traits, ["bienveillant", "fidele", "spirituel"])
+        self.assertEqual(self.profile.life_values, ["famille", "foi", "sincerite"])
+        self.assertEqual(looking_for_ids(self.profile.looking_for), ["serieux", "familial", "croyant", "calme"])
+
+    def test_update_rejects_empty_traits(self):
+        from core.controllers.profile_controller import ProfileUpdateError, update_profile
+
+        with self.assertRaises(ProfileUpdateError):
+            update_profile(self.profile, {"personality_traits": []})
+
+    def test_update_caps_looking_for_at_four(self):
+        from core.controllers.profile_controller import update_profile
+        from core.data.onboarding import looking_for_ids
+
+        update_profile(
+            self.profile,
+            {"looking_for": ["serieux", "familial", "croyant", "calme", "ambitieux"]},
+        )
+        self.profile.refresh_from_db()
+        self.assertEqual(looking_for_ids(self.profile.looking_for), ["serieux", "familial", "croyant", "calme"])
+
+
+class MarriageProjectPromptTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        self.profile = make_profile("projet@test.com", Gender.MALE, "Omar")
+        self.profile.user.set_password("Ludvanne12")
+        self.profile.user.save()
+        self.profile.onboarding_completed = True
+        self.profile.photo_url = "https://example.com/p.jpg"
+        self.profile.save(update_fields=["onboarding_completed", "photo_url", "updated_at"])
+
+    def test_needs_prompt_when_empty(self):
+        from core.controllers.profile_controller import needs_marriage_project
+
+        self.assertTrue(needs_marriage_project(self.profile))
+
+    def test_complete_when_all_fields_set(self):
+        from core.controllers.profile_controller import needs_marriage_project, update_profile
+
+        update_profile(
+            self.profile,
+            {
+                "marriage_timeline": "under_1y",
+                "union_type": "monogame",
+                "children_wish": "yes",
+                "partner_religion_importance": "same",
+                "meet_place": "near",
+            },
+        )
+        self.profile.refresh_from_db()
+        self.assertFalse(needs_marriage_project(self.profile))
+
+    def test_modal_on_explorer_when_incomplete(self):
+        self.assertTrue(self.client.login(username=self.profile.user.username, password="Ludvanne12"))
+        page = self.client.get("/explorer/")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "projet-prompt-modal")
+        self.assertContains(page, "Pour continuer, veuillez remplir votre projet")
+        self.assertContains(page, "data-needs-projet")
+
+    def test_no_modal_when_complete(self):
+        from core.controllers.profile_controller import update_profile
+
+        update_profile(
+            self.profile,
+            {
+                "marriage_timeline": "1_2y",
+                "union_type": "open",
+                "children_wish": "maybe",
+                "partner_religion_importance": "any",
+                "meet_place": "anywhere",
+            },
+        )
+        self.assertTrue(self.client.login(username=self.profile.user.username, password="Ludvanne12"))
+        page = self.client.get("/explorer/")
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, "projet-prompt-modal")
 

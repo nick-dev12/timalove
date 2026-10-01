@@ -26,6 +26,7 @@ from core.controllers import (
     site_settings_controller,
     swipe_controller,
     matching_controller,
+    voice_intro_controller,
 )
 
 
@@ -923,6 +924,17 @@ def profile_update(request):
     if "life_values" in data:
         values = data.get("life_values") if isinstance(data.get("life_values"), list) else []
         payload["life_values"] = [str(x) for x in values]
+    if "looking_for" in data and not isinstance(data.get("looking_for"), str):
+        payload["looking_for"] = data.get("looking_for")
+    for key in (
+        "marriage_timeline",
+        "union_type",
+        "children_wish",
+        "partner_religion_importance",
+        "meet_place",
+    ):
+        if key in data:
+            payload[key] = str(data.get(key) or "").strip()
     if not payload:
         return JsonResponse({"ok": False, "message": "Rien à enregistrer."}, status=400)
     if "gender" in data and "gender" not in payload:
@@ -935,7 +947,13 @@ def profile_update(request):
             status=400,
         )
     old_gender = profile.gender
-    profile_controller.update_profile(profile, payload)
+    try:
+        profile_controller.update_profile(profile, payload)
+    except profile_controller.ProfileUpdateError as exc:
+        return JsonResponse(
+            {"ok": False, "message": str(exc), "errors": exc.errors},
+            status=400,
+        )
     reset_explorer = False
     if "gender" in payload and (profile.gender or "") != (old_gender or ""):
         from core.controllers.explore_controller import reset_feed_session, sync_feed_session
@@ -1046,6 +1064,36 @@ def profile_photo_primary(request):
         return JsonResponse({"ok": False, "message": str(exc)}, status=400)
     fresh = profile_controller.get_own(profile)
     return JsonResponse({"ok": True, "url": url, "photos": profile_controller.gallery_urls(fresh)})
+
+
+@login_required
+@require_POST
+def profile_voice(request):
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    upload = request.FILES.get("file")
+    if not upload:
+        return JsonResponse({"ok": False, "message": "Aucun enregistrement reçu."}, status=400)
+    try:
+        duration = int(request.POST.get("duration") or 0)
+    except (TypeError, ValueError):
+        duration = 0
+    try:
+        data = voice_intro_controller.save_for(profile, upload, duration)
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "message": str(exc)}, status=400)
+    return JsonResponse({"ok": True, **data})
+
+
+@login_required
+@require_POST
+def profile_voice_delete(request):
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        return JsonResponse({"ok": False, "message": "Profil introuvable."}, status=400)
+    data = voice_intro_controller.delete_for(profile)
+    return JsonResponse({"ok": True, **data})
 
 
 @login_required

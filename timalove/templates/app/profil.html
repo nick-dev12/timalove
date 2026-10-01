@@ -5,10 +5,10 @@
 {% block head %}
 {% include "partials/member_page_scroll.html" %}
 <link href="https://fonts.googleapis.com/css2?family=Allura&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="{% static 'js/explorer-chrome.js' %}?v=20260921lb1" defer></script>
+<script src="{% static 'js/explorer-chrome.js' %}?v=20261001lotB" defer></script>
 <script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
 <script src="{% static 'js/moi-page.js' %}?v=20260927moi3" defer></script>
-<script src="{% static 'js/own-profile.js' %}?v=20260927moi2" defer></script>
+<script src="{% static 'js/own-profile.js' %}?v=20261001projet1" defer></script>
 {% endblock %}
 {% block body %}
 <div class="explorer">
@@ -69,7 +69,6 @@
       </div>
       <ul class="visit__stats" aria-label="Activité du profil">
         <li><strong>{{ member.photos|length }}</strong><span>Photos</span></li>
-        <li><strong>{{ member.followers }}</strong><span>Intérêts</span></li>
         <li>
           <strong data-display-completion>{{ member.completion }}%</strong>
           <span>Complet</span>
@@ -141,6 +140,14 @@
             <span class="cdc-moi__chev" aria-hidden="true">›</span>
           </button>
           <div class="cdc-moi__drawer" id="moi-drawer-photos" data-moi-drawer="photos" hidden data-moi-photos-inline></div>
+        </div>
+        <div class="cdc-moi__item" data-moi-item="voice">
+          <button type="button" class="cdc-moi__row" data-moi-open="voice" aria-expanded="false" aria-controls="moi-drawer-voice">
+            <span class="cdc-moi__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M12 4v10"/><rect x="9" y="3.5" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M7 11.5a5 5 0 0 0 10 0M12 16.5V20"/></svg></span>
+            <span class="cdc-moi__label">Ma présentation vocale</span>
+            <span class="cdc-moi__chev" aria-hidden="true">›</span>
+          </button>
+          <div class="cdc-moi__drawer" id="moi-drawer-voice" data-moi-drawer="voice" hidden></div>
         </div>
         <div class="cdc-moi__item" data-moi-item="edit">
           <button type="button" class="cdc-moi__row" data-moi-open="edit" aria-expanded="false" aria-controls="moi-drawer-edit">
@@ -252,7 +259,7 @@
           <h2 class="visit__card-title">Projet de mariage</h2>
           <p class="visit__card-lead">Précisez votre horizon pour des rencontres alignées avec votre projet.</p>
           <label>Délai
-            <select name="marriage_timeline">
+            <select name="marriage_timeline" required>
               <option value="">—</option>
               {% for value, label in marriage_timelines %}
               <option value="{{ value }}"{% if profile.marriage_timeline == value %} selected{% endif %}>{{ label }}</option>
@@ -260,7 +267,7 @@
             </select>
           </label>
           <label>Union
-            <select name="union_type">
+            <select name="union_type" required>
               <option value="">—</option>
               {% for value, label in union_types %}
               <option value="{{ value }}"{% if profile.union_type == value %} selected{% endif %}>{{ label }}</option>
@@ -268,7 +275,7 @@
             </select>
           </label>
           <label>Enfants
-            <select name="children_wish">
+            <select name="children_wish" required>
               <option value="">—</option>
               {% for value, label in children_wishes %}
               <option value="{{ value }}"{% if profile.children_wish == value %} selected{% endif %}>{{ label }}</option>
@@ -276,7 +283,7 @@
             </select>
           </label>
           <label>Religion du partenaire
-            <select name="partner_religion_importance">
+            <select name="partner_religion_importance" required>
               <option value="">—</option>
               {% for value, label in religion_importances %}
               <option value="{{ value }}"{% if profile.partner_religion_importance == value %} selected{% endif %}>{{ label }}</option>
@@ -284,7 +291,7 @@
             </select>
           </label>
           <label>Lieu de rencontre
-            <select name="meet_place">
+            <select name="meet_place" required>
               <option value="">—</option>
               {% for value, label in meet_places %}
               <option value="{{ value }}"{% if profile.meet_place == value %} selected{% endif %}>{{ label }}</option>
@@ -293,6 +300,29 @@
           </label>
           <button type="submit" class="btn btn-primary">Enregistrer le projet</button>
         </form>
+    </section>
+
+    <section class="visit__panel visit__panel--moi" id="panel-moi-voice" data-moi-panel="voice" hidden>
+      <article class="visit-glass visit__card" data-voice-intro-recorder data-src="{{ member.voice_intro_url|default:'' }}" data-duration="{{ member.voice_intro_duration|default:0 }}">
+        <div class="visit__card-head">
+          <p class="visit__kicker">Avant le message</p>
+          <h2 class="visit__card-title">Présentation vocale</h2>
+          <p class="visit__card-lead">30 secondes pour vous présenter. Les personnes vous entendent avant de vous écrire.</p>
+        </div>
+        <div class="voice-intro voice-intro--own" data-voice-intro-own>
+          <div class="voice-intro__player-slot" data-voice-intro-slot {% if not member.has_voice_intro %}hidden{% endif %}>
+            {% include "partials/voice_intro_player.html" with url=member.voice_intro_url duration=member.voice_intro_duration label=member.voice_intro_label first_name=member.first_name %}
+          </div>
+          <p class="voice-intro__empty" data-voice-intro-empty {% if member.has_voice_intro %}hidden{% endif %}>Aucune voix enregistrée pour le moment.</p>
+          <p class="voice-intro__timer" data-voice-intro-timer hidden>0:00 / 0:30</p>
+          <div class="voice-intro__own-actions">
+            <button type="button" class="btn btn-primary" data-voice-intro-record>Enregistrer</button>
+            <button type="button" class="btn btn-ghost" data-voice-intro-stop hidden>Terminer</button>
+            <button type="button" class="btn btn-ghost" data-voice-intro-delete {% if not member.has_voice_intro %}hidden{% endif %}>Supprimer</button>
+          </div>
+          <p class="visit__save-msg" data-voice-intro-status hidden></p>
+        </div>
+      </article>
     </section>
 
     <section class="visit__panel visit__panel--moi" id="panel-about" role="tabpanel" aria-labelledby="tab-about" data-moi-panel="about" hidden>
@@ -455,7 +485,7 @@
           <div class="visit__card-head">
             <p class="visit__kicker">Ce qui vous guide</p>
             <h2 class="visit__card-title">Caractère</h2>
-            <p class="visit__card-lead">Des traits sincères pour une mise en relation matrimoniale.</p>
+            <p class="visit__card-lead">Des traits sincères pour une mise en relation matrimoniale. Choisissez 1 à 3.</p>
           </div>
           <p class="visit__label">Caractère</p>
           <div class="visit__pills visit__pills--edit" data-traits>
@@ -476,7 +506,7 @@
           <div class="visit__card-head">
             <p class="visit__kicker">Ce qui vous guide</p>
             <h2 class="visit__card-title">Valeurs</h2>
-            <p class="visit__card-lead">Choisissez ce qui vous ressemble. Cette section est optionnelle.</p>
+            <p class="visit__card-lead">Choisissez jusqu’à 3 valeurs. Cette section est optionnelle.</p>
           </div>
           <div class="visit__pills visit__pills--edit" data-values>
             {% for item in life_values_catalog %}
@@ -498,7 +528,7 @@
             <h2 class="visit__card-title">Le profil recherché</h2>
             <p class="visit__card-lead">Ce que vous espérez rencontrer, et votre intention.</p>
           </div>
-          <p class="visit__label">Qualités recherchées</p>
+          <p class="visit__label">Qualités recherchées <span class="signup-optional">(4 max)</span></p>
           <div class="visit__pills visit__pills--edit" data-looking-for>
             {% for item in looking_for_catalog %}
             <button type="button" class="visit__pill-btn{% if item.id in member.looking_for_ids %} is-on{% endif %}" data-looking="{{ item.id }}" aria-pressed="{% if item.id in member.looking_for_ids %}true{% else %}false{% endif %}">

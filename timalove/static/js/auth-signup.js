@@ -21,7 +21,7 @@
     "[data-interests]": { attr: "data-interest", max: 4, field: "interests" },
     "[data-traits]": { attr: "data-trait", max: 3, field: "personality_traits" },
     "[data-values]": { attr: "data-value", max: 3, field: "life_values" },
-    "[data-looking-for]": { attr: "data-looking", max: 3, field: "looking_for" },
+    "[data-looking-for]": { attr: "data-looking", max: 4, field: "looking_for" },
   };
   const CTAS = {
     email: "Continuer",
@@ -496,7 +496,7 @@
       if (step === "bios") {
         const looking = draft.looking_for || [];
         if (!looking.length) errors.looking_for = "Choisissez au moins une qualité recherchée.";
-        else if (looking.length > 3) errors.looking_for = "Maximum 3 qualités recherchées.";
+        else if (looking.length > 4) errors.looking_for = "Maximum 4 qualités recherchées.";
         if (!draft.relationship_intent) {
           errors.relationship_intent = "Indiquez votre intention (mariage, relation sérieuse ou à préciser).";
         }

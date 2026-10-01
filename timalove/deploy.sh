@@ -320,6 +320,14 @@ if ! $SKIP_MIGRATE; then
     if [[ -n "${ENSURE_ADMIN:-}" ]]; then
         echo "$ENSURE_ADMIN" | tail -n 3
     fi
+    log "Plafonds profil — traits 3 / valeurs 3 / qualités 4"
+    TRIM_GUIDES=$(django_cmd "python manage.py trim_profile_guides" 2>&1) || {
+        warn "trim_profile_guides a échoué (non bloquant)"
+        echo "$TRIM_GUIDES"
+    }
+    if [[ -n "${TRIM_GUIDES:-}" ]]; then
+        echo "$TRIM_GUIDES" | tail -n 3
+    fi
 else
     log "Étape 3/5 — Migrations (ignorées)"
 fi

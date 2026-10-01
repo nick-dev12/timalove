@@ -16,12 +16,13 @@ from django.utils import timezone
 from core.data.countries import COUNTRIES_FR
 from core.data.onboarding import (
     FACE_MATCH_THRESHOLD,
+    MAX_LIFE_VALUES,
     MIN_INTERESTS,
     MIN_TRAITS,
     encode_looking_for,
 )
 
-MAX_VALUES = 12
+MAX_VALUES = MAX_LIFE_VALUES
 from core.models import Profile
 from core.models.choices import Gender, RegistrationStatus, Religion
 

@@ -11,15 +11,74 @@ from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
 
-from core.data.onboarding import INTERESTS, TRAITS, encode_looking_for, looking_for_free_text, looking_for_ids, looking_for_labels, life_value_labels
+from core.data.onboarding import (
+    INTERESTS,
+    MAX_LOOKING_FOR_IDS,
+    MAX_TRAITS,
+    TRAITS,
+    encode_looking_for,
+    looking_for_free_text,
+    looking_for_ids,
+    looking_for_labels,
+    life_value_labels,
+)
 from core.controllers.auth_controller import cleanup_orphan_users_for_email, normalize_email, normalize_phone
 from core.models import BannedIdentity, Profile, ProfileGalleryPhoto
-from core.models.choices import Gender, LastSeenVisibility, RegistrationStatus, RelationshipIntent, Religion, SubscriptionStatus, SubscriptionTier
-from core.controllers.onboarding_controller import _clean_values, _read_image_bytes, dob_from_age
+from core.models.choices import (
+    ChildrenWish,
+    Gender,
+    LastSeenVisibility,
+    MarriageTimeline,
+    MeetPlace,
+    PartnerReligionImportance,
+    RegistrationStatus,
+    RelationshipIntent,
+    Religion,
+    SubscriptionStatus,
+    SubscriptionTier,
+    UnionType,
+)
+from core.controllers.onboarding_controller import _as_str_list, _clean_values, _read_image_bytes, dob_from_age
 
 MAX_GALLERY_PHOTOS = 5
 
 VALID_GENDERS = frozenset({Gender.MALE, Gender.FEMALE})
+
+MARRIAGE_PROJECT_FIELDS = (
+    "marriage_timeline",
+    "union_type",
+    "children_wish",
+    "partner_religion_importance",
+    "meet_place",
+)
+
+_MARRIAGE_ENUMS = {
+    "marriage_timeline": MarriageTimeline,
+    "union_type": UnionType,
+    "children_wish": ChildrenWish,
+    "partner_religion_importance": PartnerReligionImportance,
+    "meet_place": MeetPlace,
+}
+
+
+class ProfileUpdateError(ValueError):
+    def __init__(self, message: str, errors: dict | None = None):
+        super().__init__(message)
+        self.errors = errors or {}
+
+
+def _cap_unique(items, max_n: int) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in _as_str_list(items):
+        key = item.casefold()
+        if not item or key in seen:
+            continue
+        seen.add(key)
+        out.append(item)
+        if len(out) >= max_n:
+            break
+    return out
 
 
 def has_defined_gender(profile: Profile | None) -> bool:
@@ -35,6 +94,64 @@ def needs_gender_prompt(profile: Profile | None) -> bool:
     if getattr(profile, "is_admin", False):
         return False
     return not has_defined_gender(profile)
+
+
+def marriage_project_complete(profile: Profile | None) -> bool:
+    if profile is None:
+        return False
+    for key, enum in _MARRIAGE_ENUMS.items():
+        value = str(getattr(profile, key, "") or "").strip()
+        if value not in enum.values:
+            return False
+    return True
+
+
+def needs_marriage_project(profile: Profile | None) -> bool:
+    """Membre connecté sans projet de mariage complet — modal bloquant."""
+    if profile is None:
+        return False
+    if getattr(profile, "is_admin", False):
+        return False
+    return not marriage_project_complete(profile)
+
+
+def trim_guide_fields(profile: Profile) -> list[str]:
+    """Retire les traits / valeurs / qualités au-delà des plafonds (ordre conservé)."""
+    changed: list[str] = []
+    traits = _cap_unique(profile.personality_traits, MAX_TRAITS)
+    if list(profile.personality_traits or []) != traits:
+        profile.personality_traits = traits
+        changed.append("personality_traits")
+    values = _clean_values(profile.life_values)
+    if list(profile.life_values or []) != values:
+        profile.life_values = values
+        changed.append("life_values")
+    looking_ids = looking_for_ids(profile.looking_for)
+    if len(looking_ids) > MAX_LOOKING_FOR_IDS:
+        profile.looking_for = encode_looking_for(looking_ids[:MAX_LOOKING_FOR_IDS])
+        changed.append("looking_for")
+    return changed
+
+
+def trim_all_guide_fields(*, members_only: bool = True) -> tuple[int, int]:
+    """Applique trim_guide_fields à tous les profils. Retourne (modifiés, scannés)."""
+    from core.models.choices import UserRole
+
+    qs = Profile.objects.all().only(
+        "id", "personality_traits", "life_values", "looking_for", "updated_at"
+    )
+    if members_only:
+        qs = qs.filter(role=UserRole.MEMBER)
+    scanned = 0
+    updated = 0
+    for profile in qs.iterator():
+        scanned += 1
+        fields = trim_guide_fields(profile)
+        if not fields:
+            continue
+        updated += 1
+        profile.save(update_fields=[*fields, "updated_at"])
+    return updated, scanned
 
 
 DEFAULT_FILTERS = {
@@ -169,7 +286,7 @@ def _public_place(value: str | None) -> str:
 
 
 def serialize_visit(profile: Profile) -> dict:
-    from core.controllers import subscription_controller
+    from core.controllers import subscription_controller, voice_intro_controller
 
     location_parts = [p for p in (_public_place(profile.commune), _public_place(profile.city), _public_place(profile.country)) if p]
     photos = gallery_urls(profile)
@@ -219,6 +336,7 @@ def serialize_visit(profile: Profile) -> dict:
         "hide_age": bool(profile.hide_age),
         "is_hidden": bool(profile.is_hidden),
         "subscription_badge": subscription_controller.badge_for(profile),
+        **voice_intro_controller.public_payload(profile),
     }
 
 
@@ -367,29 +485,49 @@ def update_profile(profile: Profile, data: dict) -> Profile:
         payload["life_project"] = str(payload.get("life_project") or "").strip()[:800]
     if "commune" in payload:
         payload["commune"] = str(payload.get("commune") or "").strip()[:180]
+    if "personality_traits" in payload:
+        traits = _cap_unique(payload.get("personality_traits"), MAX_TRAITS)
+        if not traits:
+            raise ProfileUpdateError(
+                "Choisissez au moins un trait de caractère.",
+                {"personality_traits": "Choisissez au moins 1 trait, 3 maximum."},
+            )
+        payload["personality_traits"] = traits
     if "life_values" in payload:
         payload["life_values"] = _clean_values(payload.get("life_values"))
     if "looking_for" in payload:
         encoded = encode_looking_for(payload.get("looking_for"))
         payload["looking_for"] = encoded or None
-    from core.models.choices import (
-        ChildrenWish,
-        MarriageTimeline,
-        MeetPlace,
-        PartnerReligionImportance,
-        UnionType,
-    )
 
-    for key, enum in (
-        ("marriage_timeline", MarriageTimeline),
-        ("union_type", UnionType),
-        ("children_wish", ChildrenWish),
-        ("partner_religion_importance", PartnerReligionImportance),
-        ("meet_place", MeetPlace),
-    ):
+    marriage_in_payload = [key for key in MARRIAGE_PROJECT_FIELDS if key in payload]
+    for key, enum in _MARRIAGE_ENUMS.items():
         if key in payload:
             value = str(payload.get(key) or "").strip()
             payload[key] = value if value in enum.values else ""
+    if marriage_in_payload:
+        errors: dict[str, str] = {}
+        messages_by_field = {
+            "marriage_timeline": "Indiquez quand vous souhaitez vous marier.",
+            "union_type": "Indiquez le type d'union recherché.",
+            "children_wish": "Indiquez votre souhait concernant les enfants.",
+            "partner_religion_importance": "Indiquez si la religion du partenaire compte.",
+            "meet_place": "Indiquez où vous souhaitez rencontrer votre partenaire.",
+        }
+        merged = {key: str(getattr(profile, key, "") or "").strip() for key in MARRIAGE_PROJECT_FIELDS}
+        for key in marriage_in_payload:
+            merged[key] = str(payload.get(key) or "").strip()
+        require_all = set(marriage_in_payload) >= set(MARRIAGE_PROJECT_FIELDS) or not marriage_project_complete(
+            profile
+        )
+        if require_all:
+            for key, enum in _MARRIAGE_ENUMS.items():
+                if merged[key] not in enum.values:
+                    errors[key] = messages_by_field[key]
+        if errors:
+            raise ProfileUpdateError(
+                "Pour continuer, veuillez remplir votre projet.",
+                errors,
+            )
     if "gender" in payload:
         gender = (payload.get("gender") or "").strip()
         if gender not in VALID_GENDERS:

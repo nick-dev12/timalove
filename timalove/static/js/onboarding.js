@@ -167,7 +167,7 @@
 
     const valueInput = root.querySelector("[data-value-input]");
     const valueList = root.querySelector("[data-value-list]");
-    const MAX_VALUES = 12;
+    const MAX_VALUES = 3;
 
     function currentValues() {
       return [...root.querySelectorAll("[data-value-chip]")]

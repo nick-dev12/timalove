@@ -83,6 +83,45 @@ def gender_prompt(request):
         return {"needs_gender_prompt": False}
 
 
+def marriage_project_prompt(request):
+    empty = {
+        "needs_marriage_project": False,
+        "marriage_prompt_values": {},
+        "marriage_prompt_choices": {},
+    }
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        return empty
+    profile = getattr(user, "profile", None)
+    try:
+        from core.controllers.profile_controller import MARRIAGE_PROJECT_FIELDS, needs_marriage_project
+        from core.models.choices import (
+            ChildrenWish,
+            MarriageTimeline,
+            MeetPlace,
+            PartnerReligionImportance,
+            UnionType,
+        )
+
+        if not needs_marriage_project(profile):
+            return empty
+        return {
+            "needs_marriage_project": True,
+            "marriage_prompt_values": {
+                key: str(getattr(profile, key, "") or "") for key in MARRIAGE_PROJECT_FIELDS
+            },
+            "marriage_prompt_choices": {
+                "marriage_timeline": MarriageTimeline.choices,
+                "union_type": UnionType.choices,
+                "children_wish": ChildrenWish.choices,
+                "partner_religion_importance": PartnerReligionImportance.choices,
+                "meet_place": MeetPlace.choices,
+            },
+        }
+    except Exception:
+        return empty
+
+
 def admin_panel_nav(request):
     badges = {"signalements": 0}
     nav_sections: list[dict] = []

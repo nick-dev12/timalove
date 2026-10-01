@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.6.0/build/js/intlTelInput.min.js"></script>
 <script src="{% static 'js/notif-popup.js' %}?v=20260821np1" defer></script>
 <script src="{% static 'js/fcm.js' %}?v=20260826fcm2" defer></script>
-<script src="{% static 'js/auth-signup.js' %}?v=20260927signup4" defer></script>
+<script src="{% static 'js/auth-signup.js' %}?v=20261001projet1" defer></script>
 <script src="{% static 'js/auth-google.js' %}?v=20260910signup1" defer></script>
 <script src="{% static 'js/commencer-transit.js' %}?v=20260927t3" defer></script>
 {% endblock %}
@@ -306,7 +306,7 @@
             <label class="form-label" for="signup-bio">À propos de vous <span class="signup-optional">optionnel</span></label>
             <textarea class="form-textarea" id="signup-bio" data-field="bio" rows="4" maxlength="800" placeholder="Ce qui vous tient à cœur…"></textarea>
           </div>
-          <p class="form-label">Le profil recherché <span class="signup-required">(1 à 3)</span></p>
+          <p class="form-label">Le profil recherché <span class="signup-required">(1 à 4)</span></p>
           <p class="form-error" data-error-for="looking_for" hidden></p>
           <div class="signup-pills" data-looking-for>
             {% for item in looking_for_catalog %}

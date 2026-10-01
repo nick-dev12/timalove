@@ -71,6 +71,7 @@ TEMPLATES = [
                 "core.context_processors.app_nav_badges",
                 "core.context_processors.app_features",
                 "core.context_processors.gender_prompt",
+                "core.context_processors.marriage_project_prompt",
                 "core.context_processors.admin_panel_nav",
             ],
         },
@@ -219,6 +220,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.tasks.expire_subscriptions_and_boosts",
         "schedule": crontab(minute="*/15"),
     },
+    "expire-guided-intros": {
+        "task": "core.tasks.expire_guided_intros",
+        "schedule": crontab(minute="12"),
+    },
     "process-scheduled-campaigns": {
         "task": "core.tasks.process_scheduled_campaigns",
         "schedule": crontab(minute="*"),
@@ -287,7 +292,7 @@ FREEMIUM_LIMITS_ENABLED = env.bool("FREEMIUM_LIMITS_ENABLED", default=True)
 # Comptes de test store (Google / Apple) : aucun quota freemium appliqué.
 QUOTA_EXEMPT_EMAILS = env.list(
     "QUOTA_EXEMPT_EMAILS",
-    default=["gooteste@gmail.com"],
+    default=["gooteste@gmail.com", "apple.review@timalove.local", "test.lotc@timalove.local"],
 )
 
 EMAIL_BACKEND = env(

@@ -98,7 +98,7 @@ def looking_for_free_text(raw) -> str:
 
 
 def encode_looking_for(value) -> str:
-    ids = looking_for_ids(value)
+    ids = looking_for_ids(value)[:MAX_LOOKING_FOR_IDS]
     if ids:
         return json.dumps(ids, ensure_ascii=False)
     return looking_for_free_text(value)[:800]
@@ -150,9 +150,9 @@ MIN_TRAITS = 1
 MAX_TRAITS = 3
 MIN_LIFE_VALUES = 1
 MAX_LIFE_VALUES = 3
-MAX_VALUES = 12
+MAX_VALUES = 3
 MIN_LOOKING_FOR_IDS = 1
-MAX_LOOKING_FOR_IDS = 3
+MAX_LOOKING_FOR_IDS = 4
 MIN_BIO = 40
 MIN_LOOKING_FOR = 20
 FACE_MATCH_THRESHOLD = 0.52
