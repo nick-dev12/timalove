@@ -18,6 +18,7 @@ AuthKey_*.p8
 timalove/AuthKey_38NH6W2B97.p8
 timalove/timalove-ddaa5-*.json
 .cursor/rules/user-connexion.mdc
+scripts/_vps_fix_admin.py
 
 # Django
 timalove/staticfiles/

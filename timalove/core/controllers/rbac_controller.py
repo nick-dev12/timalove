@@ -12,7 +12,8 @@ from core.models.choices import STAFF_ROLES, UserRole
 
 User = get_user_model()
 
-PROTECTED_SUPERADMIN_EMAILS = frozenset({"admin@timalove.local"})
+CANONICAL_SUPERADMIN_EMAIL = "direction@mytimalove.com"
+PROTECTED_SUPERADMIN_EMAILS = frozenset({CANONICAL_SUPERADMIN_EMAIL})
 
 ROLE_LABELS: dict[str, str] = dict(UserRole.choices)
 

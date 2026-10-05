@@ -17,8 +17,8 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser):
-        parser.add_argument("--email", default="admin@timalove.local")
-        parser.add_argument("--password", default="AdminTimaLove2026!")
+        parser.add_argument("--email", default="direction@mytimalove.com")
+        parser.add_argument("--password", default="ChangeMe-TimaLove!")
         parser.add_argument(
             "--reset-password",
             action="store_true",

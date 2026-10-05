@@ -207,9 +207,9 @@ class Command(BaseCommand):
                 record("Sync utilisateurs", "Prix boost profil", "WARN", f"hardcodé? got={boost_label} expected={formatted}")
 
         # --- HTTP pages super admin ---
-        admin_user = User.objects.filter(email="admin@timalove.local").first()
+        admin_user = User.objects.filter(email="direction@mytimalove.com").first()
         if not admin_user:
-            record("HTTP", "Super admin existe", "FAIL", "admin@timalove.local manquant")
+            record("HTTP", "Super admin existe", "FAIL", "direction@mytimalove.com manquant")
         else:
             client = Client()
             client.force_login(admin_user)
