@@ -682,7 +682,12 @@ def auth_apple(request):
     return _auth_oauth(request, "apple")
 
 
-def _signup_next(next_url: str) -> str:
+def _signup_next(next_url: str, profile=None) -> str:
+    if profile and getattr(profile, "is_admin", False):
+        normalized = auth_controller.normalize_post_login_path(next_url)
+        if normalized and normalized.startswith("/espace-prive"):
+            return normalized
+        return auth_controller.STAFF_HOME_PATH
     normalized = auth_controller.normalize_post_login_path(next_url)
     return normalized or "/explorer/"
 
@@ -694,7 +699,7 @@ def _auth_oauth(request, provider: str):
     if request.user.is_authenticated:
         profile = getattr(request.user, "profile", None)
         if auth_controller.is_profile_complete(profile):
-            return JsonResponse({"ok": True, "redirect": _signup_next(next_url)})
+            return JsonResponse({"ok": True, "redirect": _signup_next(next_url, profile)})
         redirect_to = "/connexion/?signup=1"
         if next_url.startswith("/") and not next_url.startswith("//"):
             redirect_to = f"{redirect_to}&next={next_url}"
@@ -740,7 +745,13 @@ def _auth_oauth(request, provider: str):
                 "profile": signup_controller.profile_prefill(profile),
             }
         )
-    return JsonResponse({"ok": True, "message": msg, "redirect": _signup_next(next_url)})
+    return JsonResponse(
+        {
+            "ok": True,
+            "message": msg,
+            "redirect": _signup_next(next_url, getattr(request.user, "profile", None)),
+        }
+    )
 
 
 @require_POST
@@ -804,7 +815,9 @@ def signup_complete(request):
         if notifications_push or token:
             profile_controller.activate_push_preferences(created_profile)
 
-    return JsonResponse({"ok": True, "message": msg, "redirect": _signup_next(next_url)})
+    return JsonResponse(
+        {"ok": True, "message": msg, "redirect": _signup_next(next_url, created_profile)}
+    )
 
 
 @require_POST

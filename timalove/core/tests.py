@@ -1804,7 +1804,21 @@ class PublicAdminLoginTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertTrue(data["ok"])
-        self.assertIn("/explorer/", data["redirect"])
+        self.assertIn("/espace-prive/dashboard/", data["redirect"])
+
+    def test_superadmin_login_ignores_member_next(self):
+        resp = self.client.post(
+            "/connexion/",
+            {
+                "email": "admin@timalove.local",
+                "password": "StaffPass123!",
+                "login_mode": "email",
+                "next": "/explorer/",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertTrue(resp.json()["ok"])
+        self.assertIn("/espace-prive/dashboard/", resp.json()["redirect"])
 
     def test_logout_returns_to_public_login(self):
         self.client.force_login(self.admin.user)

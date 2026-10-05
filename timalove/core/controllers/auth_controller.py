@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 # À la 1ʳᵉ connexion email/téléphone, le mot de passe saisi le remplace.
 PROVISIONAL_IMPORT_PASSWORD = "ChangeMe123!"
 MEMBER_LOGIN_PATH = "/connexion/?signup=1&tab=email"
+STAFF_HOME_PATH = "/espace-prive/dashboard/"
 LOGIN_MAX_ATTEMPTS = 8
 LOGIN_WINDOW_SECONDS = 15 * 60
 SIGNUP_MAX_ATTEMPTS = 12

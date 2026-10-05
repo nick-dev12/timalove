@@ -40,9 +40,16 @@ def _wants_json(request) -> bool:
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
+def _staff_home(request) -> str:
+    nxt = _safe_next(request)
+    if nxt and nxt.startswith("/espace-prive"):
+        return nxt
+    return auth_controller.STAFF_HOME_PATH
+
+
 def _after_login_path(request, profile) -> str:
     if profile and profile.is_admin:
-        return _safe_next(request) or reverse("public:explorer")
+        return _staff_home(request)
     if not auth_controller.is_profile_complete(profile):
         nxt = _safe_next(request)
         if nxt:
@@ -89,7 +96,7 @@ def _auth_gate_context(request, **extra):
 def connexion(request):
     profile = getattr(request.user, "profile", None) if request.user.is_authenticated else None
     if request.user.is_authenticated and profile and profile.is_admin:
-        dest = _safe_next(request) or reverse("public:explorer")
+        dest = _after_login_path(request, profile)
         if request.method == "POST" and _wants_json(request):
             return JsonResponse({"ok": True, "redirect": dest})
         return redirect(dest)
@@ -210,7 +217,7 @@ def completer_profil(request):
     if not profile:
         return redirect("auth:connexion")
     if profile.is_admin:
-        return redirect(_safe_next(request) or reverse("public:explorer"))
+        return redirect(_after_login_path(request, profile))
     if profile.is_profile_complete:
         return redirect(_safe_next(request) or "public:explorer")
     nxt = _safe_next(request)
