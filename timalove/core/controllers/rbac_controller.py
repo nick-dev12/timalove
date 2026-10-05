@@ -12,6 +12,8 @@ from core.models.choices import STAFF_ROLES, UserRole
 
 User = get_user_model()
 
+PROTECTED_SUPERADMIN_EMAILS = frozenset({"admin@timalove.local"})
+
 ROLE_LABELS: dict[str, str] = dict(UserRole.choices)
 
 STAFF_ROLE_CHOICES: list[tuple[str, str]] = [
@@ -121,6 +123,28 @@ def staff_summary() -> dict:
     }
 
 
+def _staff_email(profile: Profile) -> str:
+    return ((profile.email or getattr(profile.user, "email", None) or "")).strip().lower()
+
+
+def is_protected_superadmin(profile: Profile) -> bool:
+    return _staff_email(profile) in PROTECTED_SUPERADMIN_EMAILS
+
+
+def _active_superadmin_count(*, exclude_id=None) -> int:
+    qs = Profile.objects.filter(role=UserRole.SUPER_ADMIN, user__is_active=True, user__is_staff=True)
+    if exclude_id:
+        qs = qs.exclude(pk=exclude_id)
+    return qs.count()
+
+
+def _guard_superadmin_change(actor: Profile, target: Profile, *, demoting: bool) -> None:
+    if is_protected_superadmin(target):
+        raise PermissionError("Le super administrateur principal ne peut pas être modifié ni désactivé.")
+    if demoting and target.is_super_admin and _active_superadmin_count(exclude_id=target.id) == 0:
+        raise PermissionError("Impossible de retirer le dernier super administrateur.")
+
+
 def _actor_can_manage_staff(actor: Profile) -> bool:
     return actor.is_super_admin or has_permission(actor, "roles.manage")
 
@@ -184,6 +208,8 @@ def update_staff_role(actor: Profile, profile_id, new_role: str) -> Profile:
         raise PermissionError("Seul un super administrateur peut promouvoir en super admin.")
     if target.id == actor.id and new_role != actor.role:
         raise ValueError("Vous ne pouvez pas modifier votre propre rôle.")
+    if new_role != target.role:
+        _guard_superadmin_change(actor, target, demoting=target.is_super_admin)
     target.role = new_role
     target.save(update_fields=["role", "updated_at"])
     user = target.user
@@ -205,6 +231,7 @@ def delete_staff(actor: Profile, profile_id) -> None:
         raise ValueError("Ce membre n'est pas un compte staff.")
     if target.is_super_admin and not actor.is_super_admin:
         raise PermissionError("Impossible de supprimer un super administrateur.")
+    _guard_superadmin_change(actor, target, demoting=True)
     user = target.user
     if user:
         user.delete()
@@ -220,6 +247,7 @@ def deactivate_staff(actor: Profile, profile_id) -> Profile:
         raise ValueError("Vous ne pouvez pas désactiver votre propre compte.")
     if target.is_super_admin and not actor.is_super_admin:
         raise PermissionError("Impossible de désactiver un super administrateur.")
+    _guard_superadmin_change(actor, target, demoting=True)
     target.role = UserRole.MEMBER
     target.save(update_fields=["role", "updated_at"])
     user = target.user

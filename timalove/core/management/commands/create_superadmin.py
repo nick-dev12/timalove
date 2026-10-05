@@ -75,7 +75,4 @@ class Command(BaseCommand):
         self.stdout.write(f"  Email    : {email}")
         self.stdout.write(f"  Mot de passe : {password}")
         self.stdout.write("")
-        self.stdout.write("Django admin (ORM brut) :")
-        self.stdout.write("  URL      : /admin/")
-        self.stdout.write(f"  Email    : {email}")
-        self.stdout.write(f"  Mot de passe : {password}")
+        self.stdout.write("Django admin ORM : désactivé en production (ENABLE_DJANGO_ADMIN).")

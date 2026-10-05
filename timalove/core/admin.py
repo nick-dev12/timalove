@@ -11,6 +11,7 @@ class ProfileAdmin(admin.ModelAdmin):
     list_display = ("first_name", "last_name", "email", "gender", "city", "registration_status", "role")
     list_filter = ("registration_status", "role", "gender", "subscription_tier")
     search_fields = ("first_name", "last_name", "email", "phone", "city")
+    readonly_fields = ("role",)
 
 
 for model in (

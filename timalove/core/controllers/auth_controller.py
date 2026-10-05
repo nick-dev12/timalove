@@ -8,6 +8,7 @@ from datetime import date
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.tokens import default_token_generator
+from django.core.cache import cache
 from django.db import transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -24,6 +25,32 @@ logger = logging.getLogger(__name__)
 # Mot de passe provisoire des comptes importés depuis Supabase (hash non portable).
 # À la 1ʳᵉ connexion email/téléphone, le mot de passe saisi le remplace.
 PROVISIONAL_IMPORT_PASSWORD = "ChangeMe123!"
+ADMIN_LOGIN_MAX_ATTEMPTS = 8
+ADMIN_LOGIN_WINDOW_SECONDS = 15 * 60
+
+
+def client_ip(request) -> str:
+    forwarded = (request.META.get("HTTP_X_FORWARDED_FOR") or "").split(",")[0].strip()
+    return forwarded or request.META.get("REMOTE_ADDR") or "unknown"
+
+
+def admin_login_blocked(request) -> bool:
+    ip = client_ip(request)
+    attempts = cache.get(f"admin_login_fail:{ip}", 0)
+    return int(attempts or 0) >= ADMIN_LOGIN_MAX_ATTEMPTS
+
+
+def register_admin_login_failure(request) -> None:
+    ip = client_ip(request)
+    key = f"admin_login_fail:{ip}"
+    try:
+        cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, ADMIN_LOGIN_WINDOW_SECONDS)
+
+
+def clear_admin_login_failures(request) -> None:
+    cache.delete(f"admin_login_fail:{client_ip(request)}")
 
 
 def normalize_email(email: str | None) -> str | None:

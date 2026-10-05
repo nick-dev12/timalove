@@ -1750,6 +1750,37 @@ class AdminRbacAccessTests(TestCase):
         self.assertIn("monitoring", mod_keys)
         self.assertNotIn("monitoring", admin_keys)
 
+    def test_forged_superadmin_role_without_staff_flag_is_denied(self):
+        member = make_profile("forged.role@test.com", Gender.MALE, "Forged")
+        member.role = UserRole.SUPER_ADMIN
+        member.save(update_fields=["role"])
+        member.user.is_staff = False
+        member.user.save(update_fields=["is_staff"])
+        member.refresh_from_db()
+        self.assertFalse(member.is_admin)
+        self.assertFalse(member.is_super_admin)
+        client = Client()
+        client.force_login(member.user)
+        resp = client.get("/espace-prive/dashboard/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertNotIn("/espace-prive/dashboard/", resp.url)
+
+    def test_cannot_deactivate_protected_superadmin(self):
+        from core.controllers import rbac_controller
+
+        protected = make_staff("admin@timalove.local", UserRole.SUPER_ADMIN, "Canonical")
+        attacker = make_staff("attacker.rbac@test.com", UserRole.SUPER_ADMIN, "Attacker")
+        with self.assertRaises(PermissionError):
+            rbac_controller.deactivate_staff(attacker, protected.id)
+        with self.assertRaises(PermissionError):
+            rbac_controller.update_staff_role(attacker, protected.id, UserRole.SUPPORT)
+        with self.assertRaises(PermissionError):
+            rbac_controller.delete_staff(attacker, protected.id)
+        protected.refresh_from_db()
+        self.assertEqual(protected.role, UserRole.SUPER_ADMIN)
+        self.assertTrue(protected.user.is_active)
+        self.assertTrue(protected.user.is_staff)
+
 
 class MonitoringSystemEventTests(TestCase):
     def setUp(self):

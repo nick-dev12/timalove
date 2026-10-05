@@ -62,16 +62,22 @@ def connexion(request):
     if request.method == "GET":
         rotate_token(request)
     if request.method == "POST":
+        if auth_controller.admin_login_blocked(request):
+            messages.error(request, "Trop de tentatives. Réessayez dans 15 minutes.")
+            return render(request, "admin_panel/connexion.html", {"title": "Espace administrateur"})
         ok, msg = auth_controller.login_user(
             request, request.POST.get("email", ""), request.POST.get("password", "")
         )
         profile = getattr(request.user, "profile", None) if ok else None
         if ok and profile and profile.is_admin:
+            auth_controller.clear_admin_login_failures(request)
             return _admin_post_login_redirect(request, profile)
         if ok:
             auth_controller.logout_user(request)
+            auth_controller.register_admin_login_failure(request)
             messages.error(request, "Accès réservé aux administrateurs.")
         else:
+            auth_controller.register_admin_login_failure(request)
             messages.error(request, msg)
     return render(request, "admin_panel/connexion.html", {"title": "Espace administrateur"})
 

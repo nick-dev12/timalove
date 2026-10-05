@@ -7,7 +7,6 @@ from django.shortcuts import redirect
 
 PUBLIC_WHEN_MAINTENANCE = (
     "/maintenance",
-    "/admin/",
     "/espace-prive/",
     "/static/",
     "/media/",

@@ -172,6 +172,9 @@ class Profile(models.Model):
 
     @property
     def is_staff_member(self) -> bool:
+        user = getattr(self, "user", None)
+        if not user or not user.is_active or not user.is_staff:
+            return False
         return self.role in STAFF_ROLES
 
     @property
@@ -180,7 +183,7 @@ class Profile(models.Model):
 
     @property
     def is_super_admin(self) -> bool:
-        return self.role == UserRole.SUPER_ADMIN
+        return self.is_staff_member and self.role == UserRole.SUPER_ADMIN
 
     @property
     def has_active_subscription(self) -> bool:
