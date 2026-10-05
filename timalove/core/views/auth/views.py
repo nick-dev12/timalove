@@ -106,8 +106,8 @@ def connexion(request):
         return redirect(_safe_next(request) or "public:explorer")
 
     show_form = request.GET.get("form") == "1"
-    login_mode = request.POST.get("login_mode") or request.GET.get("tab") or ""
-    if login_mode not in {"phone", "email"}:
+    login_mode = request.POST.get("login_mode") or ""
+    if request.method != "POST" or login_mode not in {"phone", "email"}:
         login_mode = ""
 
     if request.method == "POST" and not request.user.is_authenticated:

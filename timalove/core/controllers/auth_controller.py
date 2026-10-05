@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Mot de passe provisoire des comptes importés depuis Supabase (hash non portable).
 # À la 1ʳᵉ connexion email/téléphone, le mot de passe saisi le remplace.
 PROVISIONAL_IMPORT_PASSWORD = "ChangeMe123!"
-MEMBER_LOGIN_PATH = "/connexion/?signup=1&tab=email"
+MEMBER_LOGIN_PATH = "/connexion/?signup=1"
 STAFF_HOME_PATH = "/espace-prive/dashboard/"
 LOGIN_MAX_ATTEMPTS = 8
 LOGIN_WINDOW_SECONDS = 15 * 60

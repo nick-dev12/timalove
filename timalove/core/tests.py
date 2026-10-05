@@ -1826,8 +1826,13 @@ class PublicAdminLoginTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/connexion/", resp.url)
         self.assertIn("signup=1", resp.url)
+        self.assertNotIn("tab=email", resp.url)
 
-    def test_espace_prive_connexion_redirects_to_public_login(self):
+    def test_login_page_does_not_auto_open_email_modal(self):
+        resp = self.client.get("/connexion/?signup=1&tab=email")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'data-login-mode=""')
+        self.assertContains(resp, 'id="auth-login-modal" hidden')
         resp = self.client.get("/espace-prive/connexion/")
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/connexion/", resp.url)

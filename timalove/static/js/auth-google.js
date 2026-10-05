@@ -120,16 +120,11 @@
       if (event.key === "Escape" && modal && !modal.hidden) closeLoginModal();
     });
 
-    const initialMode = panel?.getAttribute("data-login-mode") || "";
-    if (initialMode === "email" || initialMode === "phone") {
-      openLoginModal(initialMode);
-    } else {
-      form?.classList.add("is-idle");
-      if (phoneInput) phoneInput.required = false;
-      if (emailInput) emailInput.required = false;
-      const passwordInput = document.getElementById("auth-password");
-      if (passwordInput) passwordInput.required = false;
-    }
+    form?.classList.add("is-idle");
+    if (phoneInput) phoneInput.required = false;
+    if (emailInput) emailInput.required = false;
+    const passwordInput = document.getElementById("auth-password");
+    if (passwordInput) passwordInput.required = false;
 
     if (phoneInput && window.intlTelInput) {
       iti = window.intlTelInput(phoneInput, {
