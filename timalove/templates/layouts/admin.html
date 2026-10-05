@@ -6,7 +6,7 @@
 
 {% block head %}
 
-<link rel="stylesheet" href="{% static 'css/admin-panel.css' %}?v=20260907adm2">
+<link rel="stylesheet" href="{% static 'css/admin-panel.css' %}?v=20261005profil1">
 
 {% endblock %}
 
@@ -79,6 +79,7 @@
       <div class="adm__topbar-actions">
 
         <span class="adm__topbar-date">{{ "now"|date:"d/m/Y" }}</span>
+        <a class="adm__topbar-profile" href="{% url 'admin_panel:profil' %}">{{ request.user.profile.display_name }}</a>
 
       </div>
 

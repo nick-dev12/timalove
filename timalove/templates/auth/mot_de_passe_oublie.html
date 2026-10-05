@@ -1,17 +1,17 @@
 ﻿{% extends "layouts/auth.html" %}
 {% block auth_content %}
 <p style="color:var(--text-secondary);margin:0 0 1.25rem;line-height:1.5;">
-  Entrez l'email de votre compte. Nous vous enverrons un lien sécurisé pour choisir un nouveau mot de passe.
+  Membres et équipe TimaLove : indiquez l’email du compte. Si un compte existe, un lien sécurisé vous sera envoyé pour choisir un nouveau mot de passe.
 </p>
 <form method="post" novalidate>
   {% csrf_token %}
   <div class="form-group">
     <label class="form-label" for="reset-email">Email</label>
-    <input class="form-input" id="reset-email" type="email" name="email" required autocomplete="email" placeholder="vous@email.com">
+    <input class="form-input" id="reset-email" type="email" name="email" required autocomplete="email" placeholder="vous@email.com" value="{{ email|default:'' }}">
   </div>
   <button class="btn btn-primary btn-block" type="submit">Envoyer le lien</button>
 </form>
 <p style="margin-top:1.25rem;text-align:center;">
-  <a href="{% url 'auth:connexion' %}">Retour à la connexion</a>
+  <a href="{% url 'auth:connexion' %}?signup=1">Retour à la connexion</a>
 </p>
 {% endblock %}

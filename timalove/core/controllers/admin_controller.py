@@ -1067,3 +1067,50 @@ def monitoring_overview(*, level: str = "", source: str = "") -> dict:
         "filter_source": source,
         "checked_at": now,
     }
+
+
+def own_profile_context(profile: Profile) -> dict:
+    from core.controllers import rbac_controller
+
+    user = profile.user
+    email = (profile.email or user.email or "").strip()
+    oauth = bool(profile.google_uid or profile.apple_uid)
+    protected = rbac_controller.is_protected_superadmin(profile)
+    return {
+        "first_name": profile.first_name or "",
+        "last_name": profile.last_name or "",
+        "email": email,
+        "phone": profile.phone or "",
+        "role_label": rbac_controller.role_label(profile.role),
+        "is_protected_email": protected,
+        "can_change_email": not protected and not oauth,
+        "can_change_password": (not profile.google_uid) and user.has_usable_password(),
+        "date_joined": user.date_joined,
+        "last_login": user.last_login,
+        "is_superuser": user.is_superuser,
+    }
+
+
+def update_own_identity(
+    profile: Profile, first_name: str, last_name: str, phone: str
+) -> tuple[bool, str]:
+    first = " ".join((first_name or "").split())
+    last = " ".join((last_name or "").split())
+    if not first:
+        return False, "Le prénom est requis."
+    if len(first) > 120 or len(last) > 120:
+        return False, "Nom trop long."
+    profile.first_name = first
+    profile.last_name = last
+    digits = "".join(c for c in (phone or "") if c.isdigit() or c in "+ ")
+    profile.phone = digits.strip()[:40] or None
+    profile.save(update_fields=["first_name", "last_name", "phone", "updated_at"])
+    return True, "Informations enregistrées."
+
+
+def change_own_email(profile: Profile, new_email: str, current_password: str) -> tuple[bool, str]:
+    from core.controllers import auth_controller, rbac_controller
+
+    if rbac_controller.is_protected_superadmin(profile):
+        return False, "L’email du super administrateur principal ne peut pas être modifié."
+    return auth_controller.change_email(profile, new_email, current_password)

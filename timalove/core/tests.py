@@ -1682,6 +1682,7 @@ class AdminRbacAccessTests(TestCase):
             "/espace-prive/configuration/",
             "/espace-prive/monitoring/",
             "/espace-prive/equipe/",
+            "/espace-prive/profil/",
         ]:
             self._assert_access(self.super, url, True)
 
@@ -1691,6 +1692,7 @@ class AdminRbacAccessTests(TestCase):
             "/espace-prive/membres/",
             "/espace-prive/monetisation/",
             "/espace-prive/communications/",
+            "/espace-prive/profil/",
         }
         denied = {
             "/espace-prive/signalements/",
@@ -1712,6 +1714,7 @@ class AdminRbacAccessTests(TestCase):
             "/espace-prive/communications/",
             "/espace-prive/configuration/",
             "/espace-prive/monitoring/",
+            "/espace-prive/profil/",
         }
         denied = {
             "/espace-prive/monetisation/",
@@ -1738,12 +1741,13 @@ class AdminRbacAccessTests(TestCase):
         }
         self.assertEqual(
             admin_keys,
-            {"dashboard", "membres", "monetisation", "communications"},
+            {"dashboard", "profil", "membres", "monetisation", "communications"},
         )
         self.assertEqual(
             mod_keys,
             {
                 "dashboard",
+                "profil",
                 "membres",
                 "signalements",
                 "communications",
@@ -1865,6 +1869,146 @@ class PublicAdminLoginTests(TestCase):
         self.assertFalse(ok)
         self.assertIn("trop long", msg.lower())
         self.assertIsNone(created)
+
+
+class AdminStaffProfileTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        site_settings_controller.set_value("admin_security", {"require_2fa": False})
+        self.admin = make_staff("staff.profil@test.com", UserRole.SUPER_ADMIN, "Awa")
+        self.client = Client()
+        self.client.force_login(self.admin.user)
+
+    def test_profile_page_shows_staff_info(self):
+        resp = self.client.get("/espace-prive/profil/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "staff.profil@test.com")
+        self.assertContains(resp, "Awa")
+        self.assertContains(resp, "Mon profil")
+
+    def test_update_identity(self):
+        resp = self.client.post(
+            "/espace-prive/profil/",
+            {
+                "action": "save_identity",
+                "first_name": "Awa Fatou",
+                "last_name": "Diop",
+                "phone": "77 123 45 67",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.first_name, "Awa Fatou")
+        self.assertEqual(self.admin.last_name, "Diop")
+        self.assertIn("77", self.admin.phone or "")
+
+    def test_change_email_with_password(self):
+        resp = self.client.post(
+            "/espace-prive/profil/",
+            {
+                "action": "change_email",
+                "email": "awa.staff@test.com",
+                "current_password": "StaffPass123!",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.admin.refresh_from_db()
+        self.admin.user.refresh_from_db()
+        self.assertEqual(self.admin.email, "awa.staff@test.com")
+        self.assertEqual(self.admin.user.email, "awa.staff@test.com")
+
+    def test_protected_canonical_email_cannot_change(self):
+        protected = make_staff("admin@timalove.local", UserRole.SUPER_ADMIN, "Canon")
+        client = Client()
+        client.force_login(protected.user)
+        resp = client.post(
+            "/espace-prive/profil/",
+            {
+                "action": "change_email",
+                "email": "autre.admin@test.com",
+                "current_password": "StaffPass123!",
+            },
+            follow=True,
+        )
+        protected.refresh_from_db()
+        self.assertEqual((protected.email or "").lower(), "admin@timalove.local")
+        self.assertContains(resp, "ne peut pas être modifié")
+
+    def test_change_password_then_login(self):
+        resp = self.client.post(
+            "/espace-prive/profil/",
+            {
+                "action": "change_password",
+                "current_password": "StaffPass123!",
+                "new_password": "NouveauPass123!",
+                "confirm_password": "NouveauPass123!",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.client.logout()
+        login = self.client.post(
+            "/connexion/",
+            {
+                "email": "staff.profil@test.com",
+                "password": "NouveauPass123!",
+                "login_mode": "email",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(login.status_code, 200)
+        self.assertTrue(login.json()["ok"])
+        self.assertIn("/espace-prive/dashboard/", login.json()["redirect"])
+
+
+class StaffPasswordResetTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        self.admin = make_staff("reset.staff@test.com", UserRole.ADMIN, "Reset")
+
+    def test_forgot_password_page_is_public(self):
+        resp = self.client.get("/mot-de-passe-oublie/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "équipe TimaLove")
+
+    def test_request_reset_sends_mail_for_staff(self):
+        with patch(
+            "core.views.auth.views.email_controller.password_reset_email",
+            return_value=True,
+        ) as mocked:
+            resp = self.client.post(
+                "/mot-de-passe-oublie/",
+                {"email": "reset.staff@test.com"},
+            )
+        self.assertEqual(resp.status_code, 302)
+        mocked.assert_called_once()
+        self.assertEqual(mocked.call_args[0][0], "reset.staff@test.com")
+        self.assertTrue(mocked.call_args[0][1])
+
+    def test_confirm_reset_allows_staff_login(self):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+
+        uid = urlsafe_base64_encode(force_bytes(self.admin.user.pk))
+        token = default_token_generator.make_token(self.admin.user)
+        resp = self.client.post(
+            f"/reinitialiser-mot-de-passe/{uid}/{token}/",
+            {"password": "ResetPass123!", "password_confirm": "ResetPass123!"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/connexion/", resp.url)
+        self.assertIn("signup=1", resp.url)
+        login = self.client.post(
+            "/connexion/",
+            {
+                "email": "reset.staff@test.com",
+                "password": "ResetPass123!",
+                "login_mode": "email",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(login.status_code, 200)
+        self.assertTrue(login.json()["ok"])
 
 
 class MonitoringSystemEventTests(TestCase):

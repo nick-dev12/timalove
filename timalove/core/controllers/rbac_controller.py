@@ -60,6 +60,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str] | None] = {
 
 VIEW_PERMISSION_MAP: dict[str, str] = {
     "dashboard": "dashboard",
+    "profil": "dashboard",
     "membres": "membres.view",
     "membre_detail": "membres.edit",
     "paiements": "paiements",
@@ -265,6 +266,7 @@ def nav_links_for(profile: Profile | None) -> list[dict]:
             "Dashboard",
             [
                 ("dashboard", "Vue d'ensemble", "admin_panel:dashboard", "▣"),
+                ("profil", "Mon profil", "admin_panel:profil", "◉"),
             ],
         ),
         (

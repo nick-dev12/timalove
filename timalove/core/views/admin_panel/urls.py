@@ -9,6 +9,7 @@ urlpatterns = [
     path("", RedirectView.as_view(pattern_name="admin_panel:dashboard", permanent=False)),
     path("connexion/", views.connexion, name="connexion"),
     path("dashboard/", views.dashboard, name="dashboard"),
+    path("profil/", views.profil, name="profil"),
     path("dashboard/data/kpis/", views.dashboard_data_kpis, name="dashboard_data_kpis"),
     path("dashboard/data/charts/", views.dashboard_data_charts, name="dashboard_data_charts"),
     path("membres/", views.membres, name="membres"),

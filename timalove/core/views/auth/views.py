@@ -257,7 +257,10 @@ def mot_de_passe_oublie(request):
     return render(
         request,
         "auth/mot_de_passe_oublie.html",
-        {"title": "Mot de passe oublié"},
+        {
+            "title": "Mot de passe oublié",
+            "email": (request.GET.get("email") or "").strip(),
+        },
     )
 
 
@@ -272,7 +275,7 @@ def reinitialiser_mot_de_passe(request, uidb64: str, token: str):
         )
         if ok:
             messages.success(request, msg)
-            return redirect("auth:connexion")
+            return redirect(auth_controller.MEMBER_LOGIN_PATH)
         messages.error(request, msg)
     return render(
         request,

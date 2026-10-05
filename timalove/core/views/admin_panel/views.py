@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -156,6 +157,60 @@ def dashboard(request):
             "can_monitoring": rbac_controller.has_permission(actor, "monitoring"),
         },
     )
+
+
+@require_http_methods(["GET", "POST"])
+def profil(request):
+    actor = _admin_profile(request)
+    if not actor or not actor.is_staff_member:
+        return redirect(auth_controller.MEMBER_LOGIN_PATH)
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "save_identity":
+            ok, msg = admin_controller.update_own_identity(
+                actor,
+                request.POST.get("first_name", ""),
+                request.POST.get("last_name", ""),
+                request.POST.get("phone", ""),
+            )
+            if ok:
+                _audit(request, "staff.profile_update", "a mis à jour son profil")
+                messages.success(request, msg)
+            else:
+                messages.error(request, msg)
+        elif action == "change_email":
+            ok, msg = admin_controller.change_own_email(
+                actor,
+                request.POST.get("email", ""),
+                request.POST.get("current_password", ""),
+            )
+            if ok:
+                _audit(request, "staff.email_update", "a modifié son email")
+                messages.success(request, msg)
+            else:
+                messages.error(request, msg)
+        elif action == "change_password":
+            ok, msg = auth_controller.change_password(
+                actor,
+                request.POST.get("current_password", ""),
+                request.POST.get("new_password", ""),
+                request.POST.get("confirm_password", ""),
+            )
+            if ok:
+                actor.user.refresh_from_db(fields=["password"])
+                update_session_auth_hash(request, actor.user)
+                _audit(request, "staff.password_update", "a modifié son mot de passe")
+                messages.success(request, msg)
+            else:
+                messages.error(request, msg)
+        else:
+            messages.error(request, "Action inconnue.")
+        return redirect("admin_panel:profil")
+
+    ctx = admin_controller.own_profile_context(actor)
+    ctx["title"] = "Mon profil"
+    return render(request, "admin_panel/profil.html", ctx)
 
 
 @require_GET
