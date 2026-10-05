@@ -8,12 +8,11 @@ from datetime import date
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.tokens import default_token_generator
-from django.core.cache import cache
 from django.db import transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from core.controllers import site_settings_controller
+from core.controllers import rate_limit_controller, site_settings_controller
 from core.controllers.firebase_app import get_firebase_app
 from core.models import BannedIdentity, Profile
 from core.models.choices import Gender, RegistrationStatus, Religion, UserRole
@@ -25,8 +24,13 @@ logger = logging.getLogger(__name__)
 # Mot de passe provisoire des comptes importés depuis Supabase (hash non portable).
 # À la 1ʳᵉ connexion email/téléphone, le mot de passe saisi le remplace.
 PROVISIONAL_IMPORT_PASSWORD = "ChangeMe123!"
-ADMIN_LOGIN_MAX_ATTEMPTS = 8
-ADMIN_LOGIN_WINDOW_SECONDS = 15 * 60
+MEMBER_LOGIN_PATH = "/connexion/?signup=1&tab=email"
+LOGIN_MAX_ATTEMPTS = 8
+LOGIN_WINDOW_SECONDS = 15 * 60
+SIGNUP_MAX_ATTEMPTS = 12
+SIGNUP_WINDOW_SECONDS = 60 * 60
+RESET_MAX_ATTEMPTS = 6
+RESET_WINDOW_SECONDS = 15 * 60
 
 
 def client_ip(request) -> str:
@@ -34,23 +38,52 @@ def client_ip(request) -> str:
     return forwarded or request.META.get("REMOTE_ADDR") or "unknown"
 
 
+def _login_fail_key(request) -> str:
+    return f"login_fail:{client_ip(request)}"
+
+
+def login_blocked(request) -> bool:
+    return rate_limit_controller.is_limited(_login_fail_key(request), LOGIN_MAX_ATTEMPTS)
+
+
+def register_login_failure(request) -> None:
+    rate_limit_controller.hit(_login_fail_key(request), LOGIN_WINDOW_SECONDS)
+
+
+def clear_login_failures(request) -> None:
+    rate_limit_controller.clear(_login_fail_key(request))
+
+
 def admin_login_blocked(request) -> bool:
-    ip = client_ip(request)
-    attempts = cache.get(f"admin_login_fail:{ip}", 0)
-    return int(attempts or 0) >= ADMIN_LOGIN_MAX_ATTEMPTS
+    return login_blocked(request)
 
 
 def register_admin_login_failure(request) -> None:
-    ip = client_ip(request)
-    key = f"admin_login_fail:{ip}"
-    try:
-        cache.incr(key)
-    except ValueError:
-        cache.set(key, 1, ADMIN_LOGIN_WINDOW_SECONDS)
+    register_login_failure(request)
 
 
 def clear_admin_login_failures(request) -> None:
-    cache.delete(f"admin_login_fail:{client_ip(request)}")
+    clear_login_failures(request)
+
+
+def signup_blocked(request) -> bool:
+    return rate_limit_controller.is_limited(
+        f"signup:{client_ip(request)}", SIGNUP_MAX_ATTEMPTS
+    )
+
+
+def register_signup_attempt(request) -> None:
+    rate_limit_controller.hit(f"signup:{client_ip(request)}", SIGNUP_WINDOW_SECONDS)
+
+
+def reset_blocked(request) -> bool:
+    return rate_limit_controller.is_limited(
+        f"pwd_reset:{client_ip(request)}", RESET_MAX_ATTEMPTS
+    )
+
+
+def register_reset_attempt(request) -> None:
+    rate_limit_controller.hit(f"pwd_reset:{client_ip(request)}", RESET_WINDOW_SECONDS)
 
 
 def normalize_email(email: str | None) -> str | None:

@@ -7,6 +7,8 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 
+from core.controllers import auth_controller
+
 MEMBER_PREFIXES = (
     "/decouvrir",
     "/likes",
@@ -87,8 +89,6 @@ class AuthGuardsMiddleware:
 
         if any(path.startswith(p) for p in MEMBER_PREFIXES):
             if not request.user.is_authenticated:
-                from core.controllers import auth_controller
-
                 next_path = auth_controller.normalize_post_login_path(path) or path
                 if path.startswith("/decouvrir"):
                     next_path = "/explorer/"
@@ -98,8 +98,6 @@ class AuthGuardsMiddleware:
                 logout(request)
                 return redirect("auth:connexion")
             if profile and not profile.is_admin and not profile.is_profile_complete:
-                from core.controllers import auth_controller
-
                 next_path = auth_controller.normalize_post_login_path(path) or path
                 if path.startswith("/decouvrir"):
                     next_path = "/explorer/"
@@ -127,7 +125,7 @@ class AuthGuardsMiddleware:
             ):
                 return self.get_response(request)
             if not request.user.is_authenticated:
-                return redirect("admin_panel:connexion")
+                return redirect(auth_controller.MEMBER_LOGIN_PATH)
             profile = getattr(request.user, "profile", None)
             if not profile or not profile.is_admin:
                 return redirect("public:home")

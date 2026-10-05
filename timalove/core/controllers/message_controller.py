@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 PHONE_RE = re.compile(r"(?:\+?\d[\d\s.\-]{7,}\d)")
 PREVIEW_MAX = 52
+MAX_TEXT_CHARS = 2000
+MESSAGE_RATE_MAX = 40
+MESSAGE_RATE_WINDOW = 60
 
 
 def _iso_utc(dt) -> str:
@@ -764,6 +767,16 @@ def can_send_media(profile: Profile, match: Match) -> tuple[bool, str]:
     return True, ""
 
 
+def _enforce_send_rate(profile: Profile) -> tuple[bool, str]:
+    from core.controllers import rate_limit_controller
+
+    send_key = f"msg_send:{profile.id}"
+    if rate_limit_controller.is_limited(send_key, MESSAGE_RATE_MAX):
+        return False, "Trop de messages. Patientez un instant."
+    rate_limit_controller.hit(send_key, MESSAGE_RATE_WINDOW)
+    return True, ""
+
+
 def _match_for_send(profile: Profile, partner_id) -> tuple[bool, str, Match | None]:
     match = get_active_match(profile, partner_id)
     if match:
@@ -783,15 +796,21 @@ def send_text(profile: Profile, partner_id, content: str) -> tuple[bool, str, Me
 
     if not app_config_controller.text_messages_enabled():
         return False, "Les messages texte sont temporairement désactivés.", None
+    content = (content or "").replace("\x00", "").strip()
+    if not content:
+        return False, "Message vide.", None
+    if len(content) > MAX_TEXT_CHARS:
+        return False, "Message trop long.", None
+
     opened, err, match = _match_for_send(profile, partner_id)
     if not opened or match is None:
         return False, err, None
     ok, err = can_send(profile, match)
     if not ok:
         return False, err, None
-    content = (content or "").strip()
-    if not content:
-        return False, "Message vide.", None
+    ok, err = _enforce_send_rate(profile)
+    if not ok:
+        return False, err, None
     if needs_guided_intro(match):
         return False, "Répondez d’abord aux questions vocales de projet.", None
     banned = site_settings_controller.get("banned_words", []) or []
@@ -829,6 +848,9 @@ def send_voice(
     ok, err = can_send_media(profile, match)
     if not ok:
         return False, err, None
+    ok, err = _enforce_send_rate(profile)
+    if not ok:
+        return False, err, None
     msg = Message.objects.create(
         match=match,
         sender=profile,
@@ -858,6 +880,9 @@ def send_image(profile: Profile, partner_id, image_url: str) -> tuple[bool, str,
     url = (image_url or "").strip()
     if not url:
         return False, "Image manquante.", None
+    ok, err = _enforce_send_rate(profile)
+    if not ok:
+        return False, err, None
     msg = Message.objects.create(
         match=match,
         sender=profile,

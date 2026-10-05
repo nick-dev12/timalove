@@ -1,6 +1,5 @@
 from django.contrib import messages
 from django.http import Http404, HttpResponse, JsonResponse
-from django.middleware.csrf import rotate_token
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
@@ -57,29 +56,8 @@ def _admin_post_login_redirect(request, profile):
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def connexion(request):
-    if request.user.is_authenticated and getattr(getattr(request.user, "profile", None), "is_admin", False):
-        return _admin_post_login_redirect(request, request.user.profile)
-    if request.method == "GET":
-        rotate_token(request)
-    if request.method == "POST":
-        if auth_controller.admin_login_blocked(request):
-            messages.error(request, "Trop de tentatives. Réessayez dans 15 minutes.")
-            return render(request, "admin_panel/connexion.html", {"title": "Espace administrateur"})
-        ok, msg = auth_controller.login_user(
-            request, request.POST.get("email", ""), request.POST.get("password", "")
-        )
-        profile = getattr(request.user, "profile", None) if ok else None
-        if ok and profile and profile.is_admin:
-            auth_controller.clear_admin_login_failures(request)
-            return _admin_post_login_redirect(request, profile)
-        if ok:
-            auth_controller.logout_user(request)
-            auth_controller.register_admin_login_failure(request)
-            messages.error(request, "Accès réservé aux administrateurs.")
-        else:
-            auth_controller.register_admin_login_failure(request)
-            messages.error(request, msg)
-    return render(request, "admin_panel/connexion.html", {"title": "Espace administrateur"})
+    return redirect(auth_controller.MEMBER_LOGIN_PATH)
+
 
 def _paiements_filters(request) -> dict:
     return {
@@ -1137,7 +1115,7 @@ def roles_audit(request):
 def admin_2fa_setup(request):
     profile = _admin_profile(request)
     if not profile or not profile.is_staff_member:
-        return redirect("admin_panel:connexion")
+        return redirect(auth_controller.MEMBER_LOGIN_PATH)
 
     record = two_factor_controller.get_or_create_two_factor(profile)
     if request.method == "POST":
@@ -1172,7 +1150,7 @@ def admin_2fa_setup(request):
 def admin_2fa_verify(request):
     profile = _admin_profile(request)
     if not profile or not profile.is_staff_member:
-        return redirect("admin_panel:connexion")
+        return redirect(auth_controller.MEMBER_LOGIN_PATH)
 
     status = two_factor_controller.two_factor_status(profile)
     if not status["enabled"]:

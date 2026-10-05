@@ -104,23 +104,32 @@ def connexion(request):
         login_mode = ""
 
     if request.method == "POST" and not request.user.is_authenticated:
-        identifier = (
-            request.POST.get("phone", "") if login_mode == "phone" else request.POST.get("email", "")
-        )
-        ok, msg = auth_controller.login_user(
-            request,
-            identifier,
-            request.POST.get("password", ""),
-            mode=login_mode,
-        )
-        if ok:
-            dest = _after_login_path(request, getattr(request.user, "profile", None))
+        if auth_controller.login_blocked(request):
+            msg = "Trop de tentatives. Réessayez dans 15 minutes."
             if _wants_json(request):
-                return JsonResponse({"ok": True, "redirect": dest})
-            return redirect(dest)
-        if _wants_json(request):
-            return JsonResponse({"ok": False, "message": msg}, status=400)
-        messages.error(request, msg)
+                return JsonResponse({"ok": False, "message": msg}, status=429)
+            messages.error(request, msg)
+            login_mode = login_mode or "email"
+        else:
+            identifier = (
+                request.POST.get("phone", "") if login_mode == "phone" else request.POST.get("email", "")
+            )
+            ok, msg = auth_controller.login_user(
+                request,
+                identifier,
+                request.POST.get("password", ""),
+                mode=login_mode,
+            )
+            if ok:
+                auth_controller.clear_login_failures(request)
+                dest = _after_login_path(request, getattr(request.user, "profile", None))
+                if _wants_json(request):
+                    return JsonResponse({"ok": True, "redirect": dest})
+                return redirect(dest)
+            auth_controller.register_login_failure(request)
+            if _wants_json(request):
+                return JsonResponse({"ok": False, "message": msg}, status=400)
+            messages.error(request, msg)
 
     oauth_incomplete = bool(
         request.user.is_authenticated
@@ -148,6 +157,20 @@ def inscription(request):
     if request.user.is_authenticated:
         return _after_login_redirect(request, getattr(request.user, "profile", None))
     if request.method == "POST":
+        if auth_controller.signup_blocked(request):
+            messages.error(request, "Trop de tentatives. Réessayez plus tard.")
+            return render(
+                request,
+                "auth/inscription.html",
+                {
+                    "title": "Inscription",
+                    "genders": Gender.choices,
+                    "religions": Religion.choices,
+                    "origines": ORIGINE_OPTIONS,
+                },
+                status=429,
+            )
+        auth_controller.register_signup_attempt(request)
         data = {
             "first_name": request.POST.get("first_name"),
             "last_name": request.POST.get("last_name"),
@@ -199,6 +222,10 @@ def completer_profil(request):
 @require_http_methods(["GET", "POST"])
 def mot_de_passe_oublie(request):
     if request.method == "POST":
+        if auth_controller.reset_blocked(request):
+            messages.error(request, "Trop de tentatives. Réessayez dans 15 minutes.")
+            return redirect("auth:mot_de_passe_oublie")
+        auth_controller.register_reset_attempt(request)
         email = (request.POST.get("email") or "").strip()
         ok, msg, token_path = auth_controller.request_password_reset(email)
         if not ok:
@@ -252,8 +279,6 @@ def reinitialiser_mot_de_passe(request, uidb64: str, token: str):
 
 
 def deconnexion(request):
-    profile = getattr(getattr(request, "user", None), "profile", None)
-    was_staff = bool(profile and getattr(profile, "is_admin", False))
     auth_controller.logout_user(request)
     for key in (
         "explorer_seed",
@@ -266,6 +291,4 @@ def deconnexion(request):
     nxt = _safe_next(request)
     if nxt:
         return redirect(nxt)
-    if was_staff:
-        return redirect("admin_panel:connexion")
-    return redirect("public:home")
+    return redirect(auth_controller.MEMBER_LOGIN_PATH)

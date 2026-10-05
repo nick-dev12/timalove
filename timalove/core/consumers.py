@@ -32,6 +32,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
         self.profile_id = profile_id
         self.partner_id = str(self.scope["url_route"]["kwargs"]["partner_id"])
+        if self.partner_id == self.profile_id:
+            await self.close(code=4403)
+            return
+        allowed = await self._can_chat(self.profile_id, self.partner_id)
+        if not allowed:
+            await self.close(code=4403)
+            return
         lo, hi = sorted([self.profile_id, self.partner_id])
         self.room_name = f"chat_{lo}_{hi}"
         await self.accept()
@@ -48,8 +55,33 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 pass
 
     async def receive(self, text_data=None, bytes_data=None):
-        data = json.loads(text_data or "{}")
+        raw = text_data or ""
+        if len(raw) > 8192:
+            await self.send(
+                text_data=json.dumps(
+                    {"event": "error", "ok": False, "message": "Message trop long."}
+                )
+            )
+            return
+        try:
+            data = json.loads(raw or "{}")
+        except json.JSONDecodeError:
+            await self.send(
+                text_data=json.dumps(
+                    {"event": "error", "ok": False, "message": "Message invalide."}
+                )
+            )
+            return
+        if not isinstance(data, dict):
+            await self.send(
+                text_data=json.dumps(
+                    {"event": "error", "ok": False, "message": "Message invalide."}
+                )
+            )
+            return
         content = data.get("content", "")
+        if not isinstance(content, str):
+            content = str(content or "")
         ok, msg, message = await self._send(self.profile_id, self.partner_id, content)
         if not ok:
             await self.send(
@@ -76,6 +108,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         profile = Profile.objects.get(pk=profile_id)
         return message_controller.send_text(profile, partner_id, content)
+
+    @database_sync_to_async
+    def _can_chat(self, profile_id, partner_id) -> bool:
+        from core.controllers import message_controller
+        from core.models import Profile
+
+        try:
+            profile = Profile.objects.get(pk=profile_id)
+        except Profile.DoesNotExist:
+            return False
+        return bool(message_controller.get_active_match(profile, partner_id))
 
 
 class NotificationConsumer(AsyncWebsocketConsumer):

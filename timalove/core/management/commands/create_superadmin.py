@@ -71,7 +71,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Super admin {action} avec succès."))
         self.stdout.write("")
         self.stdout.write("Accès espace privé TimaLove :")
-        self.stdout.write("  URL      : /espace-prive/connexion/")
+        self.stdout.write("  URL      : /connexion/?signup=1")
         self.stdout.write(f"  Email    : {email}")
         self.stdout.write(f"  Mot de passe : {password}")
         self.stdout.write("")

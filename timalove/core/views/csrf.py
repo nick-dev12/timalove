@@ -8,6 +8,8 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.csrf import csrf_failure as django_csrf_failure
 
+from core.controllers import auth_controller
+
 
 def csrf_failure(request: HttpRequest, reason: str = "") -> HttpResponse:
     path = request.path or ""
@@ -16,7 +18,7 @@ def csrf_failure(request: HttpRequest, reason: str = "") -> HttpResponse:
             request,
             "La session a expiré. Rechargez la page puis reconnectez-vous.",
         )
-        return redirect(reverse("admin_panel:connexion"))
+        return redirect(auth_controller.MEMBER_LOGIN_PATH)
     if path.startswith("/connexion"):
         messages.error(
             request,

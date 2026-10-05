@@ -804,8 +804,12 @@ class BlockMessagingTests(TestCase):
     def setUp(self):
         from core.models import Match
         from core.models.choices import MatchStatus
+        from core.controllers import app_config_controller
 
         site_settings_controller.seed_defaults()
+        cfg = app_config_controller.get_app_config()
+        cfg["guided_messages_enabled"] = False
+        app_config_controller.save_app_config(cfg)
         site_settings_controller.set_value("free_messages_limit", 10)
         self.p1 = make_profile("block1@gmail.com", Gender.MALE, "Block1")
         self.p2 = make_profile("block2@gmail.com", Gender.FEMALE, "Block2")
@@ -1780,6 +1784,68 @@ class AdminRbacAccessTests(TestCase):
         self.assertEqual(protected.role, UserRole.SUPER_ADMIN)
         self.assertTrue(protected.user.is_active)
         self.assertTrue(protected.user.is_staff)
+
+
+class PublicAdminLoginTests(TestCase):
+    def setUp(self):
+        site_settings_controller.seed_defaults()
+        self.admin = make_staff("admin@timalove.local", UserRole.SUPER_ADMIN, "Super")
+
+    def test_superadmin_logs_in_via_public_email_form(self):
+        resp = self.client.post(
+            "/connexion/",
+            {
+                "email": "admin@timalove.local",
+                "password": "StaffPass123!",
+                "login_mode": "email",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data["ok"])
+        self.assertIn("/explorer/", data["redirect"])
+
+    def test_logout_returns_to_public_login(self):
+        self.client.force_login(self.admin.user)
+        resp = self.client.get("/deconnexion/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/connexion/", resp.url)
+        self.assertIn("signup=1", resp.url)
+
+    def test_espace_prive_connexion_redirects_to_public_login(self):
+        resp = self.client.get("/espace-prive/connexion/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/connexion/", resp.url)
+        self.assertIn("signup=1", resp.url)
+
+    def test_espace_prive_connexion_post_does_not_authenticate(self):
+        resp = self.client.post(
+            "/espace-prive/connexion/",
+            {"email": "admin@timalove.local", "password": "StaffPass123!"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/connexion/", resp.url)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_espace_prive_dashboard_guest_redirects_to_public_login(self):
+        resp = self.client.get("/espace-prive/dashboard/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/connexion/", resp.url)
+        self.assertIn("signup=1", resp.url)
+
+    def test_oversized_message_is_rejected(self):
+        from core.controllers import message_controller
+
+        partner = make_profile("msg.limit@test.com", Gender.FEMALE, "Awa")
+        partner.onboarding_completed = True
+        partner.save(update_fields=["onboarding_completed"])
+        ok, msg, created = message_controller.send_text(
+            self.admin, partner.id, "x" * 3000
+        )
+        self.assertFalse(ok)
+        self.assertIn("trop long", msg.lower())
+        self.assertIsNone(created)
 
 
 class MonitoringSystemEventTests(TestCase):

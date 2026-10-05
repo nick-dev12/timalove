@@ -52,9 +52,8 @@
     </div>
     <div>
       <strong>Compte</strong>
-      <p><a href="{% url 'auth:connexion' %}">Connexion</a></p>
+      <p><a href="{% url 'auth:connexion' %}?signup=1">Connexion</a></p>
       <p><a href="{% url 'auth:inscription' %}">Inscription</a></p>
-      <p><a href="{% url 'admin_panel:connexion' %}">Espace privé</a></p>
     </div>
   </div>
   <div class="container footer-copy">© {% now "Y" %} TimaLove — Problem Solving Agency</div>

@@ -745,6 +745,12 @@ def _auth_oauth(request, provider: str):
 
 @require_POST
 def signup_check(request):
+    if auth_controller.signup_blocked(request):
+        return JsonResponse(
+            {"ok": False, "message": "Trop de tentatives. Réessayez plus tard."},
+            status=429,
+        )
+    auth_controller.register_signup_attempt(request)
     data = _json(request) or request.POST
     profile = getattr(request.user, "profile", None) if request.user.is_authenticated else None
     errors = signup_controller.check_identifier(data, exclude_profile=profile)
@@ -755,6 +761,12 @@ def signup_check(request):
 
 @require_POST
 def signup_complete(request):
+    if auth_controller.signup_blocked(request):
+        return JsonResponse(
+            {"ok": False, "message": "Trop de tentatives. Réessayez plus tard."},
+            status=429,
+        )
+    auth_controller.register_signup_attempt(request)
     data = _json(request) or request.POST
     profile = getattr(request.user, "profile", None) if request.user.is_authenticated else None
     next_url = data.get("next") or request.GET.get("next") or ""
