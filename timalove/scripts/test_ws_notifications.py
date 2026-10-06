@@ -40,7 +40,7 @@ def resolve_verify_email() -> str | None:
         ).exists():
             return candidate
 
-    for fallback in ("direction@mytimalove.com", "teste1@gmail.com", "gooteste@gmail.com"):
+    for fallback in ("fatouba0416@gmail.com", "teste1@gmail.com", "gooteste@gmail.com"):
         if get_user_model().objects.filter(email__iexact=fallback, is_active=True).exists():
             return fallback
 

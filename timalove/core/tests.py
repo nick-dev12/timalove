@@ -1776,7 +1776,7 @@ class AdminRbacAccessTests(TestCase):
     def test_cannot_deactivate_protected_superadmin(self):
         from core.controllers import rbac_controller
 
-        protected = make_staff("direction@mytimalove.com", UserRole.SUPER_ADMIN, "Canonical")
+        protected = make_staff("fatouba0416@gmail.com", UserRole.SUPER_ADMIN, "Canonical")
         attacker = make_staff("attacker.rbac@test.com", UserRole.SUPER_ADMIN, "Attacker")
         with self.assertRaises(PermissionError):
             rbac_controller.deactivate_staff(attacker, protected.id)
@@ -1918,7 +1918,7 @@ class AdminStaffProfileTests(TestCase):
         self.assertEqual(self.admin.user.email, "awa.staff@test.com")
 
     def test_protected_canonical_email_cannot_change(self):
-        protected = make_staff("direction@mytimalove.com", UserRole.SUPER_ADMIN, "Canon")
+        protected = make_staff("fatouba0416@gmail.com", UserRole.SUPER_ADMIN, "Canon")
         client = Client()
         client.force_login(protected.user)
         resp = client.post(
@@ -1931,7 +1931,7 @@ class AdminStaffProfileTests(TestCase):
             follow=True,
         )
         protected.refresh_from_db()
-        self.assertEqual((protected.email or "").lower(), "direction@mytimalove.com")
+        self.assertEqual((protected.email or "").lower(), "fatouba0416@gmail.com")
         self.assertContains(resp, "ne peut pas être modifié")
 
     def test_change_password_then_login(self):

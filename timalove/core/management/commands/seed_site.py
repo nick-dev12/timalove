@@ -11,7 +11,7 @@ class Command(BaseCommand):
     help = "Seed site_settings + admin de démo"
 
     def add_arguments(self, parser):
-        parser.add_argument("--email", default="direction@mytimalove.com")
+        parser.add_argument("--email", default="fatouba0416@gmail.com")
         parser.add_argument("--password", default="ChangeMe-TimaLove!")
 
     def handle(self, *args, **options):
