@@ -585,6 +585,9 @@ class CuratedExplorerTests(TestCase):
             profile.save(update_fields=["photo_url", "onboarding_completed", "updated_at"])
         self.viewer.user.set_password("Ludvanne12")
         self.viewer.user.save()
+        from core.controllers import app_config_controller
+
+        app_config_controller.save_app_config({"explorer_curated_mode": True})
 
     def test_explorer_loads_swipe_script_in_curated_mode(self):
         self.assertTrue(self.client.login(username=self.viewer.user.username, password="Ludvanne12"))
@@ -1554,7 +1557,7 @@ class SearchFeatureFlagsTests(TestCase):
         from core.controllers import app_config_controller
 
         flags = app_config_controller.feature_flags()
-        self.assertTrue(flags["explorer_curated_mode"])
+        self.assertFalse(flags["explorer_curated_mode"])
         self.assertFalse(flags["explorer_search_enabled"])
         self.assertFalse(flags["history_search_enabled"])
         self.assertTrue(flags["messages_search_enabled"])
@@ -1579,11 +1582,38 @@ class SearchFeatureFlagsTests(TestCase):
             }
         )
         flags = app_config_controller.feature_flags()
-        self.assertFalse(flags["explorer_search_enabled"])
-        self.assertFalse(flags["history_search_enabled"])
+        self.assertTrue(flags["explorer_search_enabled"])
+        self.assertTrue(flags["history_search_enabled"])
         self.assertTrue(flags["messages_search_enabled"])
 
+    def test_explorer_uses_swipe_deck_by_default(self):
+        from core.controllers import app_config_controller
+
+        app_config_controller.save_app_config({"explorer_curated_mode": False})
+        profile = make_profile("swipe.deck@test.com", Gender.MALE, "Omar")
+        partner = make_profile("swipe.partner@test.com", Gender.FEMALE, "Awa")
+        for item in (profile, partner):
+            item.onboarding_completed = True
+            item.photo_url = "https://example.com/photo.webp"
+            item.save(update_fields=["onboarding_completed", "photo_url", "updated_at"])
+        profile.user.set_password("Ludvanne12")
+        profile.user.save()
+        self.assertTrue(self.client.login(username=profile.user.username, password="Ludvanne12"))
+        page = self.client.get("/explorer/")
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        self.assertIn("explorer__slide", html)
+        self.assertIn('data-swipe="pass"', html)
+        self.assertIn('data-swipe="like"', html)
+        self.assertIn('data-swipe="super_like"', html)
+        self.assertIn("timaloveExplorer", html)
+        self.assertNotIn("explorer-page explorer-page--curated", html)
+        self.assertNotIn("curated-list", html)
+
     def test_explorer_hides_search_and_pass_in_curated_mode(self):
+        from core.controllers import app_config_controller
+
+        app_config_controller.save_app_config({"explorer_curated_mode": True})
         profile = make_profile("searchbar@test.com", Gender.FEMALE, "Aicha")
         profile.onboarding_completed = True
         profile.save(update_fields=["onboarding_completed"])
