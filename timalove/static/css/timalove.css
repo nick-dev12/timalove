@@ -3651,7 +3651,7 @@ body.explorer-page .explorer__feed {
   margin: 0;
   padding: 0;
   object-fit: cover;
-  object-position: center center;
+  object-position: center 18%;
   display: block;
   opacity: 0;
   pointer-events: none;
@@ -4726,7 +4726,7 @@ body:not(.explorer-page) .explorer__bottom {
     max-width: none;
     max-height: none;
     object-fit: cover;
-    object-position: center center;
+    object-position: center 18%;
   }
 
   body.explorer-page::-webkit-scrollbar,
@@ -19338,6 +19338,9 @@ body.explorer-page .cdc-switch a.is-on {
   color: #c2185b;
   border-bottom-color: #c2185b;
 }
+body.explorer-page:not(.explorer-page--curated) {
+  --explorer-col: min(100%, 27rem);
+}
 body.explorer-page .explorer__feed { padding: 0 0.85rem 0.15rem; background: #fff; }
 body.explorer-page .explorer__card {
   flex-direction: column;
@@ -19348,13 +19351,18 @@ body.explorer-page .explorer__card {
   box-shadow: 0 8px 24px rgba(45, 31, 34, 0.06);
 }
 body.explorer-page .explorer__media {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-height: 0;
   height: auto;
   width: auto;
   margin: 0.2rem 0.15rem 0;
   border: 0;
   border-radius: 1.35rem;
   box-shadow: none;
+}
+body.explorer-page .explorer__photo {
+  object-fit: cover;
+  object-position: center 18%;
 }
 body.explorer-page .explorer__meta {
   gap: 0.28rem;
@@ -19409,40 +19417,43 @@ body.explorer-page .cdc-online::before {
 body.explorer-page .cdc-sheet {
   flex: 0 0 auto;
   background: #fff;
-  padding: 0.7rem 0.35rem 0.35rem;
+  padding: 0.4rem 0.35rem 0.15rem;
 }
 body.explorer-page .cdc-reasons {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.45rem;
+  gap: 0.28rem;
 }
 body.explorer-page .cdc-reasons li {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.42rem;
   width: fit-content;
   max-width: 100%;
   margin: 0;
-  padding: 0.28rem 0.85rem 0.28rem 0.28rem;
+  padding: 0.2rem 0.7rem 0.2rem 0.2rem;
   border-radius: 999px;
   background: #f3f0f1;
   color: #3a3032;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
   font-weight: 500;
   line-height: 1.2;
 }
+body.explorer-page .cdc-reasons li:nth-child(n+4) {
+  display: none;
+}
 body.explorer-page .cdc-reasons__ico {
-  width: 1.85rem;
-  height: 1.85rem;
+  width: 1.45rem;
+  height: 1.45rem;
   border-radius: 50%;
   overflow: hidden;
   display: grid;
   place-items: center;
   background: #e6dfe1;
   flex-shrink: 0;
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   color: #5c2430;
 }
 body.explorer-page .cdc-reasons__ico img {
@@ -19452,8 +19463,8 @@ body.explorer-page .cdc-reasons__ico img {
 }
 /* Boutons pass / like / star — deck swipe uniquement (pas les cartes curated) */
 body.explorer-page .explorer__actions {
-  margin: 0.85rem 0 0.35rem;
-  gap: 1.4rem;
+  margin: 0.55rem 0 0.2rem;
+  gap: 1.2rem;
 }
 body.explorer-page .explorer__actions .explorer__action--pass,
 body.explorer-page .explorer__actions .explorer__action--like,
@@ -19480,6 +19491,15 @@ body.explorer-page .explorer__actions .explorer__action--star {
   box-shadow: 0 6px 14px rgba(45, 31, 34, 0.12);
 }
 @media (max-width: 767px) {
+  body.explorer-page .cdc-sheet {
+    padding: 0.28rem 0.25rem 0.08rem;
+  }
+  body.explorer-page .cdc-reasons {
+    gap: 0.18rem;
+  }
+  body.explorer-page .cdc-reasons li:nth-child(n+3) {
+    display: none;
+  }
   body.explorer-page .explorer__actions .explorer__action--pass,
   body.explorer-page .explorer__actions .explorer__action--like,
   body.explorer-page .explorer__actions .explorer__action--star {

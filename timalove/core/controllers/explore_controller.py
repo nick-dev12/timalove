@@ -243,7 +243,7 @@ def serialize_card(
         "union_label": profile.get_union_type_display() if profile.union_type else "",
         "children_label": profile.get_children_wish_display() if profile.children_wish else "",
         "why": _why_this_profile(viewer, profile),
-        "alignments": _alignment_rows(viewer, profile),
+        "alignments": recommendation_reasons(viewer, profile, limit=3),
         "reasons": recommendation_reasons(viewer, profile),
         **voice_intro_controller.public_payload(profile),
         "compatibility": compatibility_score(profile, viewer),

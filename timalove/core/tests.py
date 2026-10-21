@@ -1609,6 +1609,7 @@ class SearchFeatureFlagsTests(TestCase):
         self.assertIn("timaloveExplorer", html)
         self.assertNotIn("explorer-page explorer-page--curated", html)
         self.assertNotIn("curated-list", html)
+        self.assertLessEqual(html.count("cdc-reasons__ico"), 3)
 
     def test_explorer_hides_search_and_pass_in_curated_mode(self):
         from core.controllers import app_config_controller

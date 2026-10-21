@@ -65,7 +65,7 @@
     </div>
     <div class="cdc-sheet">
       <ul class="cdc-reasons">
-        {% for line in card.alignments %}
+        {% for line in card.alignments|slice:":3" %}
         <li>
           <span class="cdc-reasons__ico" aria-hidden="true">
             {% if card.photo_url %}<img src="{{ card.photo_url }}" alt="">{% else %}{{ card.first_name|first|upper }}{% endif %}
