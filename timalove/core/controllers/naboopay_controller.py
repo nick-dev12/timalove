@@ -41,6 +41,7 @@ ADMIN_TO_NABOO_STATUS: dict[str, str] = {
 NETWORK_USER_MESSAGE = (
     "Le service de paiement NabooPay est injoignable pour le moment. Réessayez dans quelques minutes."
 )
+USER_AGENT = "TimaLove/1.0 (+https://mytimalove.com)"
 
 
 def is_configured() -> bool:
@@ -108,7 +109,30 @@ def _headers() -> dict[str, str]:
         "Authorization": f"Bearer {_api_key()}",
         "Accept": "application/json",
         "Content-Type": "application/json",
+        "User-Agent": USER_AGENT,
     }
+
+
+def is_http_error(data: dict | None) -> bool:
+    payload = data or {}
+    status = payload.get("http_status")
+    if isinstance(status, int) and status >= 400:
+        return True
+    return bool(payload.get("cloudflare_error"))
+
+
+def public_error_message(data: dict | None, fallback: str = "Impossible d’ouvrir NabooPay.") -> str:
+    payload = data or {}
+    if payload.get("cloudflare_error") or payload.get("error_code") == 1010:
+        return NETWORK_USER_MESSAGE
+    for key in ("error", "message", "detail", "title"):
+        value = str(payload.get(key) or "").strip()
+        if value:
+            return value
+    status = payload.get("http_status")
+    if status:
+        return f"NabooPay a refusé la requête ({status})."
+    return fallback
 
 
 def _request(method: str, path: str, payload: dict | None = None, *, timeout: int = 25) -> dict:
@@ -196,6 +220,14 @@ def initialize(
     if is_network_failure(data):
         logger.warning("[naboopay] init injoignable : %s", data.get("detail") or data.get("error"))
         return {"ok": False, "error": NETWORK_USER_MESSAGE, "network": True, "raw": data}
+    if is_http_error(data):
+        message = public_error_message(data)
+        logger.warning(
+            "[naboopay] init HTTP %s : %s",
+            data.get("http_status") or data.get("status"),
+            data.get("error_name") or data.get("title") or message,
+        )
+        return {"ok": False, "error": message, "raw": data}
 
     checkout_url = data.get("checkout_url") or ""
     order_id = data.get("order_id") or ""
@@ -210,7 +242,7 @@ def initialize(
             "raw": data,
         }
 
-    message = data.get("error") or data.get("message") or "Impossible d’ouvrir NabooPay."
+    message = public_error_message(data)
     logger.warning("[naboopay] init refusée : %s", message)
     return {"ok": False, "error": str(message), "raw": data}
 
@@ -255,8 +287,8 @@ def list_transactions(
             "pagination": {},
             "raw": data,
         }
-    if data.get("error") and not data.get("transactions"):
-        message = data.get("error") or data.get("message") or "Impossible de charger NabooPay."
+    if is_http_error(data) or (data.get("error") and not data.get("transactions")):
+        message = public_error_message(data, "Impossible de charger NabooPay.")
         return {"ok": False, "error": str(message), "transactions": [], "pagination": {}, "raw": data}
 
     pagination = data.get("pagination") or {}
@@ -283,6 +315,13 @@ def check(naboo_order_id: str) -> dict:
             "network": True,
             "raw": data,
         }
+    if is_http_error(data):
+        return {
+            "ok": False,
+            "accepted": False,
+            "error": public_error_message(data, "Paiement non confirmé."),
+            "raw": data,
+        }
 
     status = str(data.get("transaction_status") or "").lower()
     accepted = status in ACCEPTED_STATUSES
@@ -295,7 +334,7 @@ def check(naboo_order_id: str) -> dict:
             "ok": False,
             "accepted": False,
             "status": status,
-            "error": data.get("error"),
+            "error": public_error_message(data, "Paiement non confirmé."),
             "raw": data,
         }
 

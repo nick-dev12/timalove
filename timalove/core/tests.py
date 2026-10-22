@@ -3,8 +3,10 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models import Q
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
-from datetime import date
+from datetime import date, timedelta
+from io import BytesIO
 import json
+import urllib.error
 from unittest.mock import patch
 
 from core.controllers import (
@@ -90,6 +92,18 @@ class PaymentFulfillTests(TestCase):
         self.a.refresh_from_db()
         self.assertTrue(self.a.has_active_subscription)
 
+    def test_renewal_extends_current_end_date(self):
+        first = payment_controller.create_checkout(self.a, "premium_1m")
+        self.assertTrue(first.get("ok"), first)
+        payment_controller.fulfill_order(first["order_id"])
+        self.a.refresh_from_db()
+        first_end = self.a.subscription_end_date
+        second = payment_controller.create_checkout(self.a, "premium_1m")
+        self.assertTrue(second.get("ok"), second)
+        payment_controller.fulfill_order(second["order_id"])
+        self.a.refresh_from_db()
+        self.assertGreaterEqual(self.a.subscription_end_date, first_end + timedelta(days=29))
+
     def test_simulate_confirm_only_in_debug_without_keys(self):
         out = payment_controller.create_checkout(self.a, "premium_10d")
         ok, _ = payment_controller.confirm_order(out["order_id"], simulate=True)
@@ -156,6 +170,69 @@ class PaymentNetworkFallbackTests(TestCase):
         with override_settings(CINETPAY_BASE_URL="https://example.test/v2"):
             self.assertEqual(cinetpay_controller.init_url(), "https://example.test/v2/payment")
             self.assertEqual(cinetpay_controller.check_url(), "https://example.test/v2/payment/check")
+
+
+@override_settings(NABOOPAY_API_KEY="pk_test_naboo")
+class NabooPayClientTests(TestCase):
+    def test_requests_send_timalove_user_agent(self):
+        from core.controllers import naboopay_controller
+
+        captured = {}
+
+        class FakeResp:
+            def read(self):
+                return json.dumps({"transactions": [], "pagination": {}}).encode()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        def fake_urlopen(req, timeout=25):
+            captured["ua"] = req.get_header("User-agent") or req.get_header("User-Agent")
+            return FakeResp()
+
+        with patch("core.controllers.naboopay_controller.urllib.request.urlopen", fake_urlopen):
+            naboopay_controller.list_transactions(page=1, limit=1)
+        self.assertIn("TimaLove/", captured.get("ua") or "")
+
+    def test_cloudflare_block_is_a_checkout_error(self):
+        from core.controllers import naboopay_controller
+
+        body = json.dumps(
+            {
+                "title": "Error 1010: Access denied",
+                "status": 403,
+                "cloudflare_error": True,
+                "error_code": 1010,
+            }
+        ).encode()
+
+        def fake_urlopen(req, timeout=25):
+            raise urllib.error.HTTPError(req.full_url, 403, "Forbidden", hdrs=None, fp=BytesIO(body))
+
+        with patch("core.controllers.naboopay_controller.urllib.request.urlopen", fake_urlopen):
+            result = naboopay_controller.initialize(
+                amount=2990,
+                description="TimaLove — Premium",
+                success_url="https://mytimalove.com/ok",
+                error_url="https://mytimalove.com/err",
+            )
+        self.assertFalse(result.get("ok"))
+        self.assertIn("injoignable", (result.get("error") or "").lower())
+
+    def test_list_transactions_rejects_http_errors(self):
+        from core.controllers import naboopay_controller
+
+        body = json.dumps({"title": "Error 1010: Access denied", "status": 403, "cloudflare_error": True}).encode()
+
+        def fake_urlopen(req, timeout=25):
+            raise urllib.error.HTTPError(req.full_url, 403, "Forbidden", hdrs=None, fp=BytesIO(body))
+
+        with patch("core.controllers.naboopay_controller.urllib.request.urlopen", fake_urlopen):
+            listed = naboopay_controller.list_transactions(page=1, limit=1)
+        self.assertFalse(listed.get("ok"))
 
 
 class SubscriptionPricesMergeTests(TestCase):

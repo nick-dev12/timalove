@@ -33,11 +33,11 @@
           {% endif %}
           <div class="tl-plans-grid">
           {% for plan in plans %}
-          <article class="tl-plan tl-plan--{{ plan.id }}{% if plan.is_featured %} tl-plan--featured{% endif %}{% if plan.is_vip %} tl-plan--vip{% endif %}{% if payment_status.tier == plan.id %} is-current{% endif %}">
+          <article class="tl-plan tl-plan--{{ plan.id }}{% if plan.is_featured %} tl-plan--featured{% endif %}{% if plan.is_vip %} tl-plan--vip{% endif %}{% if payment_status.has_active_subscription and payment_status.tier == plan.id %} is-current{% endif %}">
             {% if plan.badge %}
             <p class="tl-plan__ribbon">{{ plan.badge }}</p>
             {% endif %}
-            {% if payment_status.tier == plan.id %}
+            {% if payment_status.has_active_subscription and payment_status.tier == plan.id %}
             <p class="tl-plan__tag">Ma formule</p>
             {% endif %}
 
@@ -50,9 +50,9 @@
               <p class="tl-plan__price">{{ plan.price_label }}</p>
             </header>
 
-            <button type="button" class="tl-plan__cta tl-plan__cta--primary" data-checkout="{{ plan.id }}"{% if payment_status.tier == plan.id %} disabled{% endif %}>
-              {% if payment_status.tier == plan.id %}
-              Formule active
+            <button type="button" class="tl-plan__cta tl-plan__cta--primary" data-checkout="{{ plan.id }}">
+              {% if payment_status.has_active_subscription and payment_status.tier == plan.id %}
+              Renouveler
               {% else %}
               Profitez de {{ plan.label }}
               {% endif %}
@@ -77,8 +77,8 @@
               {% endfor %}
             </div>
 
-            <button type="button" class="tl-plan__cta tl-plan__cta--ghost" data-checkout="{{ plan.id }}"{% if payment_status.tier == plan.id %} disabled{% endif %}>
-              {% if payment_status.tier == plan.id %}Formule en cours{% else %}Choisir {{ plan.label }}{% endif %}
+            <button type="button" class="tl-plan__cta tl-plan__cta--ghost" data-checkout="{{ plan.id }}">
+              {% if payment_status.has_active_subscription and payment_status.tier == plan.id %}Renouveler {{ plan.label }}{% else %}Choisir {{ plan.label }}{% endif %}
             </button>
           </article>
           {% empty %}

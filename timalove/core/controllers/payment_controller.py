@@ -225,6 +225,10 @@ def _start_provider_checkout(tx: Transaction, profile: Profile | None, descripti
                 return _simulated_checkout(tx, details, reason="network")
             tx.status = TransactionStatus.FAILED
             details["error"] = result.get("error")
+            raw = result.get("raw") if isinstance(result.get("raw"), dict) else {}
+            if raw:
+                details["provider_status"] = raw.get("http_status") or raw.get("status")
+                details["provider_error"] = raw.get("error_name") or raw.get("title") or raw.get("error")
             tx.payment_details = details
             tx.save(update_fields=["status", "payment_details", "updated_at"])
             err = result.get("error") or "Impossible d’ouvrir le paiement."
@@ -482,6 +486,8 @@ def fulfill_order(order_id: str, provider_ref: str | None = None, extra: dict | 
     if tx.type == TransactionType.SUBSCRIPTION and tx.plan_tier:
         duration = duration_for_tier(tx.plan_tier)
         starts = timezone.now()
+        if profile.has_active_subscription and profile.subscription_end_date and profile.subscription_end_date > starts:
+            starts = profile.subscription_end_date
         ends = starts + duration
         sub = Subscription.objects.create(
             user=profile,
