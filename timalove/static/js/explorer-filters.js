@@ -6,9 +6,7 @@
   const form = document.querySelector("[data-explorer-filters-form]");
   const saveBtn = document.querySelector("[data-explorer-filters-save]");
   const msgEl = document.querySelector("[data-explorer-filters-msg]");
-  const openBtn = document.querySelector("[data-explorer-filters-open]");
-
-  if (!modal || !form || !openBtn) return;
+  if (!modal || !form) return;
 
   function csrf() {
     const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
@@ -31,7 +29,9 @@
     }
   }
 
-  openBtn.addEventListener("click", function (event) {
+  document.addEventListener("click", function (event) {
+    const openBtn = event.target.closest("[data-explorer-filters-open]");
+    if (!openBtn) return;
     event.preventDefault();
     openModal();
   });

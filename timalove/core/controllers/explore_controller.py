@@ -264,7 +264,13 @@ def _eligible_ids(viewer=None) -> list:
 
         qs = apply_opposite_gender_filter(qs, viewer)
         qs = apply_discover_filters(qs, viewer)
-        qs = swipe_controller.apply_feed_exclusions(qs, viewer)
+        filtered = swipe_controller.apply_feed_exclusions(qs, viewer)
+        ids = list(filtered.values_list("pk", flat=True))
+        if ids:
+            return ids
+        # Catalogue épuisé (likes + passes récents) : réaffiche les passes, garde les likes masqués.
+        recycled = swipe_controller.apply_feed_exclusions(qs, viewer, recycle_passes=True)
+        return list(recycled.values_list("pk", flat=True))
     return list(qs.values_list("pk", flat=True))
 
 

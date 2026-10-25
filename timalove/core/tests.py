@@ -2261,6 +2261,18 @@ class StrictGenderDiscoveryTests(TestCase):
         self.assertIn(self.woman.pk, ids)
         self.assertNotIn(self.man2.pk, ids)
 
+    def test_explore_recycles_passes_when_pool_empty(self):
+        from core.controllers import explore_controller
+
+        self.woman.photo_url = "https://example.com/w.jpg"
+        self.woman.save(update_fields=["photo_url", "updated_at"])
+        swipe_controller.set_flags(self.man, self.woman.id, is_like=False, is_super_like=False)
+        ids = explore_controller._eligible_ids(self.man)
+        self.assertIn(self.woman.pk, ids)
+        swipe_controller.set_flags(self.man, self.woman.id, is_like=True, is_super_like=False)
+        ids_after_like = explore_controller._eligible_ids(self.man)
+        self.assertNotIn(self.woman.pk, ids_after_like)
+
     def test_feed_session_avoids_immediate_repeat_on_refresh(self):
         from django.contrib.sessions.backends.db import SessionStore
         from core.controllers import explore_controller

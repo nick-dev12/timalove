@@ -50,8 +50,16 @@ def excluded_swiped_ids(viewer: Profile) -> set:
     )
 
 
-def apply_feed_exclusions(qs, viewer: Profile):
-    """Exclut du queryset les profils déjà likés ou passés récemment."""
+def apply_feed_exclusions(qs, viewer: Profile, *, recycle_passes: bool = False):
+    """Exclut du queryset les profils déjà likés ou passés récemment.
+
+    recycle_passes=True : ne masque que les likes (réaffiche les passes) —
+    utilisé lorsque le pool explorer est vide.
+    """
+    already_liked = Swipe.objects.filter(swiper=viewer, swiped_id=OuterRef("pk")).filter(LIKE_Q)
+    if recycle_passes:
+        return qs.annotate(_hide_liked=Exists(already_liked)).filter(_hide_liked=False)
+
     cutoff = pass_cooldown_cutoff()
     active_pass = Swipe.objects.filter(
         swiper=viewer,
@@ -60,7 +68,6 @@ def apply_feed_exclusions(qs, viewer: Profile):
         is_super_like=False,
         created_at__gte=cutoff,
     )
-    already_liked = Swipe.objects.filter(swiper=viewer, swiped_id=OuterRef("pk")).filter(LIKE_Q)
     return qs.annotate(
         _hide_active_pass=Exists(active_pass),
         _hide_liked=Exists(already_liked),

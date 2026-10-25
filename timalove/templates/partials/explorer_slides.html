@@ -111,9 +111,15 @@
 {% if next_offset == 0 %}
 <section class="explorer__slide explorer__slide--empty" data-ready="true">
   <div class="explorer__empty">
+    {% if user.is_authenticated %}
+    <h2>Tous les profils ont déjà été vus</h2>
+    <p>De nouveaux membres arrivent chaque jour. Vous pouvez aussi assouplir vos filtres pour élargir la sélection.</p>
+    <button type="button" class="btn btn-primary" data-explorer-filters-open>Ajuster mes filtres</button>
+    {% else %}
     <h2>Aucun profil pour le moment</h2>
     <p>Revenez bientôt ou créez votre compte pour être notifié.</p>
     <a class="btn btn-primary" href="{% url 'auth:inscription' %}">Créer mon profil</a>
+    {% endif %}
   </div>
 </section>
 {% endif %}
