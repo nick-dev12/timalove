@@ -4674,22 +4674,27 @@ body:not(.explorer-page) .explorer__bottom {
   }
 
   body.explorer-page {
-    --explorer-col: 100%;
     --explorer-slide-pad: 0.2rem;
   }
 
-  .explorer__feed {
-    width: 100%;
-    max-width: 100%;
-    padding-inline: max(0.55rem, env(safe-area-inset-left, 0px))
-      max(0.55rem, env(safe-area-inset-right, 0px));
-  }
+  @media (max-width: 767px) {
+    body.explorer-page {
+      --explorer-col: 100%;
+    }
 
-  .explorer__bottom {
-    width: 100%;
-    max-width: 100%;
-    padding-inline: max(0.55rem, env(safe-area-inset-left, 0px))
-      max(0.55rem, env(safe-area-inset-right, 0px));
+    .explorer__feed {
+      width: 100%;
+      max-width: 100%;
+      padding-inline: max(0.55rem, env(safe-area-inset-left, 0px))
+        max(0.55rem, env(safe-area-inset-right, 0px));
+    }
+
+    .explorer__bottom {
+      width: 100%;
+      max-width: 100%;
+      padding-inline: max(0.55rem, env(safe-area-inset-left, 0px))
+        max(0.55rem, env(safe-area-inset-right, 0px));
+    }
   }
 
   .explorer__slide .explorer__card {
@@ -19338,8 +19343,11 @@ body.explorer-page .cdc-switch a.is-on {
   color: #c2185b;
   border-bottom-color: #c2185b;
 }
-body.explorer-page:not(.explorer-page--curated) {
-  --explorer-col: min(100%, 27rem);
+/* Colonne téléphone — mobile uniquement (ne doit pas écraser tablette/PC) */
+@media (max-width: 767px) {
+  body.explorer-page:not(.explorer-page--curated) {
+    --explorer-col: min(100%, 27rem);
+  }
 }
 body.explorer-page .explorer__feed { padding: 0 0.85rem 0.15rem; background: #fff; }
 body.explorer-page .explorer__card {
@@ -19533,6 +19541,150 @@ body.explorer-page--curated .curated-card__actions .explorer__action svg {
 }
 body.explorer-page .explorer__bottom {
   background: #fff;
+}
+
+/* —— Tablette & PC : pages app publiques (explorer, messages, likes, historique, profil) —— */
+@media (min-width: 768px) {
+  body.explorer-page,
+  body.messages-page,
+  body.messages-inbox-page,
+  body.history-page,
+  body.likes-page,
+  body.cdc-app {
+    --explorer-col: min(100% - 2.5rem, 36rem);
+    background: var(--cream);
+  }
+  body.explorer-page:not(.explorer-page--curated) {
+    --explorer-col: min(100% - 2.5rem, 32rem);
+  }
+  body.explorer-page .explorer__chrome,
+  body.explorer-page .explorer__feed,
+  body.explorer-page .explorer__bottom {
+    background: #fff;
+  }
+  body.explorer-page .explorer__feed {
+    border-radius: 1.25rem 1.25rem 0 0;
+    box-shadow: 0 10px 28px rgba(45, 31, 34, 0.06);
+    padding: 0.35rem 1rem 0.2rem;
+  }
+  body.explorer-page .explorer__bottom {
+    border-radius: 0 0 1.25rem 1.25rem;
+    box-shadow: 0 10px 28px rgba(45, 31, 34, 0.06);
+    padding-bottom: 0.55rem;
+  }
+  body.explorer-page .cdc-reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  body.explorer-page .cdc-reasons li {
+    font-size: 0.86rem;
+    padding: 0.28rem 0.78rem 0.28rem 0.28rem;
+  }
+  body.explorer-page .explorer__meta h2,
+  body.explorer-page .explorer__meta h2 a {
+    font-size: 1.85rem;
+  }
+  body.explorer-page .explorer__tab-label,
+  body.cdc-app .explorer__tab-label {
+    font-size: 0.74rem;
+  }
+  body.explorer-page .explorer__dock,
+  body.cdc-app .explorer__dock {
+    padding-inline: 0.45rem;
+  }
+  .visit {
+    width: min(100% - 2.5rem, 40rem);
+  }
+  .history {
+    width: min(100% - 2.5rem, 40rem);
+    border-radius: 1.25rem;
+    box-shadow: 0 10px 28px rgba(45, 31, 34, 0.05);
+  }
+}
+
+@media (min-width: 1024px) {
+  body.explorer-page,
+  body.messages-page,
+  body.messages-inbox-page,
+  body.history-page,
+  body.likes-page,
+  body.cdc-app {
+    --explorer-col: min(100% - 4rem, 44rem);
+  }
+  body.explorer-page:not(.explorer-page--curated) {
+    /* Carte swipe portrait, centrée, avec ailes latérales */
+    --explorer-col: min(100% - 22rem, 34rem);
+  }
+  body.explorer-page .explorer-hearts {
+    display: block;
+  }
+  .explorer-wing {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    width: 12.5rem;
+    pointer-events: none;
+  }
+  .explorer-wing--left {
+    left: max(1rem, calc((100vw - var(--explorer-col)) / 2 - 14rem));
+  }
+  .explorer-wing--right {
+    right: max(1rem, calc((100vw - var(--explorer-col)) / 2 - 14rem));
+    pointer-events: auto;
+  }
+  body.explorer-page .explorer-hearts {
+    display: block;
+  }
+  body.explorer-page .cdc-sheet {
+    padding: 0.55rem 0.55rem 0.25rem;
+  }
+  body.explorer-page .explorer__actions {
+    margin: 0.7rem 0 0.35rem;
+    gap: 1.5rem;
+  }
+  body.explorer-page .explorer__actions .explorer__action--pass,
+  body.explorer-page .explorer__actions .explorer__action--like,
+  body.explorer-page .explorer__actions .explorer__action--star {
+    width: 76px;
+    height: 76px;
+  }
+  .visit {
+    width: min(100% - 4rem, 48rem);
+  }
+  .history {
+    width: min(100% - 4rem, 48rem);
+  }
+  body.messages-inbox-page .explorer,
+  body.likes-page .explorer,
+  body.cdc-app .explorer {
+    max-width: var(--explorer-col);
+    margin-inline: auto;
+  }
+}
+
+@media (min-width: 1280px) {
+  body.explorer-page,
+  body.messages-page,
+  body.messages-inbox-page,
+  body.history-page,
+  body.likes-page,
+  body.cdc-app {
+    --explorer-col: min(52rem, calc(100vw - 28rem));
+  }
+  body.explorer-page:not(.explorer-page--curated) {
+    --explorer-col: min(36rem, calc(100vw - 30rem));
+  }
+  .visit {
+    width: min(100% - 5rem, 52rem);
+  }
+  .history {
+    width: min(100% - 5rem, 52rem);
+  }
 }
 body.explorer-page .explorer__dock,
 body.cdc-app .explorer__dock {

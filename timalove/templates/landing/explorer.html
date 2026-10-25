@@ -7,11 +7,17 @@
 <style>
   html:has(body.explorer-page), body.explorer-page { height: 100dvh; overflow: hidden; }
   body.explorer-page { display: flex; flex-direction: column; background: #fff; color: #2D1F22; }
-  body.explorer-page .explorer-hearts,
-  body.explorer-page .explorer-rise,
-  body.explorer-page .explorer-wing { display: none; }
   body.explorer-page .explorer { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   body.explorer-page .explorer__chrome, body.explorer-page .explorer__bottom { opacity: 1 !important; visibility: visible !important; }
+  /* Atmosphère / ailes : masquées sur mobile, visibles tablette+ via timalove.css */
+  @media (max-width: 767px) {
+    body.explorer-page .explorer-hearts,
+    body.explorer-page .explorer-rise,
+    body.explorer-page .explorer-wing { display: none; }
+  }
+  @media (min-width: 768px) {
+    body.explorer-page { background: #FCE4EC; }
+  }
   html:has(body.explorer-page--curated),
   body.explorer-page--curated {
     height: auto;
