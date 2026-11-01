@@ -16,9 +16,22 @@
   function openModal() {
     modal.hidden = false;
     document.body.classList.add("is-explorer-filters");
-    const first = form.querySelector("input, select");
-    if (first) first.focus();
+    // Focus sur la fenêtre : évite d'ouvrir un menu ou le clavier dès l'ouverture sur mobile.
+    const dialog = modal.querySelector('[role="dialog"]');
+    if (dialog) {
+      dialog.setAttribute("tabindex", "-1");
+      dialog.focus({ preventScroll: true });
+    }
   }
+
+  modal.querySelector("[data-explorer-filters-reset]")?.addEventListener("click", function () {
+    form.elements.age_min.value = "18";
+    form.elements.age_max.value = "99";
+    form.elements.religion.value = "";
+    form.elements.country.value = "";
+    form.elements.verified_only.checked = false;
+    form.elements.online_only.checked = false;
+  });
 
   function closeModal() {
     modal.hidden = true;

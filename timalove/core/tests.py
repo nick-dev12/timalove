@@ -3135,7 +3135,7 @@ class MarriageProjectPromptTests(TestCase):
         page = self.client.get("/explorer/")
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "projet-prompt-modal")
-        self.assertContains(page, "Pour continuer, veuillez remplir votre projet")
+        self.assertContains(page, "Votre projet de mariage")
         self.assertContains(page, "data-needs-projet")
 
     def test_profil_page_ok(self):

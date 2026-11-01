@@ -1,61 +1,95 @@
 {% if user.is_authenticated and discover_filters %}
-<div id="explorer-filters-modal" class="explorer-filters-modal" hidden>
-  <div class="explorer-filters-modal__stage">
-    <button type="button" class="explorer-filters-modal__backdrop" data-explorer-filters-close aria-label="Fermer"></button>
-    <div class="explorer-filters-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="explorer-filters-title">
-      <header class="explorer-filters-modal__head">
-        <h2 id="explorer-filters-title">Filtres de découverte</h2>
-        <button type="button" class="explorer-filters-modal__close" data-explorer-filters-close aria-label="Fermer">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
-        </button>
-      </header>
-      <p class="explorer-filters-modal__lead">Ces réglages s’appliquent à Découvrir et à la sélection du jour.</p>
-      <form class="visit-form explorer-filters-modal__form" data-explorer-filters-form>
-        <fieldset class="explorer-filters-modal__section">
-          <legend>Objectif recherché</legend>
-          <label class="visit-form__field">
-            <span>Votre intention</span>
-            <select name="relationship_intent">
-              <option value="" {% if not member_profile.relationship_intent and not user.profile.relationship_intent %}selected{% endif %}>Choisir…</option>
-              {% for value, label in relationship_intents %}
-              <option value="{{ value }}"{% if member_profile.relationship_intent == value or user.profile.relationship_intent == value %} selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
+<div id="explorer-filters-modal" class="explorer-filters-modal tl-sheet" hidden>
+  <button type="button" class="tl-sheet__backdrop" data-explorer-filters-close aria-label="Fermer" tabindex="-1"></button>
+  <div class="tl-sheet__dialog" role="dialog" aria-modal="true" aria-labelledby="explorer-filters-title">
+    <header class="tl-sheet__head">
+      <div class="tl-sheet__titles">
+        <h2 id="explorer-filters-title">Filtres</h2>
+        <p class="tl-sheet__lead">S’appliquent à Découvrir et à la sélection du jour.</p>
+      </div>
+      <button type="button" class="tl-sheet__close" data-explorer-filters-close aria-label="Fermer">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </header>
+
+    <form id="explorer-filters-form" class="tl-sheet__body" data-explorer-filters-form>
+      <fieldset class="tl-group">
+        <legend>Votre intention</legend>
+        <div class="tl-select">
+          <select name="relationship_intent" aria-label="Votre intention">
+            <option value="" {% if not member_profile.relationship_intent and not user.profile.relationship_intent %}selected{% endif %}>Choisir…</option>
+            {% for value, label in relationship_intents %}
+            <option value="{{ value }}"{% if member_profile.relationship_intent == value or user.profile.relationship_intent == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset class="tl-group">
+        <legend>Âge</legend>
+        <div class="tl-range">
+          <label class="tl-input">
+            <span>De</span>
+            <input name="age_min" type="number" inputmode="numeric" min="18" max="99" value="{{ discover_filters.age_min }}" aria-label="Âge minimum">
           </label>
-        </fieldset>
-        <fieldset class="explorer-filters-modal__section">
-          <legend>Filtres Parcours</legend>
-          <div class="visit-form__row">
-            <label class="visit-form__field"><span>Âge minimum</span><input name="age_min" type="number" min="18" max="99" value="{{ discover_filters.age_min }}"></label>
-            <label class="visit-form__field"><span>Âge maximum</span><input name="age_max" type="number" min="18" max="99" value="{{ discover_filters.age_max }}"></label>
-          </div>
-          <label class="visit-form__field">
-            <span>Religion</span>
-            <select name="religion">
+          <span class="tl-range__sep" aria-hidden="true"></span>
+          <label class="tl-input">
+            <span>à</span>
+            <input name="age_max" type="number" inputmode="numeric" min="18" max="99" value="{{ discover_filters.age_max }}" aria-label="Âge maximum">
+          </label>
+          <span class="tl-range__unit">ans</span>
+        </div>
+      </fieldset>
+
+      <div class="tl-grid-2">
+        <fieldset class="tl-group">
+          <legend>Religion</legend>
+          <div class="tl-select">
+            <select name="religion" aria-label="Religion">
               <option value="" {% if not discover_filters.religion %}selected{% endif %}>Toutes</option>
               {% for value, label in religions %}
               <option value="{{ value }}"{% if discover_filters.religion == value %} selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
-          </label>
-          <label class="visit-form__field">
-            <span>Pays</span>
-            <select name="country">
+          </div>
+        </fieldset>
+        <fieldset class="tl-group">
+          <legend>Pays</legend>
+          <div class="tl-select">
+            <select name="country" aria-label="Pays">
               <option value="" {% if not discover_filters.country %}selected{% endif %}>Tous les pays</option>
               {% for c in countries %}
               <option value="{{ c }}"{% if discover_filters.country == c %} selected{% endif %}>{{ c }}</option>
               {% endfor %}
             </select>
-          </label>
-          <label class="visit-form__check"><input type="checkbox" name="verified_only"{% if discover_filters.verified_only %} checked{% endif %}> Uniquement les profils vérifiés</label>
-          <label class="visit-form__check"><input type="checkbox" name="online_only"{% if discover_filters.online_only %} checked{% endif %}> Uniquement les membres en ligne</label>
+          </div>
         </fieldset>
-      </form>
-      <footer class="explorer-filters-modal__foot">
-        <p class="explorer-filters-modal__msg" data-explorer-filters-msg hidden></p>
-        <button type="button" class="btn btn-primary" data-explorer-filters-save>Appliquer</button>
-      </footer>
-    </div>
+      </div>
+
+      <fieldset class="tl-group">
+        <legend>Préférences</legend>
+        <div class="tl-toggles">
+          <label class="tl-toggle">
+            <span class="tl-toggle__text">Profils vérifiés uniquement</span>
+            <input type="checkbox" name="verified_only"{% if discover_filters.verified_only %} checked{% endif %}>
+            <span class="tl-toggle__track" aria-hidden="true"></span>
+          </label>
+          <label class="tl-toggle">
+            <span class="tl-toggle__text">Membres en ligne uniquement</span>
+            <input type="checkbox" name="online_only"{% if discover_filters.online_only %} checked{% endif %}>
+            <span class="tl-toggle__track" aria-hidden="true"></span>
+          </label>
+        </div>
+      </fieldset>
+    </form>
+
+    <footer class="tl-sheet__foot">
+      <p class="tl-sheet__error" data-explorer-filters-msg role="alert" hidden></p>
+      <div class="tl-sheet__actions">
+        <button type="button" class="tl-btn tl-btn--ghost" data-explorer-filters-reset>Réinitialiser</button>
+        <button type="button" class="tl-btn tl-btn--primary" data-explorer-filters-save>Appliquer</button>
+      </div>
+    </footer>
   </div>
 </div>
 {% endif %}

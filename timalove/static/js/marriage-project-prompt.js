@@ -61,13 +61,31 @@
       return on ? on.getAttribute("data-value") || "" : "";
     }
 
+    const progressBar = modal.querySelector("[data-projet-progress-bar]");
+    const progressText = modal.querySelector("[data-projet-progress-text]");
+
+    function syncProgress() {
+      const done = FIELDS.filter(function (field) {
+        return !!selectedValue(field);
+      }).length;
+      if (progressBar) progressBar.style.width = (done / FIELDS.length) * 100 + "%";
+      if (progressText) {
+        progressText.textContent = done + "/" + FIELDS.length + " réponse" + (done > 1 ? "s" : "");
+      }
+      modal.classList.toggle("is-complete", done === FIELDS.length);
+    }
+
     function openModal() {
       if (shouldSkipPath()) return;
       modal.hidden = false;
       document.body.classList.add("is-projet-prompt");
       showError("");
-      const first = form && form.querySelector(".cdc-choice__item");
-      first && first.focus();
+      // Focus sur la fenêtre et non sur un choix : évite un contour qui ressemble à une sélection.
+      const dialog = modal.querySelector('[role="dialog"]');
+      if (dialog) {
+        dialog.setAttribute("tabindex", "-1");
+        dialog.focus({ preventScroll: true });
+      }
     }
 
     form &&
@@ -81,6 +99,7 @@
           btn.classList.add("is-on");
           btn.setAttribute("aria-pressed", "true");
           showError("");
+          syncProgress();
         });
       });
 
@@ -95,7 +114,17 @@
           if (!payload[field]) missing.push(field);
         });
         if (missing.length) {
-          showError("Pour continuer, veuillez remplir votre projet.");
+          showError("Répondez aux " + FIELDS.length + " questions pour continuer.");
+          const firstMissing = form.querySelector('[data-choice="' + missing[0] + '"]');
+          if (firstMissing) {
+            firstMissing.scrollIntoView({ behavior: "smooth", block: "center" });
+            const group = firstMissing.closest(".tl-group");
+            if (group) {
+              group.classList.remove("is-missing");
+              void group.offsetWidth;
+              group.classList.add("is-missing");
+            }
+          }
           return;
         }
         busy = true;
@@ -154,6 +183,7 @@
       }
     });
 
+    syncProgress();
     openModal();
   });
 })();
