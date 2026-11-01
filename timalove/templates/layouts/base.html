@@ -11,6 +11,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Allura&family=DM+Sans:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/timalove.css' %}?v=20261025desk1">
   <link rel="icon" href="{% static 'images/logo.webp' %}" type="image/webp">
+  <link rel="icon" href="{% static 'images/pwa/favicon-32.png' %}" type="image/png" sizes="32x32">
+  {# PWA — installation hors store #}
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="application-name" content="TimaLove">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TimaLove">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="{% static 'images/pwa/apple-touch-icon.png' %}">
+  <link rel="stylesheet" href="{% static 'css/pwa-install.css' %}?v=20261031pwa8">
+  <script src="{% static 'js/pwa-install.js' %}?v=20261031pwa8" defer></script>
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   {% if user.is_authenticated %}
   <script src="{% static 'js/fcm.js' %}?v=20260826fcm2" defer></script>

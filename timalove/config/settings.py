@@ -3,12 +3,17 @@ Django settings — TimaLove (Django + PostgreSQL).
 Architecture MVC : models / controllers / views / middleware dans l'app `core`.
 """
 
+import mimetypes
 from pathlib import Path
 
 import environ
 from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Types absents du registre Windows (sinon servis en application/octet-stream).
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 env = environ.Env(
     DEBUG=(bool, False),

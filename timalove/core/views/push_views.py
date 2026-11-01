@@ -5,11 +5,13 @@ from django.http import HttpResponse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 
+from core.views.pwa_views import service_worker_cache_section
+
 
 @require_GET
 @never_cache
 def firebase_messaging_sw(request):
-    """Service worker FCM — doit être servi à la racine du site."""
+    """Service worker unique (PWA + FCM) — doit être servi à la racine du site."""
     config = {
         "apiKey": settings.FIREBASE_WEB_API_KEY,
         "authDomain": settings.FIREBASE_AUTH_DOMAIN,
@@ -20,13 +22,21 @@ def firebase_messaging_sw(request):
         "measurementId": settings.FIREBASE_MEASUREMENT_ID,
     }
     icon_url = f"{settings.SITE_URL.rstrip('/')}/static/images/logo.webp"
-    body = f"""/* TimaLove — Firebase Cloud Messaging service worker */
-importScripts("https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/12.18.0/firebase-messaging-compat.js");
+    body = service_worker_cache_section() + f"""
+/* TimaLove — Firebase Cloud Messaging */
+try {{
+  importScripts("https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js");
+  importScripts("https://www.gstatic.com/firebasejs/12.18.0/firebase-messaging-compat.js");
+}} catch (_err) {{
+  // gstatic injoignable : la PWA reste installable, seules les push sont indisponibles.
+}}
 
-firebase.initializeApp({json.dumps(config)});
-
-const messaging = firebase.messaging();
+const TL_FIREBASE_CONFIGURED = {json.dumps(bool(config["apiKey"] and config["projectId"]))};
+let messaging = null;
+if (self.firebase && TL_FIREBASE_CONFIGURED) {{
+  firebase.initializeApp({json.dumps(config)});
+  messaging = firebase.messaging();
+}}
 
 function showPush(payload) {{
   const data = payload.data || {{}};
@@ -43,9 +53,11 @@ function showPush(payload) {{
   }});
 }}
 
-messaging.onBackgroundMessage((payload) => {{
-  return showPush(payload || {{}});
-}});
+if (messaging) {{
+  messaging.onBackgroundMessage((payload) => {{
+    return showPush(payload || {{}});
+  }});
+}}
 
 self.addEventListener("notificationclick", (event) => {{
   event.notification.close();

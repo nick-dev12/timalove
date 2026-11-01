@@ -17,6 +17,7 @@
       <span class="explorer__top-spacer" aria-hidden="true"></span>
       <a class="explorer__logo brand-script brand-mark" href="{% url 'public:explorer' %}"><span>TimaLove</span></a>
       <div class="explorer__top-actions">
+        {% include "partials/pwa_install_btn.html" %}
         <button type="button" class="explorer__icon-btn" aria-label="Menu du profil" aria-expanded="false" aria-controls="moi-quick-menu" data-moi-menu-toggle>
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="6" cy="6" r="1.6" fill="currentColor"/><circle cx="12" cy="6" r="1.6" fill="currentColor"/><circle cx="18" cy="6" r="1.6" fill="currentColor"/><circle cx="6" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="18" cy="12" r="1.6" fill="currentColor"/><circle cx="6" cy="18" r="1.6" fill="currentColor"/><circle cx="12" cy="18" r="1.6" fill="currentColor"/><circle cx="18" cy="18" r="1.6" fill="currentColor"/></svg>
         </button>

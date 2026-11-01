@@ -1,0 +1,37 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>Hors ligne · TimaLove</title>
+  <link rel="icon" href="{% static 'images/pwa/favicon-32.png' %}" type="image/png">
+  <style>
+    :root { --rose-primary: #c2185b; --bordeaux: #5c2430; --text-secondary: #6b5a5e; --rose-light: #f8e8ea; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; min-height: 100dvh;
+      display: grid; place-items: center; padding: 24px 16px;
+      background: var(--rose-light);
+      font-family: "DM Sans", system-ui, -apple-system, sans-serif; color: var(--bordeaux); text-align: center;
+    }
+    main { max-width: 360px; }
+    img { width: 96px; height: 96px; }
+    h1 { font-family: "Playfair Display", Georgia, serif; font-size: 1.6rem; margin: 1rem 0 .5rem; }
+    p { color: var(--text-secondary); line-height: 1.5; margin: 0 0 1.5rem; }
+    button {
+      border: 0; border-radius: 9999px; padding: .85rem 1.75rem; font: inherit; font-weight: 700;
+      background: var(--rose-primary); color: #fff; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="{% static 'images/logo.webp' %}" alt="">
+    <h1>Vous êtes hors ligne</h1>
+    <p>Vérifiez votre connexion Internet. TimaLove se rechargera dès que le réseau sera de retour.</p>
+    <button type="button" onclick="location.reload()">Réessayer</button>
+  </main>
+  <script>window.addEventListener("online", function () { location.reload(); });</script>
+</body>
+</html>

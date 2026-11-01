@@ -1,0 +1,5 @@
+{# Bouton « Télécharger l'app » — affiché par pwa-install.js seulement si l'installation est possible (jamais dans la PWA). #}
+<button type="button" class="pwa-nav-btn{% if extra_class %} {{ extra_class }}{% endif %}" data-pwa-install hidden aria-label="Télécharger l’application TimaLove">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+  <span class="pwa-nav-btn__label">Télécharger</span>
+</button>

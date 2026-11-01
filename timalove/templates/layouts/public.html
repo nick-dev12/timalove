@@ -19,6 +19,7 @@
         <a class="btn btn-primary btn-sm" href="{% url 'auth:connexion' %}">Connexion</a>
       {% endif %}
     </nav>
+    {% include "partials/pwa_install_btn.html"  with extra_class="navbar__pwa" %}
     <button class="nav-toggle" type="button" aria-label="Menu" onclick="document.getElementById('mobile-nav').hidden=!document.getElementById('mobile-nav').hidden">☰</button>
   </div>
 </header>

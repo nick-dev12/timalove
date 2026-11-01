@@ -3179,3 +3179,37 @@ class MarriageProjectPromptTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertNotContains(page, "projet-prompt-modal")
 
+
+
+class PwaTests(TestCase):
+    def test_manifest_is_installable(self):
+        res = self.client.get("/manifest.webmanifest")
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res["Content-Type"].startswith("application/manifest+json"))
+        data = res.json()
+        self.assertEqual(data["display"], "standalone")
+        self.assertEqual(data["scope"], "/")
+        self.assertTrue(data["start_url"].startswith("/"))
+        sizes = {(i["sizes"], i["purpose"]) for i in data["icons"]}
+        self.assertIn(("192x192", "any"), sizes)
+        self.assertIn(("512x512", "any"), sizes)
+        self.assertIn(("512x512", "maskable"), sizes)
+
+    def test_service_worker_has_offline_fallback_and_push(self):
+        res = self.client.get("/firebase-messaging-sw.js")
+        self.assertEqual(res.status_code, 200)
+        body = res.content.decode()
+        self.assertIn('self.addEventListener("fetch"', body)
+        self.assertIn("/hors-ligne/", body)
+        self.assertIn("notificationclick", body)
+
+    def test_offline_page_is_public(self):
+        res = self.client.get("/hors-ligne/")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Vous êtes hors ligne")
+
+    def test_pages_link_manifest_and_install_script(self):
+        res = self.client.get("/")
+        self.assertContains(res, 'rel="manifest"')
+        self.assertContains(res, "apple-touch-icon")
+        self.assertContains(res, "pwa-install.js")

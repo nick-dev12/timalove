@@ -11,6 +11,8 @@ PUBLIC_WHEN_MAINTENANCE = (
     "/static/",
     "/media/",
     "/firebase-messaging-sw.js",
+    "/manifest.webmanifest",
+    "/hors-ligne/",
     "/api/health",
 )
 

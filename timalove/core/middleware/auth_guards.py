@@ -25,6 +25,8 @@ COMPLETER_PATH = "/completer-profil"
 # Chemins publics (pas de redirect profil incomplet / auth)
 PUBLIC_PATHS = (
     "/firebase-messaging-sw.js",
+    "/manifest.webmanifest",
+    "/hors-ligne/",
 )
 
 INCOMPLETE_ALLOWED = (
