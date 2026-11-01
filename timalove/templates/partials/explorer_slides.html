@@ -64,6 +64,17 @@
       </div>
     </div>
     <div class="cdc-sheet">
+      <div class="cdc-sheet__head">
+        <h3>
+          <a href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}">{{ card.first_name }}{% if card.age %}<span>, {{ card.age }}</span>{% endif %}</a>
+        </h3>
+        <p class="cdc-sheet__place">
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+          {{ card.location }}
+          {% if card.is_online %}<span class="cdc-sheet__online">En ligne</span>{% endif %}
+        </p>
+      </div>
+      <p class="cdc-sheet__title">Pourquoi ce profil</p>
       <ul class="cdc-reasons">
         {% for line in card.alignments|slice:":3" %}
         <li>
@@ -81,6 +92,10 @@
         </li>
         {% endfor %}
       </ul>
+      <a class="cdc-sheet__more" href="{% url 'public:explorer_profil' card.id %}" data-profile-modal="{{ card.id }}">
+        Voir le profil complet
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg>
+      </a>
       <div class="explorer__actions" role="group" aria-label="Actions">
         {% if user.is_authenticated %}
         <button type="button" class="explorer__action explorer__action--pass" data-swipe="pass" aria-label="Passer ce profil">
